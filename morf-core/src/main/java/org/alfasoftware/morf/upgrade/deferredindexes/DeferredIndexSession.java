@@ -23,18 +23,18 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 
 /**
- * Per-upgrade-session journal for deferred-index tracking. Each mutation
+ * Per-upgrade-session journal for deferred-index registration. Each mutation
  * method records the change in an in-memory cache and returns the DSL
  * DML statements the visitor should emit alongside its physical DDL to
- * keep the {@code DeferredIndexes} tracking table in sync.
+ * keep the {@code DeferredIndexes} registration table in sync.
  *
- * <p><b>Tracking invariant</b>: only deferred indexes are tracked — callers
- * (the visitor) gate {@link #trackIndex(String, Index)} on the index's
+ * <p><b>Registration invariant</b>: only deferred indexes are registered — callers
+ * (the visitor) gate {@link #registerIndex(String, Index)} on the index's
  * effective {@code isDeferred()} after dialect-support normalization.</p>
  *
  * <p><b>Lifecycle</b>: instances are per-upgrade. At session start the
  * enricher calls {@link #prime(DeferredIndex)} for every persisted row so
- * that subsequent {@code removeIndex / updateIndexName / updateColumnName}
+ * that subsequent {@code unregisterIndex / updateIndexName / updateColumnName}
  * etc. produce correct DML against rows persisted by earlier upgrades.</p>
  *
  * <p>Separate from {@link DeferredIndexService} because the two have
@@ -47,7 +47,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 public interface DeferredIndexSession {
 
   /**
-   * Seeds the in-session cache with a persisted tracking row WITHOUT
+   * Seeds the in-session cache with a persisted registration row WITHOUT
    * emitting any DML. Called by the enricher at session start.
    *
    * @param entry the persisted row.
@@ -63,22 +63,22 @@ public interface DeferredIndexSession {
    * @param index the index (must be {@code isDeferred()=true}).
    * @return INSERT statements for the visitor to emit.
    */
-  List<InsertStatement> trackIndex(String tableName, Index index);
+  List<InsertStatement> registerIndex(String tableName, Index index);
 
 
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @return {@code true} if the index is currently tracked as deferred
+   * @return {@code true} if the index is currently registered as deferred
    *     (any status — built or unbuilt).
    */
-  boolean isTrackedDeferred(String tableName, String indexName);
+  boolean isRegistered(String tableName, String indexName);
 
 
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @return {@code true} if the index is currently tracked AND its status is
+   * @return {@code true} if the index is currently registered AND its status is
    *     non-terminal (PENDING / IN_PROGRESS / FAILED) — i.e. it has been
    *     declared deferred and the adopter has not yet built it. The visitor
    *     uses this to decide whether to emit physical DDL: an awaiting-build
@@ -88,36 +88,36 @@ public interface DeferredIndexSession {
 
 
   /**
-   * Removes an index from tracking and returns the DELETE.
+   * Removes an index from registration and returns the DELETE.
    *
    * @param tableName the table.
    * @param indexName the index.
-   * @return DELETE statements, empty if not tracked.
+   * @return DELETE statements, empty if not registered.
    */
-  List<DeleteStatement> removeIndex(String tableName, String indexName);
+  List<DeleteStatement> unregisterIndex(String tableName, String indexName);
 
 
   /**
-   * Removes every tracked index for a table.
+   * Removes every registered index for a table.
    *
    * @param tableName the table.
-   * @return DELETE statements, empty if no tracked indexes for the table.
+   * @return DELETE statements, empty if no registered indexes for the table.
    */
-  List<DeleteStatement> removeAllForTable(String tableName);
+  List<DeleteStatement> unregisterAllFor(String tableName);
 
 
   /**
-   * Removes every tracked index that references the named column.
+   * Removes every registered index that references the named column.
    *
    * @param tableName the table.
    * @param columnName the column being removed.
    * @return DELETE statements for each affected index.
    */
-  List<DeleteStatement> removeIndexesReferencingColumn(String tableName, String columnName);
+  List<DeleteStatement> unregisterByColumn(String tableName, String columnName);
 
 
   /**
-   * Re-homes every tracked index from one table name to another.
+   * Re-homes every registered index from one table name to another.
    *
    * @param oldTableName the old table name.
    * @param newTableName the new table name.
@@ -127,7 +127,7 @@ public interface DeferredIndexSession {
 
 
   /**
-   * Updates column references on every tracked index that mentions the
+   * Updates column references on every registered index that mentions the
    * renamed column.
    *
    * @param tableName the table.
@@ -139,12 +139,12 @@ public interface DeferredIndexSession {
 
 
   /**
-   * Renames a tracked index.
+   * Renames a registered index.
    *
    * @param tableName the table.
    * @param oldIndexName the old index name.
    * @param newIndexName the new index name.
-   * @return UPDATE statements, empty if not tracked.
+   * @return UPDATE statements, empty if not registered.
    */
   List<UpdateStatement> updateIndexName(String tableName, String oldIndexName, String newIndexName);
 

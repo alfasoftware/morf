@@ -665,7 +665,7 @@ public class TestInlineTableUpgrader {
    */
   @Test
   public void testChangeIndexCancelsPendingDeferredAddAndAddsNewIndex() {
-    // given — a tracked deferred index (not physically built) on TestTable/TestIdx
+    // given — a registered deferred index (not physically built) on TestTable/TestIdx
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -713,7 +713,7 @@ public class TestInlineTableUpgrader {
    */
   @Test
   public void testRenameIndexUpdatesPendingDeferredAdd() {
-    // given — a tracked deferred index (not physically built)
+    // given — a registered deferred index (not physically built)
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -754,7 +754,7 @@ public class TestInlineTableUpgrader {
    */
   @Test
   public void testRemoveIndexCancelsPendingDeferredAdd() {
-    // given — a tracked deferred index (not physically built)
+    // given — a registered deferred index (not physically built)
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -816,11 +816,11 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that RemoveTable removes all tracked indexes for that table from DeferredIndexes.
+   * Tests that RemoveTable removes all registered indexes for that table from DeferredIndexes.
    */
   @Test
   public void testRemoveTableCancelsPendingDeferredIndexes() {
-    // given — a tracked deferred index on TestTable
+    // given — a registered deferred index on TestTable
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -851,11 +851,11 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that RemoveColumn removes tracked indexes referencing the column from DeferredIndexes.
+   * Tests that RemoveColumn removes registered indexes referencing the column from DeferredIndexes.
    */
   @Test
   public void testRemoveColumnCancelsPendingDeferredIndexContainingColumn() {
-    // given — a tracked deferred index referencing col1
+    // given — a registered deferred index referencing col1
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -890,11 +890,11 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that RenameTable updates table name in DeferredIndexes for tracked indexes.
+   * Tests that RenameTable updates table name in DeferredIndexes for registered indexes.
    */
   @Test
   public void testRenameTableUpdatesPendingDeferredIndexTableName() {
-    // given — a tracked deferred index on OldTable
+    // given — a registered deferred index on OldTable
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -933,7 +933,7 @@ public class TestInlineTableUpgrader {
    */
   @Test
   public void testChangeColumnUpdatesPendingDeferredIndexColumnName() {
-    // given — a tracked deferred index referencing "oldCol"
+    // given — a registered deferred index referencing "oldCol"
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
@@ -1003,7 +1003,7 @@ public class TestInlineTableUpgrader {
     // then — physical CREATE INDEX emitted (declared-deferred promoted-to-immediate)
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
-    // and — NO tracking INSERT (slim: non-deferred is not tracked)
+    // and — NO registration INSERT (slim: non-deferred is not registered)
     verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
   }
 
@@ -1013,7 +1013,7 @@ public class TestInlineTableUpgrader {
    * immediate to declared-deferred on a dialect without deferred support
    * emits physical DROP + CREATE (the to-index normalizes to immediate) AND
    * produces no DeferredIndexes INSERT for the new row. No DELETE either,
-   * since the from-index wasn't tracked in the first place.
+   * since the from-index wasn't registered in the first place.
    */
   @Test
   public void testVisitChangeIndexToDeferredOnDialectWithoutDeferredSupport() {
@@ -1050,7 +1050,7 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
-    // and — NO tracking INSERT (slim: non-deferred is not tracked)
+    // and — NO registration INSERT (slim: non-deferred is not registered)
     verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
   }
 }

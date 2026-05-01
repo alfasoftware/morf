@@ -36,7 +36,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-final class DeferredIndexTrackingPolicy {
+final class DeferredIndexRegistrationPolicy {
 
   private final SqlDialect sqlDialect;
 
@@ -44,26 +44,26 @@ final class DeferredIndexTrackingPolicy {
   /**
    * @param sqlDialect dialect used to ask {@link SqlDialect#supportsDeferredIndexCreation()}.
    */
-  DeferredIndexTrackingPolicy(SqlDialect sqlDialect) {
+  DeferredIndexRegistrationPolicy(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
   }
 
 
   /**
-   * Decides whether the index should produce a tracking row.
+   * Decides whether the index should produce a registration row.
    *
-   * <p>An index is tracked iff it is declared {@code .deferred()} AND the
+   * <p>An index is registered iff it is declared {@code .deferred()} AND the
    * dialect supports deferred creation. On dialects that don't support
    * deferred creation, declared-deferred indexes are normalized to
-   * immediate (built at upgrade time, no tracking row).</p>
+   * immediate (built at upgrade time, no registration row).</p>
    *
    * <p>Idempotent under {@link #effectiveIndex} — calling on either the raw
    * or the normalized form produces the same answer.</p>
    *
    * @param declared the index (raw or normalized).
-   * @return true if a tracking row should be created for this index.
+   * @return true if a registration row should be created for this index.
    */
-  boolean shouldTrack(Index declared) {
+  boolean shouldRegister(Index declared) {
     return declared.isDeferred() && sqlDialect.supportsDeferredIndexCreation();
   }
 

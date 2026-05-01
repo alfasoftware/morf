@@ -316,7 +316,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   /**
    * Regression test: GraphBasedUpgradeSchemaChangeVisitor must consult its
    * session's {@code isAwaitingBuild} when deciding whether to emit physical
-   * DDL. When the index is tracked as awaiting build (PENDING / IN_PROGRESS /
+   * DDL. When the index is registered as awaiting build (PENDING / IN_PROGRESS /
    * FAILED row), a RemoveIndex visit must NOT emit DROP INDEX DDL — the
    * physical index isn't there yet.
    */
@@ -427,7 +427,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
    */
   @Test
   public void testChangeIndexCancelsPendingDeferredAdd() {
-    // given — a tracked deferred index (not physically built)
+    // given — a registered deferred index (not physically built)
     visitor.startStep(U1.class);
     Index deferredIdx = mock(Index.class);
     when(deferredIdx.getName()).thenReturn("SomeIndex");
@@ -474,7 +474,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
    */
   @Test
   public void testRenameIndexUpdatesPendingDeferredAdd() {
-    // given — a tracked deferred index (not physically built)
+    // given — a registered deferred index (not physically built)
     visitor.startStep(U1.class);
     Index deferredIdx = mock(Index.class);
     when(deferredIdx.getName()).thenReturn("OldIndex");

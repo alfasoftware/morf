@@ -29,7 +29,7 @@ import org.alfasoftware.morf.upgrade.Version;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 /**
- * Creates the DeferredIndexes tracking table.
+ * Creates the DeferredIndexes registration table.
  *
  * <p>Under the slim invariant the table only ever holds rows for deferred
  * indexes, so there's no prepopulation step — nothing to seed for indexes

@@ -29,7 +29,7 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
    * @param upgradeConfigAndContext upgrade config
    * @param sqlDialect   dialect to generate statements for the target database.
    * @param idTable      table for id generation.
-   * @param deferredIndexSession the per-session tracking service, primed by the enricher.
+   * @param deferredIndexSession the per-session registration service, primed by the enricher.
    * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
    *                       upgrade for which the visitor will generate statements
    */
@@ -93,7 +93,7 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
      * @param upgradeConfigAndContext upgrade config
      * @param sqlDialect   dialect to generate statements for the target database
      * @param idTable      table for id generation
-     * @param deferredIndexSession the per-session tracking service, primed by the enricher
+     * @param deferredIndexSession the per-session registration service, primed by the enricher
      * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the upgrade for
      *                       which the visitor will generate statements
      * @return new {@link GraphBasedUpgradeSchemaChangeVisitor} instance

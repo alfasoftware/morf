@@ -4144,7 +4144,7 @@ public abstract class SqlDialect {
   /**
    * Returns whether the named physical index is valid (built and usable).
    *
-   * <p>Used by the deferred-index reconciliation path to decide whether a tracking row
+   * <p>Used by the deferred-index reconciliation path to decide whether a registration row
    * should be promoted to {@code COMPLETED} (a valid index already exists), driven through
    * the {@code CREATE INDEX} branch (no index in the catalog), or driven through
    * {@code DROP + CREATE} (a previous build left an invalid leftover behind).</p>

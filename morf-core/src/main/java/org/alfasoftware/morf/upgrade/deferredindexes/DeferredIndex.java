@@ -23,8 +23,8 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 
 /**
- * Represents a row in the {@code DeferredIndexes} tracking table. Every row
- * is a deferred index — non-deferred indexes are not tracked. The lifecycle
+ * Represents a row in the {@code DeferredIndexes} registration table. Every row
+ * is a deferred index — non-deferred indexes are not registered. The lifecycle
  * is {@link DeferredIndexStatus#PENDING} → {@code IN_PROGRESS} →
  * {@code COMPLETED} or {@code FAILED}, with {@code FAILED} non-terminal
  * (re-tried on the next build pass).

@@ -62,7 +62,7 @@ public class TestDeferredIndexesStatements {
         stmt.getTable().getName());
     assertEquals(1, stmt.getOrderBys().size());
     assertEquals("id", ((FieldReference) stmt.getOrderBys().get(0)).getName());
-    // and -- projects all 11 tracked columns (indexDeferred dropped in SP5 slim)
+    // and -- projects all 11 registered columns (indexDeferred dropped in SP5 slim)
     assertEquals(11, stmt.getFields().size());
   }
 
@@ -156,17 +156,17 @@ public class TestDeferredIndexesStatements {
   }
 
 
-  // ---- Tracking DML ------------------------------------------------------
+  // ---- Registration DML ------------------------------------------------------
 
-  /** trackIndex produces an INSERT against the DeferredIndexes table with
-   *  status=PENDING for a deferred index (slim: only deferred gets tracked). */
+  /** registerIndex produces an INSERT against the DeferredIndexes table with
+   *  status=PENDING for a deferred index (slim: only deferred gets registered). */
   @Test
-  public void testTrackDeferredIndex() {
+  public void testRegisterDeferredIndex() {
     // given
     Index idx = index("DeferIdx").deferred().columns("col1", "col2");
 
     // when
-    InsertStatement stmt = statements.trackIndex("Product", idx);
+    InsertStatement stmt = statements.registerIndex("Product", idx);
 
     // then -- 8 values corresponding to the 8 columns the factory populates
     // (id, tableName, indexName, indexUnique, indexColumns, status, attemptsCount, createdTime)
@@ -184,12 +184,12 @@ public class TestDeferredIndexesStatements {
 
   /** Multi-column indexes produce a comma-joined indexColumns value. */
   @Test
-  public void testMultiColumnTrackIndexJoinsCommaSeparated() {
+  public void testMultiColumnRegisterIndexJoinsCommaSeparated() {
     // given
     Index idx = index("MultiIdx").columns("a", "b", "c");
 
     // when
-    InsertStatement stmt = statements.trackIndex("Product", idx);
+    InsertStatement stmt = statements.registerIndex("Product", idx);
 
     // then -- one of the literals should be "a,b,c"
     boolean sawJoined = stmt.getValues().stream()
@@ -204,7 +204,7 @@ public class TestDeferredIndexesStatements {
   @Test
   public void testRemoveIndex() {
     // when
-    DeleteStatement stmt = statements.removeIndex("Product", "Idx1");
+    DeleteStatement stmt = statements.unregisterIndex("Product", "Idx1");
 
     // then
     assertEquals(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME,
@@ -213,11 +213,11 @@ public class TestDeferredIndexesStatements {
   }
 
 
-  /** removeAllForTable produces a DELETE with WHERE on tableName only. */
+  /** unregisterAllFor produces a DELETE with WHERE on tableName only. */
   @Test
   public void testRemoveAllForTable() {
     // when
-    DeleteStatement stmt = statements.removeAllForTable("Product");
+    DeleteStatement stmt = statements.unregisterAllFor("Product");
 
     // then
     assertNotNull(stmt.getWhereCriterion());

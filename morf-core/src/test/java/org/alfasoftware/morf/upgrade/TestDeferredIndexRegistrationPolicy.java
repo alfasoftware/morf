@@ -27,20 +27,20 @@ import org.alfasoftware.morf.metadata.Index;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeferredIndexTrackingPolicy}: the matrix of
+ * Unit tests for {@link DeferredIndexRegistrationPolicy}: the matrix of
  * (declared-deferred × dialect-supports-deferred-creation).
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeferredIndexTrackingPolicy {
+public class TestDeferredIndexRegistrationPolicy {
 
-  /** Non-deferred index on supporting dialect: not tracked, immediate build. */
+  /** Non-deferred index on supporting dialect: not registered, immediate build. */
   @Test
   public void testNonDeferredOnSupportingDialect() {
-    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(true));
+    DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(true));
     Index idx = index("Foo_Idx").columns("col");
 
-    assertFalse("non-deferred should not be tracked", policy.shouldTrack(idx));
+    assertFalse("non-deferred should not be registered", policy.shouldRegister(idx));
     assertTrue("non-deferred requires immediate build",
         policy.requiresImmediateBuild(idx));
     assertEquals("effective form unchanged for non-deferred",
@@ -48,14 +48,14 @@ public class TestDeferredIndexTrackingPolicy {
   }
 
 
-  /** Deferred index on supporting dialect: tracked, no immediate build. */
+  /** Deferred index on supporting dialect: registered, no immediate build. */
   @Test
   public void testDeferredOnSupportingDialect() {
-    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(true));
+    DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(true));
     Index idx = index("Foo_Idx").deferred().columns("col");
 
-    assertTrue("deferred on supporting dialect should be tracked",
-        policy.shouldTrack(idx));
+    assertTrue("deferred on supporting dialect should be registered",
+        policy.shouldRegister(idx));
     assertFalse("deferred on supporting dialect skips immediate build",
         policy.requiresImmediateBuild(idx));
     assertTrue("effective form preserves deferred flag",
@@ -63,15 +63,15 @@ public class TestDeferredIndexTrackingPolicy {
   }
 
 
-  /** Deferred index on non-supporting dialect: not tracked, immediate build,
+  /** Deferred index on non-supporting dialect: not registered, immediate build,
    *  effective form normalizes to non-deferred. */
   @Test
   public void testDeferredOnNonSupportingDialect() {
-    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(false));
+    DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index idx = index("Foo_Idx").deferred().columns("col");
 
-    assertFalse("deferred on non-supporting dialect should not be tracked",
-        policy.shouldTrack(idx));
+    assertFalse("deferred on non-supporting dialect should not be registered",
+        policy.shouldRegister(idx));
     assertTrue("deferred on non-supporting dialect requires immediate build",
         policy.requiresImmediateBuild(idx));
     Index effective = policy.effectiveIndex(idx);
@@ -82,27 +82,27 @@ public class TestDeferredIndexTrackingPolicy {
   }
 
 
-  /** Non-deferred on non-supporting dialect: not tracked, immediate build. */
+  /** Non-deferred on non-supporting dialect: not registered, immediate build. */
   @Test
   public void testNonDeferredOnNonSupportingDialect() {
-    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(false));
+    DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index idx = index("Foo_Idx").columns("col");
 
-    assertFalse(policy.shouldTrack(idx));
+    assertFalse(policy.shouldRegister(idx));
     assertTrue(policy.requiresImmediateBuild(idx));
     assertEquals(idx, policy.effectiveIndex(idx));
   }
 
 
-  /** Idempotency: calling shouldTrack/requiresImmediateBuild on the
+  /** Idempotency: calling shouldRegister/requiresImmediateBuild on the
    *  already-normalized form returns the same answer as on the raw form. */
   @Test
   public void testIdempotencyUnderEffectiveIndex() {
-    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(false));
+    DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index raw = index("Foo_Idx").deferred().columns("col");
     Index normalized = policy.effectiveIndex(raw);
 
-    assertEquals(policy.shouldTrack(raw), policy.shouldTrack(normalized));
+    assertEquals(policy.shouldRegister(raw), policy.shouldRegister(normalized));
     assertEquals(policy.requiresImmediateBuild(raw), policy.requiresImmediateBuild(normalized));
     assertEquals(normalized, policy.effectiveIndex(normalized));
   }
@@ -111,7 +111,7 @@ public class TestDeferredIndexTrackingPolicy {
   /** Unique flag preserved through effectiveIndex normalization. */
   @Test
   public void testUniqueFlagPreservedOnNormalization() {
-    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(false));
+    DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index uniqueDeferred = index("Foo_Idx").unique().deferred().columns("col");
 
     Index effective = policy.effectiveIndex(uniqueDeferred);

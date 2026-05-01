@@ -144,7 +144,7 @@ public class TestDeferredIndexesModelEnricherImpl {
    *  session marks it as awaiting build. */
   @Test
   public void testUnbuiltDeferredVirtualizedAsDeferred() {
-    // given — table with no physical indexes, tracking row says PENDING
+    // given — table with no physical indexes, registration row says PENDING
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
@@ -176,7 +176,7 @@ public class TestDeferredIndexesModelEnricherImpl {
    */
   @Test
   public void testNonCompletedRowWithPhysicalMatchRebuiltAsDeferred() {
-    // given — physical index exists but tracking row says PENDING
+    // given — physical index exists but registration row says PENDING
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
@@ -196,8 +196,8 @@ public class TestDeferredIndexesModelEnricherImpl {
     assertEquals("MyIdx", enriched.getName());
     assertTrue("Non-COMPLETED + physical present should be marked deferred for the build task",
         enriched.isDeferred());
-    // and — session knows it's tracked AND awaiting build (status=PENDING)
-    assertTrue(session.isTrackedDeferred("MyTable", "MyIdx"));
+    // and — session knows it's registered AND awaiting build (status=PENDING)
+    assertTrue(session.isRegistered("MyTable", "MyIdx"));
     assertTrue("Non-COMPLETED row should still be awaiting build",
         session.isAwaitingBuild("MyTable", "MyIdx"));
   }
@@ -230,7 +230,7 @@ public class TestDeferredIndexesModelEnricherImpl {
    */
   @Test
   public void testCompletedDeferredWithValidPhysicalRebuiltAsDeferred() {
-    // given — physical index exists, tracking row says COMPLETED, dialect reports VALID
+    // given — physical index exists, registration row says COMPLETED, dialect reports VALID
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
@@ -250,7 +250,7 @@ public class TestDeferredIndexesModelEnricherImpl {
     // then
     Index enriched = result.getTable("MyTable").indexes().get(0);
     assertTrue(enriched.isDeferred());
-    assertTrue(session.isTrackedDeferred("MyTable", "MyIdx"));
+    assertTrue(session.isRegistered("MyTable", "MyIdx"));
     assertFalse("Built deferred should NOT be awaiting build",
         session.isAwaitingBuild("MyTable", "MyIdx"));
   }
@@ -319,7 +319,7 @@ public class TestDeferredIndexesModelEnricherImpl {
   /** COMPLETED row + NO physical match → drift; sharpened message hints at manual recovery. */
   @Test
   public void testCompletedRowWithoutPhysicalMatchThrowsDrift() {
-    // given — tracking row says COMPLETED but physical index is missing
+    // given — registration row says COMPLETED but physical index is missing
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
@@ -376,7 +376,7 @@ public class TestDeferredIndexesModelEnricherImpl {
     // given — three independent drift sources:
     //   (1) COMPLETED row whose physical is present but INVALID
     //   (2) COMPLETED row whose physical is missing
-    //   (3) tracking row referencing a table not in the physical schema
+    //   (3) registration row referencing a table not in the physical schema
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),

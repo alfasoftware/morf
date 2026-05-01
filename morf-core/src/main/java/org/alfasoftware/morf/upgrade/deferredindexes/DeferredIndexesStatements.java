@@ -60,12 +60,12 @@ import com.google.inject.Singleton;
 @Singleton
 class DeferredIndexesStatements {
 
-  /** Table name — the DeferredIndexes tracking table. */
+  /** Table name — the DeferredIndexes registration table. */
   static final String TABLE = DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME;
 
   /** Column: primary key. */
   static final String COL_ID = "id";
-  /** Column: table the tracked index belongs to. */
+  /** Column: table the registered index belongs to. */
   static final String COL_TABLE_NAME = "tableName";
   /** Column: index name. */
   static final String COL_INDEX_NAME = "indexName";
@@ -77,7 +77,7 @@ class DeferredIndexesStatements {
   static final String COL_STATUS = "status";
   /** Column: number of CREATE attempts for the deferred build (reset on COMPLETED). */
   static final String COL_ATTEMPTS_COUNT = "attemptsCount";
-  /** Column: epoch ms when the tracking row was created. */
+  /** Column: epoch ms when the registration row was created. */
   static final String COL_CREATED_TIME = "createdTime";
   /** Column: epoch ms when the app started building this deferred index. */
   static final String COL_STARTED_TIME = "startedTime";
@@ -165,7 +165,7 @@ class DeferredIndexesStatements {
    * @param indexName the index.
    * @param completedTime epoch ms.
    * @return UPDATE flipping status to COMPLETED, setting completedTime, and
-   *     clearing the recoverable-failure tracking columns
+   *     clearing the recoverable-failure registration columns
    *     ({@code attemptsCount=0}, {@code errorMessage=NULL}).
    */
   UpdateStatement markCompleted(String tableName, String indexName, long completedTime) {
@@ -199,15 +199,15 @@ class DeferredIndexesStatements {
 
 
   // -------------------------------------------------------------------------
-  // Tracking DML (executed as part of the upgrade script via the visitor)
+  // Registration DML (executed as part of the upgrade script via the visitor)
   // -------------------------------------------------------------------------
 
   /**
    * @param tableName the table.
    * @param index the index — must be effective-deferred.
-   * @return INSERT adding a new tracking row with status PENDING.
+   * @return INSERT adding a new registration row with status PENDING.
    */
-  InsertStatement trackIndex(String tableName, Index index) {
+  InsertStatement registerIndex(String tableName, Index index) {
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = System.currentTimeMillis();
 
@@ -228,9 +228,9 @@ class DeferredIndexesStatements {
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @return DELETE removing the tracking row.
+   * @return DELETE removing the registration row.
    */
-  DeleteStatement removeIndex(String tableName, String indexName) {
+  DeleteStatement unregisterIndex(String tableName, String indexName) {
     return delete(tableRef(TABLE))
         .where(and(
             field(COL_TABLE_NAME).eq(literal(tableName)),
@@ -240,9 +240,9 @@ class DeferredIndexesStatements {
 
   /**
    * @param tableName the table.
-   * @return DELETE removing all tracking rows for the table.
+   * @return DELETE removing all registration rows for the table.
    */
-  DeleteStatement removeAllForTable(String tableName) {
+  DeleteStatement unregisterAllFor(String tableName) {
     return delete(tableRef(TABLE)).where(field(COL_TABLE_NAME).eq(literal(tableName)));
   }
 
@@ -250,7 +250,7 @@ class DeferredIndexesStatements {
   /**
    * @param oldTableName the old table name.
    * @param newTableName the new table name.
-   * @return UPDATE renaming the tableName column for every tracking row.
+   * @return UPDATE renaming the tableName column for every registration row.
    */
   UpdateStatement updateTableName(String oldTableName, String newTableName) {
     return update(tableRef(TABLE))
@@ -278,7 +278,7 @@ class DeferredIndexesStatements {
    * @param tableName the table.
    * @param oldIndexName the old index name.
    * @param newIndexName the new index name.
-   * @return UPDATE renaming the index in its tracking row.
+   * @return UPDATE renaming the index in its registration row.
    */
   UpdateStatement updateIndexName(String tableName, String oldIndexName, String newIndexName) {
     return update(tableRef(TABLE))

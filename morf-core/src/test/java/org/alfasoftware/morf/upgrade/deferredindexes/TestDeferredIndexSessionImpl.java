@@ -48,8 +48,8 @@ public class TestDeferredIndexSessionImpl {
 
 
   /**
-   * prime populates the in-session map from a persisted tracking row
-   * without emitting any DML. After priming, isTracked / isTrackedDeferred
+   * prime populates the in-session map from a persisted registration row
+   * without emitting any DML. After priming, isRegistered / isRegistered
    * must return true so subsequent remove/rename/etc. calls correctly
    * produce DML against the persisted row.
    */
@@ -67,149 +67,149 @@ public class TestDeferredIndexSessionImpl {
     session.prime(entry);
 
     // then — state is seeded
-    assertTrue("Primed entry should be tracked as deferred", session.isTrackedDeferred("Product", "Product_Name_1"));
+    assertTrue("Primed entry should be registered as deferred", session.isRegistered("Product", "Product_Name_1"));
 
     // and — a subsequent removeIndex produces a DELETE DML (not a no-op),
     // because the primed row is treated as if it existed in-session.
-    List<? extends Statement> deleteStmts = session.removeIndex("Product", "Product_Name_1");
+    List<? extends Statement> deleteStmts = session.unregisterIndex("Product", "Product_Name_1");
     assertEquals("removeIndex on primed row should emit one DELETE", 1, deleteStmts.size());
   }
 
 
-  /** trackIndex should register and return INSERT statement. */
+  /** registerIndex should register and return INSERT statement. */
   @Test
-  public void testTrackIndexReturnsInsert() {
+  public void testRegisterIndexReturnsInsert() {
     // given
     Index idx = index("Idx1").columns("col1");
 
     // when
-    List<? extends Statement> stmts = session.trackIndex("Table1", idx);
+    List<? extends Statement> stmts = session.registerIndex("Table1", idx);
 
     // then
     assertEquals(1, stmts.size());
-    assertTrue("Should be tracked", session.isTrackedDeferred("Table1", "Idx1"));
+    assertTrue("Should be registered", session.isRegistered("Table1", "Idx1"));
     assertTrue("Should contain DeferredIndexes", stmts.get(0).toString().contains("DeferredIndexes"));
   }
 
 
-  /** trackIndex for deferred should set isTrackedDeferred. In the slim
-   *  invariant the visitor only ever calls trackIndex for deferred indexes,
+  /** registerIndex for deferred should set isRegistered. In the slim
+   *  invariant the visitor only ever calls registerIndex for deferred indexes,
    *  so there is no non-deferred case to test. */
   @Test
-  public void testTrackDeferredIndex() {
+  public void testRegisterDeferredIndex() {
     // given
     Index idx = index("Idx1").deferred().columns("col1");
 
     // when
-    session.trackIndex("Table1", idx);
+    session.registerIndex("Table1", idx);
 
     // then
-    assertTrue("Should be tracked as deferred", session.isTrackedDeferred("Table1", "Idx1"));
+    assertTrue("Should be registered as deferred", session.isRegistered("Table1", "Idx1"));
   }
 
 
-  /** isTracked should be case-insensitive. */
+  /** isRegistered should be case-insensitive. */
   @Test
-  public void testIsTrackedCaseInsensitive() {
+  public void testIsRegisteredCaseInsensitive() {
     // given
-    session.trackIndex("MyTable", index("MyIdx").columns("col1"));
+    session.registerIndex("MyTable", index("MyIdx").columns("col1"));
 
     // then
-    assertTrue(session.isTrackedDeferred("MYTABLE", "MYIDX"));
-    assertTrue(session.isTrackedDeferred("mytable", "myidx"));
+    assertTrue(session.isRegistered("MYTABLE", "MYIDX"));
+    assertTrue(session.isRegistered("mytable", "myidx"));
   }
 
 
-  /** removeIndex should return DELETE and untrack. */
+  /** removeIndex should return DELETE and unregister. */
   @Test
   public void testRemoveIndex() {
     // given
-    session.trackIndex("Table1", index("Idx1").columns("col1"));
+    session.registerIndex("Table1", index("Idx1").columns("col1"));
 
     // when
-    List<? extends Statement> stmts = session.removeIndex("Table1", "Idx1");
+    List<? extends Statement> stmts = session.unregisterIndex("Table1", "Idx1");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse("Should be untracked", session.isTrackedDeferred("Table1", "Idx1"));
+    assertFalse("Should be unregistered", session.isRegistered("Table1", "Idx1"));
   }
 
 
-  /** removeIndex for non-tracked should return empty. */
+  /** removeIndex for non-registered should return empty. */
   @Test
-  public void testRemoveNonTrackedIndex() {
+  public void testRemoveNonRegisteredIndex() {
     // when
-    List<? extends Statement> stmts = session.removeIndex("Table1", "NonExistent");
+    List<? extends Statement> stmts = session.unregisterIndex("Table1", "NonExistent");
 
     // then
     assertTrue("Should return empty", stmts.isEmpty());
   }
 
 
-  /** removeAllForTable should remove all indexes for that table. */
+  /** unregisterAllFor should remove all indexes for that table. */
   @Test
   public void testRemoveAllForTable() {
     // given
-    session.trackIndex("Table1", index("Idx1").columns("col1"));
-    session.trackIndex("Table1", index("Idx2").columns("col2"));
-    session.trackIndex("Table2", index("Idx3").columns("col3"));
+    session.registerIndex("Table1", index("Idx1").columns("col1"));
+    session.registerIndex("Table1", index("Idx2").columns("col2"));
+    session.registerIndex("Table2", index("Idx3").columns("col3"));
 
     // when
-    List<? extends Statement> stmts = session.removeAllForTable("Table1");
+    List<? extends Statement> stmts = session.unregisterAllFor("Table1");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(session.isTrackedDeferred("Table1", "Idx1"));
-    assertFalse(session.isTrackedDeferred("Table1", "Idx2"));
-    assertTrue("Table2 should be unaffected", session.isTrackedDeferred("Table2", "Idx3"));
+    assertFalse(session.isRegistered("Table1", "Idx1"));
+    assertFalse(session.isRegistered("Table1", "Idx2"));
+    assertTrue("Table2 should be unaffected", session.isRegistered("Table2", "Idx3"));
   }
 
 
-  /** removeIndexesReferencingColumn should remove matching indexes. */
+  /** unregisterByColumn should remove matching indexes. */
   @Test
   public void testRemoveIndexesReferencingColumn() {
     // given
-    session.trackIndex("Table1", index("Idx1").columns("col1", "col2"));
-    session.trackIndex("Table1", index("Idx2").columns("col3"));
+    session.registerIndex("Table1", index("Idx1").columns("col1", "col2"));
+    session.registerIndex("Table1", index("Idx2").columns("col3"));
 
     // when
-    List<? extends Statement> stmts = session.removeIndexesReferencingColumn("Table1", "col1");
+    List<? extends Statement> stmts = session.unregisterByColumn("Table1", "col1");
 
     // then
-    assertFalse("Idx1 should be removed", session.isTrackedDeferred("Table1", "Idx1"));
-    assertTrue("Idx2 should remain", session.isTrackedDeferred("Table1", "Idx2"));
+    assertFalse("Idx1 should be removed", session.isRegistered("Table1", "Idx1"));
+    assertTrue("Idx2 should remain", session.isRegistered("Table1", "Idx2"));
   }
 
 
-  /** updateTableName should update tracked entries. */
+  /** updateTableName should update registered entries. */
   @Test
   public void testUpdateTableName() {
     // given
-    session.trackIndex("OldTable", index("Idx1").columns("col1"));
+    session.registerIndex("OldTable", index("Idx1").columns("col1"));
 
     // when
     List<? extends Statement> stmts = session.updateTableName("OldTable", "NewTable");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(session.isTrackedDeferred("OldTable", "Idx1"));
-    assertTrue(session.isTrackedDeferred("NewTable", "Idx1"));
+    assertFalse(session.isRegistered("OldTable", "Idx1"));
+    assertTrue(session.isRegistered("NewTable", "Idx1"));
   }
 
 
-  /** updateIndexName should rename in tracking. */
+  /** updateIndexName should rename in registration. */
   @Test
   public void testUpdateIndexName() {
     // given
-    session.trackIndex("Table1", index("OldIdx").columns("col1"));
+    session.registerIndex("Table1", index("OldIdx").columns("col1"));
 
     // when
     List<? extends Statement> stmts = session.updateIndexName("Table1", "OldIdx", "NewIdx");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(session.isTrackedDeferred("Table1", "OldIdx"));
-    assertTrue(session.isTrackedDeferred("Table1", "NewIdx"));
+    assertFalse(session.isRegistered("Table1", "OldIdx"));
+    assertTrue(session.isRegistered("Table1", "NewIdx"));
   }
 
 
@@ -219,8 +219,8 @@ public class TestDeferredIndexSessionImpl {
   @Test
   public void testUpdateColumnName() {
     // given
-    session.trackIndex("Table1", index("Idx1").columns("oldCol", "col2"));
-    session.trackIndex("Table1", index("Idx2").columns("col3"));
+    session.registerIndex("Table1", index("Idx1").columns("oldCol", "col2"));
+    session.registerIndex("Table1", index("Idx2").columns("col3"));
 
     // when
     List<? extends Statement> stmts = session.updateColumnName("Table1", "oldCol", "newCol");
@@ -241,42 +241,42 @@ public class TestDeferredIndexSessionImpl {
 
   // ---- Negative / no-op paths -------------------------------------------
 
-  /** removeIndex for an untracked (table, index) pair is a no-op. */
+  /** removeIndex for an unregistered (table, index) pair is a no-op. */
   @Test
-  public void testRemoveIndexOnUntrackedTableIsNoOp() {
+  public void testRemoveIndexOnUnregisteredTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = session.removeIndex("NoSuchTable", "NoSuchIdx");
+    List<? extends Statement> stmts = session.unregisterIndex("NoSuchTable", "NoSuchIdx");
 
     // then
     assertTrue("no-op should return empty list", stmts.isEmpty());
   }
 
 
-  /** removeAllForTable on a table that isn't tracked is a no-op. */
+  /** unregisterAllFor on a table that isn't registered is a no-op. */
   @Test
-  public void testRemoveAllForUntrackedTableIsNoOp() {
+  public void testRemoveAllForUnregisteredTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = session.removeAllForTable("NoSuchTable");
+    List<? extends Statement> stmts = session.unregisterAllFor("NoSuchTable");
 
     // then
     assertTrue(stmts.isEmpty());
   }
 
 
-  /** removeIndexesReferencingColumn on an untracked table is a no-op. */
+  /** unregisterByColumn on an unregistered table is a no-op. */
   @Test
-  public void testRemoveIndexesReferencingColumnOnUntrackedTableIsNoOp() {
+  public void testRemoveIndexesReferencingColumnOnUnregisteredTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = session.removeIndexesReferencingColumn("NoSuchTable", "anyCol");
+    List<? extends Statement> stmts = session.unregisterByColumn("NoSuchTable", "anyCol");
 
     // then
     assertTrue(stmts.isEmpty());
   }
 
 
-  /** updateTableName on a table that isn't tracked is a no-op. */
+  /** updateTableName on a table that isn't registered is a no-op. */
   @Test
-  public void testUpdateTableNameOnUntrackedTableIsNoOp() {
+  public void testUpdateTableNameOnUnregisteredTableIsNoOp() {
     // when
     List<? extends Statement> stmts = session.updateTableName("NoSuchTable", "NewName");
 
@@ -285,9 +285,9 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** updateColumnName on a table that isn't tracked is a no-op. */
+  /** updateColumnName on a table that isn't registered is a no-op. */
   @Test
-  public void testUpdateColumnNameOnUntrackedTableIsNoOp() {
+  public void testUpdateColumnNameOnUnregisteredTableIsNoOp() {
     // when
     List<? extends Statement> stmts = session.updateColumnName("NoSuchTable", "oldCol", "newCol");
 
@@ -296,9 +296,9 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** updateIndexName on a table that isn't tracked is a no-op. */
+  /** updateIndexName on a table that isn't registered is a no-op. */
   @Test
-  public void testUpdateIndexNameOnUntrackedTableIsNoOp() {
+  public void testUpdateIndexNameOnUnregisteredTableIsNoOp() {
     // when
     List<? extends Statement> stmts = session.updateIndexName("NoSuchTable", "oldIdx", "newIdx");
 
@@ -307,11 +307,11 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** updateIndexName on a tracked table with unknown index is a no-op. */
+  /** updateIndexName on a registered table with unknown index is a no-op. */
   @Test
   public void testUpdateIndexNameOnUnknownIndexIsNoOp() {
-    // given -- table tracked, but only has Idx1
-    session.trackIndex("Table1", index("Idx1").columns("col1"));
+    // given -- table registered, but only has Idx1
+    session.registerIndex("Table1", index("Idx1").columns("col1"));
 
     // when
     List<? extends Statement> stmts = session.updateIndexName("Table1", "DifferentIdx", "NewIdx");
@@ -325,7 +325,7 @@ public class TestDeferredIndexSessionImpl {
   @Test
   public void testUpdateColumnNameIsCaseInsensitive() {
     // given -- column stored in mixed case
-    session.trackIndex("Table1", index("Idx1").columns("MyCol"));
+    session.registerIndex("Table1", index("Idx1").columns("MyCol"));
 
     // when -- upper-case lookup
     List<? extends Statement> stmts = session.updateColumnName("Table1", "MYCOL", "newName");
@@ -335,15 +335,15 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** trackIndex for a multi-column index emits an INSERT whose indexColumns
+  /** registerIndex for a multi-column index emits an INSERT whose indexColumns
    *  value is the columns comma-joined in the order they were declared. */
   @Test
-  public void testTrackMultiColumnIndexJoinsCommaSeparated() {
+  public void testRegisterMultiColumnIndexJoinsCommaSeparated() {
     // given
     Index idx = index("Multi").columns("a", "b", "c");
 
     // when
-    List<? extends Statement> stmts = session.trackIndex("Table1", idx);
+    List<? extends Statement> stmts = session.registerIndex("Table1", idx);
 
     // then -- the INSERT statement has a FieldLiteral "a,b,c" among its values
     assertEquals(1, stmts.size());

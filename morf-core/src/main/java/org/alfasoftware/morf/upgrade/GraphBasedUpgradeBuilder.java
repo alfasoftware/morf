@@ -65,9 +65,9 @@ public class GraphBasedUpgradeBuilder {
    *                                  {@link GraphBasedUpgrade}
    * @param viewChanges             view changes which need to be made to match
    *                                  the target schema
-   * @param deferredIndexSession  the per-session tracking service, primed
+   * @param deferredIndexSession  the per-session registration service, primed
    *                                  by the enricher; the visitor uses it to
-   *                                  emit DML against persisted tracking rows
+   *                                  emit DML against persisted registration rows
    *                                  and to answer physical-presence queries
    */
   GraphBasedUpgradeBuilder(
@@ -452,7 +452,7 @@ public class GraphBasedUpgradeBuilder {
      *                                  {@link GraphBasedUpgrade}
      * @param viewChanges             view changes which need to be made to match
      *                                  the target schema
-     * @param deferredIndexSession  the per-session tracking service, primed
+     * @param deferredIndexSession  the per-session registration service, primed
      *                                  by the enricher
      * @return new {@link GraphBasedUpgradeBuilder} instance
      */

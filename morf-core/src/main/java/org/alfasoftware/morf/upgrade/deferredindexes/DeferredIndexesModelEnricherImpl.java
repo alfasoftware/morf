@@ -51,7 +51,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>Responsibilities:</p>
  * <ol>
- *   <li><b>Prime the per-upgrade session</b> with every persisted tracking
+ *   <li><b>Prime the per-upgrade session</b> with every persisted registration
  *       row (built and unbuilt) so the visitor's mutation methods correctly
  *       cascade to all currently-declared deferred indexes.</li>
  *   <li><b>Rebuild physical indexes that match a COMPLETED row</b> with the
@@ -127,7 +127,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
       return physicalSchema;
     }
 
-    // Read every tracking row in one go (built and unbuilt). If nothing is tracked, the
+    // Read every registration row in one go (built and unbuilt). If nothing is registered, the
     // enricher has nothing to do; the visitor will INSERT new rows during this upgrade run.
     List<DeferredIndex> entries = dao.findAll();
     if (entries.isEmpty()) {
@@ -141,7 +141,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
     // (table -> (index -> row)) bucketed by upper-cased name for fast per-table lookup
     // while we walk the physical schema. We'll remove() as we consume each table's bucket;
-    // anything left over after the walk is an orphan (tracking row references a missing table).
+    // anything left over after the walk is an orphan (registration row references a missing table).
     Map<String, Map<String, DeferredIndex>> entriesByTable = bucketByTable(entries);
 
     SqlDialect dialect = connectionResources.sqlDialect();
@@ -151,13 +151,13 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
     try (Connection connection = connectionResources.getDataSource().getConnection()) {
       List<Table> enrichedTables = new ArrayList<>();
       // Track whether any table actually got rewritten -- avoids allocating a new Schema
-      // when no tracked indexes were present (common case for an early upgrade run).
+      // when no registered indexes were present (common case for an early upgrade run).
       boolean changed = false;
       for (Table physicalTable : physicalSchema.tables()) {
         Map<String, DeferredIndex> rowsForTable =
             entriesByTable.remove(physicalTable.getName().toUpperCase());
         if (rowsForTable == null || rowsForTable.isEmpty()) {
-          // No tracking rows for this table -- nothing to virtualize, no drift to check.
+          // No registration rows for this table -- nothing to virtualize, no drift to check.
           enrichedTables.add(physicalTable);
           continue;
         }
@@ -209,7 +209,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
   /**
    * Rebuilds the index list for one physical table by reconciling against
-   * its tracking rows. Applies these rules in order:
+   * its registration rows. Applies these rules in order:
    * <ul>
    *   <li>physical index matching a COMPLETED row → check
    *       {@link SqlDialect#isIndexValid} — VALID or unknown rebuilds with
@@ -217,7 +217,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
    *   <li>physical index matching a non-COMPLETED row → mark
    *       {@code .deferred()} and let the build task reconcile (the
    *       routine-restart case)</li>
-   *   <li>tracking row with no matching physical → virtualize as deferred,
+   *   <li>registration row with no matching physical → virtualize as deferred,
    *       unless COMPLETED in which case records a drift (operator-caused
    *       state corruption — manual recovery required)</li>
    * </ul>
@@ -283,7 +283,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
   }
 
 
-  /** Records a drift entry for every tracking row that references a table
+  /** Records a drift entry for every registration row that references a table
    *  not in the physical schema. SchemaHomology would normally surface this
    *  later, but per-row messages here are clearer. */
   private void collectOrphanedRowDrifts(Map<String, Map<String, DeferredIndex>> remaining,
@@ -313,7 +313,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
 
   /**
-   * Early-exit checks: feature disabled or tracking table not yet created.
+   * Early-exit checks: feature disabled or registration table not yet created.
    * The third case (table exists but is empty) is handled inline in
    * {@code enrich} to avoid a double read.
    */

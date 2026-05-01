@@ -74,7 +74,7 @@ class DeferredIndexesDAO {
   }
 
 
-  /** @return every persisted tracking row, ordered by id. */
+  /** @return every persisted registration row, ordered by id. */
   List<DeferredIndex> findAll() {
     return executeQuery(statements.selectAll());
   }
@@ -139,7 +139,7 @@ class DeferredIndexesDAO {
 
   /**
    * Marks the row COMPLETED, records {@code completedTime}, and clears the
-   * recoverable-failure tracking columns ({@code attemptsCount=0},
+   * recoverable-failure registration columns ({@code attemptsCount=0},
    * {@code errorMessage=NULL}).
    *
    * @param tableName the table.

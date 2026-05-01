@@ -25,7 +25,7 @@ import org.alfasoftware.morf.upgrade.UpgradeStep;
 
 /**
  * Changes Product_Name_1 from deferred to non-deferred (same columns).
- * Used to verify the row-existence model: tracking row should be deleted
+ * Used to verify the row-existence model: registration row should be deleted
  * because the index is no longer declared deferred.
  */
 @Sequence(90020)

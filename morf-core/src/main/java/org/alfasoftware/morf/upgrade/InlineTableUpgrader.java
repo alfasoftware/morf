@@ -42,7 +42,7 @@ public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements 
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
-   * @param deferredIndexSession the per-session tracking service, primed by the enricher.
+   * @param deferredIndexSession the per-session registration service, primed by the enricher.
    */
   public InlineTableUpgrader(Schema startSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable, DeferredIndexSession deferredIndexSession) {
     super(startSchema, upgradeConfigAndContext, sqlDialect, idTable, deferredIndexSession);

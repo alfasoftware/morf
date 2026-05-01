@@ -22,7 +22,7 @@ import java.util.Optional;
  * self-contained: when {@link #run()} executes, it opens its own JDBC
  * connection, observes the physical state of the target index via
  * {@link org.alfasoftware.morf.jdbc.SqlDialect#isIndexValid}, and reconciles
- * the {@code DeferredIndexes} tracking row to match — creating, dropping and
+ * the {@code DeferredIndexes} registration row to match — creating, dropping and
  * rebuilding, or simply marking complete as appropriate.
  *
  * <p>{@link #run()} returns when this task's index has reached a steady state

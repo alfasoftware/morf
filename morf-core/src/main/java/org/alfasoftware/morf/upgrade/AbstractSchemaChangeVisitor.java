@@ -30,7 +30,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final TableNameResolver  tracker;
 
   private final DeferredIndexSession deferredIndexSession;
-  private final DeferredIndexTrackingPolicy trackingPolicy;
+  private final DeferredIndexRegistrationPolicy registrationPolicy;
 
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
@@ -41,7 +41,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     this.idTable = idTable;
     this.tracker = new IdTableTracker(idTable.getName());
     this.deferredIndexSession = deferredIndexSession;
-    this.trackingPolicy = new DeferredIndexTrackingPolicy(sqlDialect);
+    this.registrationPolicy = new DeferredIndexRegistrationPolicy(sqlDialect);
   }
 
 
@@ -71,7 +71,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Whether DeferredIndexes tracking is active.
+   * Whether DeferredIndexes registration is active.
    */
   private boolean isDeferredIndexesEnabled() {
     return upgradeConfigAndContext.isDeferredIndexCreationEnabled();
@@ -128,13 +128,13 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Slim invariant: deferred indexes are NOT built immediately. Filter them
     // out of the CREATE TABLE statement so the adopter builds them via the
-    // deferred pipeline. Track them as PENDING (same as addIndex separately).
+    // deferred pipeline. Register them as PENDING (same as addIndex separately).
     writeStatements(sqlDialect.tableDeploymentStatements(withoutDeferredOnSupportingDialect(original)));
 
     for (Index index : original.indexes()) {
-      Index effective = trackingPolicy.effectiveIndex(index);
-      if (trackingPolicy.shouldTrack(effective)) {
-        trackInDeferredIndexes(original.getName(), effective);
+      Index effective = registrationPolicy.effectiveIndex(index);
+      if (registrationPolicy.shouldRegister(effective)) {
+        registerInDeferredIndexes(original.getName(), effective);
       }
     }
   }
@@ -142,8 +142,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   @Override
   public void visit(RemoveTable removeTable) {
-    // Remove all tracked indexes for this table
-    deferredIndexSession.removeAllForTable(removeTable.getTable().getName())
+    // Remove all registered indexes for this table
+    deferredIndexSession.unregisterAllFor(removeTable.getTable().getName())
         .forEach(this::writeDeferredIndexesDml);
     currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
@@ -179,8 +179,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = removeColumn.getTableName();
     String colName = removeColumn.getColumnDefinition().getName();
 
-    // Remove tracked indexes referencing the column
-    deferredIndexSession.removeIndexesReferencingColumn(tableName, colName)
+    // Remove registered indexes referencing the column
+    deferredIndexSession.unregisterByColumn(tableName, colName)
         .forEach(this::writeDeferredIndexesDml);
 
     currentSchema = removeColumn.apply(currentSchema);
@@ -193,12 +193,12 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = removeIndex.getTableName();
     Index indexToRemove = removeIndex.getIndexToBeRemoved();
 
-    // Capture BEFORE the tracking/schema mutations below: both
-    // isTrackedDeferred and the enricher state would be out of sync by the
+    // Capture BEFORE the registration/schema mutations below: both
+    // isRegistered and the enricher state would be out of sync by the
     // time the DDL emission runs otherwise.
     boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, indexToRemove.getName());
 
-    deferredIndexSession.removeIndex(tableName, indexToRemove.getName())
+    deferredIndexSession.unregisterIndex(tableName, indexToRemove.getName())
         .forEach(this::writeDeferredIndexesDml);
 
     currentSchema = removeIndex.apply(currentSchema);
@@ -213,26 +213,26 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(ChangeIndex changeIndex) {
     String tableName = changeIndex.getTableName();
     Index fromIndex = changeIndex.getFromIndex();
-    Index toIndex = trackingPolicy.effectiveIndex(changeIndex.getToIndex());
+    Index toIndex = registrationPolicy.effectiveIndex(changeIndex.getToIndex());
 
-    // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
+    // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
     boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
 
     // Always call removeIndex: the DELETE WHERE (table, index) clause is a
     // no-op if the row doesn't exist, and we want to purge any prior deferred
-    // tracking row if we're changing away from a deferred index.
-    deferredIndexSession.removeIndex(tableName, fromIndex.getName())
+    // registration row if we're changing away from a deferred index.
+    deferredIndexSession.unregisterIndex(tableName, fromIndex.getName())
         .forEach(this::writeDeferredIndexesDml);
     currentSchema = changeIndex.apply(currentSchema);
 
     if (fromWillBePresent) {
       writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), fromIndex));
     }
-    if (trackingPolicy.requiresImmediateBuild(toIndex)) {
+    if (registrationPolicy.requiresImmediateBuild(toIndex)) {
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
     }
-    if (trackingPolicy.shouldTrack(toIndex)) {
-      trackInDeferredIndexes(tableName, toIndex);
+    if (registrationPolicy.shouldRegister(toIndex)) {
+      registerInDeferredIndexes(tableName, toIndex);
     }
   }
 
@@ -241,7 +241,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(final RenameIndex renameIndex) {
     String tableName = renameIndex.getTableName();
 
-    // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
+    // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
     boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, renameIndex.getFromIndexName());
 
     deferredIndexSession.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
@@ -286,14 +286,14 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     currentSchema = addTableFrom.apply(currentSchema);
 
     // Same actually-defer treatment as visit(AddTable): filter deferred-on-
-    // supporting indexes out of the CTAS statement and track them as PENDING.
+    // supporting indexes out of the CTAS statement and register them as PENDING.
     writeStatements(sqlDialect.addTableFromStatements(
         withoutDeferredOnSupportingDialect(original), addTableFrom.getSelectStatement()));
 
     for (Index index : original.indexes()) {
-      Index effective = trackingPolicy.effectiveIndex(index);
-      if (trackingPolicy.shouldTrack(effective)) {
-        trackInDeferredIndexes(original.getName(), effective);
+      Index effective = registrationPolicy.effectiveIndex(index);
+      if (registrationPolicy.shouldRegister(effective)) {
+        registerInDeferredIndexes(original.getName(), effective);
       }
     }
   }
@@ -361,13 +361,13 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
     String tableName = addIndex.getTableName();
-    Index newIndex = trackingPolicy.effectiveIndex(addIndex.getNewIndex());
+    Index newIndex = registrationPolicy.effectiveIndex(addIndex.getNewIndex());
 
-    if (trackingPolicy.requiresImmediateBuild(newIndex)) {
+    if (registrationPolicy.requiresImmediateBuild(newIndex)) {
       emitAddIndexOrRename(tableName, newIndex);
     }
-    if (trackingPolicy.shouldTrack(newIndex)) {
-      trackInDeferredIndexes(tableName, newIndex);
+    if (registrationPolicy.shouldRegister(newIndex)) {
+      registerInDeferredIndexes(tableName, newIndex);
     }
   }
 
@@ -411,10 +411,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * Records the index in DeferredIndexes and emits the INSERT DML.
    *
    * @param tableName the table the index belongs to.
-   * @param index the index being tracked.
+   * @param index the index being registered.
    */
-  private void trackInDeferredIndexes(String tableName, Index index) {
-    deferredIndexSession.trackIndex(tableName, index)
+  private void registerInDeferredIndexes(String tableName, Index index) {
+    deferredIndexSession.registerIndex(tableName, index)
         .forEach(this::writeDeferredIndexesDml);
   }
 
@@ -422,7 +422,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   /**
    * Returns a Table view of {@code original} with deferred-on-supporting-
    * dialect indexes filtered out and the remainder normalized via
-   * {@link DeferredIndexTrackingPolicy#effectiveIndex}. Used at CREATE TABLE
+   * {@link DeferredIndexRegistrationPolicy#effectiveIndex}. Used at CREATE TABLE
    * (and CREATE TABLE AS SELECT) emission time so the adopter, not the
    * upgrade script, builds deferred indexes.
    *
@@ -433,10 +433,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private Table withoutDeferredOnSupportingDialect(Table original) {
     List<Index> kept = new ArrayList<>();
     for (Index idx : original.indexes()) {
-      Index effective = trackingPolicy.effectiveIndex(idx);
+      Index effective = registrationPolicy.effectiveIndex(idx);
       // Skip deferred-on-supporting (adopter will build); keep everything
       // else (non-deferred + deferred-on-unsupported normalized to immediate).
-      if (trackingPolicy.shouldTrack(effective)) continue;
+      if (registrationPolicy.shouldRegister(effective)) continue;
       kept.add(effective);
     }
     TableBuilder builder = SchemaUtils.table(original.getName())
@@ -458,10 +458,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * generated script reaches the current emission point?
    *
    * <p>Under the "row-existence = declared deferred" model, the session
-   * has the answer: an index is physically absent iff it's tracked AND its
+   * has the answer: an index is physically absent iff it's registered AND its
    * status is non-terminal (declared deferred but not yet built by the
-   * adopter). All other indexes — non-tracked (non-deferred physical) and
-   * tracked-COMPLETED (built deferred) — are present.</p>
+   * adopter). All other indexes — non-registered (non-deferred physical) and
+   * registered-COMPLETED (built deferred) — are present.</p>
    *
    * @param tableName the table name.
    * @param indexName the index name.

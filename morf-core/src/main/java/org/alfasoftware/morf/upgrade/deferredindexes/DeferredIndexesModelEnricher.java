@@ -24,11 +24,11 @@ import com.google.inject.ImplementedBy;
 
 /**
  * Merges the physical database schema with the {@code DeferredIndexes}
- * tracking table. Returns an enriched {@link Schema} where built-deferred
+ * registration table. Returns an enriched {@link Schema} where built-deferred
  * indexes carry the {@code .deferred()} flag and unbuilt-deferred rows
  * are virtualized as declared indexes.
  *
- * <p><b>Background-build invariant</b>: only deferred indexes are tracked.
+ * <p><b>Background-build invariant</b>: only deferred indexes are registered.
  * A row exists in the table iff the index is currently declared
  * {@code .deferred()}. The enricher's job is to (a) <b>prime</b> the
  * per-upgrade {@link DeferredIndexSession} with every persisted row so that
@@ -55,7 +55,7 @@ public interface DeferredIndexesModelEnricher {
 
   /**
    * Enriches the physical schema with {@code DeferredIndexes} metadata and
-   * primes the per-upgrade session with persisted tracking rows.
+   * primes the per-upgrade session with persisted registration rows.
    *
    * <p>If the feature is disabled, the {@code DeferredIndexes} table does
    * not yet exist, or the table is empty, the physical schema is returned
@@ -65,7 +65,7 @@ public interface DeferredIndexesModelEnricher {
    * <ul>
    *   <li>Every persisted row primes the session (so the visitor's
    *       remove/rename/column operations emit correct DML against
-   *       prior-upgrade tracking rows).</li>
+   *       prior-upgrade registration rows).</li>
    *   <li>{@code COMPLETED} rows whose physical index is present and VALID
    *       (or unknown — dialects without {@code isIndexValid} support)
    *       are rebuilt in the enriched schema with the {@code .deferred()}

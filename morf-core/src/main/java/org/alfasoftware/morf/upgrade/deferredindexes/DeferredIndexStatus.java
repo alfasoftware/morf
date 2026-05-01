@@ -16,7 +16,7 @@
 package org.alfasoftware.morf.upgrade.deferredindexes;
 
 /**
- * Status of an index tracked in the DeferredIndexes table.
+ * Status of an index registered in the DeferredIndexes table.
  *
  * <p>Non-deferred indexes are always {@link #COMPLETED}. Deferred indexes
  * transition through the lifecycle: {@link #PENDING} &rarr;

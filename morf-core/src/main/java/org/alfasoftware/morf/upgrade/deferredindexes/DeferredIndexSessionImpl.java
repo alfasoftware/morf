@@ -48,7 +48,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
   private static final Log log = LogFactory.getLog(DeferredIndexSessionImpl.class);
 
   /** Cache: tableName (upper) -&gt; indexName (upper) -&gt; IndexRecord. */
-  private final Map<String, Map<String, IndexRecord>> trackedIndexes = new LinkedHashMap<>();
+  private final Map<String, Map<String, IndexRecord>> registeredIndexes = new LinkedHashMap<>();
 
   private final DeferredIndexesStatements statements;
 
@@ -73,7 +73,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       builder = builder.unique();
     }
     builder = builder.deferred();
-    trackedIndexes
+    registeredIndexes
         .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
         .put(entry.getIndexName().toUpperCase(),
              new IndexRecord(entry.getTableName(), builder, entry.getStatus()));
@@ -81,31 +81,31 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
 
   @Override
-  public List<InsertStatement> trackIndex(String tableName, Index idx) {
+  public List<InsertStatement> registerIndex(String tableName, Index idx) {
     if (log.isDebugEnabled()) {
-      log.debug("Tracking index: table=" + tableName + ", index=" + idx.getName()
+      log.debug("Registering index: table=" + tableName + ", index=" + idx.getName()
           + ", deferred=" + idx.isDeferred());
     }
     // New declaration → status PENDING (adopter hasn't built it yet).
-    trackedIndexes
+    registeredIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
         .put(idx.getName().toUpperCase(),
              new IndexRecord(tableName, idx, DeferredIndexStatus.PENDING));
 
-    return List.of(statements.trackIndex(tableName, idx));
+    return List.of(statements.registerIndex(tableName, idx));
   }
 
 
   @Override
-  public boolean isTrackedDeferred(String tableName, String indexName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+  public boolean isRegistered(String tableName, String indexName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
   }
 
 
   @Override
   public boolean isAwaitingBuild(String tableName, String indexName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     if (tableMap == null) return false;
     IndexRecord record = tableMap.get(indexName.toUpperCase());
     if (record == null) return false;
@@ -114,33 +114,33 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
 
   @Override
-  public List<DeleteStatement> removeIndex(String tableName, String indexName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+  public List<DeleteStatement> unregisterIndex(String tableName, String indexName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     if (tableMap == null || !tableMap.containsKey(indexName.toUpperCase())) {
       return List.of();
     }
     IndexRecord removed = tableMap.remove(indexName.toUpperCase());
     if (tableMap.isEmpty()) {
-      trackedIndexes.remove(tableName.toUpperCase());
+      registeredIndexes.remove(tableName.toUpperCase());
     }
-    return List.of(statements.removeIndex(removed.tableName, removed.index.getName()));
+    return List.of(statements.unregisterIndex(removed.tableName, removed.index.getName()));
   }
 
 
   @Override
-  public List<DeleteStatement> removeAllForTable(String tableName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.remove(tableName.toUpperCase());
+  public List<DeleteStatement> unregisterAllFor(String tableName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.remove(tableName.toUpperCase());
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
     }
     String storedTableName = tableMap.values().iterator().next().tableName;
-    return List.of(statements.removeAllForTable(storedTableName));
+    return List.of(statements.unregisterAllFor(storedTableName));
   }
 
 
   @Override
-  public List<DeleteStatement> removeIndexesReferencingColumn(String tableName, String columnName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+  public List<DeleteStatement> unregisterByColumn(String tableName, String columnName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     if (tableMap == null) {
       return List.of();
     }
@@ -152,7 +152,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
     List<DeleteStatement> deletes = new ArrayList<>();
     for (String idxName : toRemove) {
-      deletes.addAll(removeIndex(tableName, idxName));
+      deletes.addAll(unregisterIndex(tableName, idxName));
     }
     return deletes;
   }
@@ -160,7 +160,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
   @Override
   public List<UpdateStatement> updateTableName(String oldTableName, String newTableName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.remove(oldTableName.toUpperCase());
+    Map<String, IndexRecord> tableMap = registeredIndexes.remove(oldTableName.toUpperCase());
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
     }
@@ -171,7 +171,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       IndexRecord r = entry.getValue();
       updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index, r.status));
     }
-    trackedIndexes.put(newTableName.toUpperCase(), updatedMap);
+    registeredIndexes.put(newTableName.toUpperCase(), updatedMap);
 
     return List.of(statements.updateTableName(storedOldTableName, newTableName));
   }
@@ -179,7 +179,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
   @Override
   public List<UpdateStatement> updateColumnName(String tableName, String oldColumnName, String newColumnName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     if (tableMap == null) {
       return List.of();
     }
@@ -207,7 +207,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
   @Override
   public List<UpdateStatement> updateIndexName(String tableName, String oldIndexName, String newIndexName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
       return List.of();
     }

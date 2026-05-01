@@ -121,7 +121,7 @@ public class Upgrade {
    * Each call to
    * {@link org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexService#getBuildTasks()}
    * returns one {@link org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexBuildTask}
-   * per non-{@code COMPLETED} tracking row; the adopter runs them serially or
+   * per non-{@code COMPLETED} registration row; the adopter runs them serially or
    * via its own executor.</p>
    *
    * @param targetSchema The target database schema.
@@ -269,7 +269,7 @@ public class Upgrade {
     // Construct a per-upgrade session. The enricher primes it with every
     // persisted DeferredIndexes row before anything else so that the
     // visitor's remove/rename/column operations emit correct DML against
-    // prior-upgrade tracking rows.
+    // prior-upgrade registration rows.
     DeferredIndexSession deferredIndexSession = DeferredIndexSession.create();
 
     sourceSchema = enrichSourceSchema(sourceSchema, deferredIndexSession);

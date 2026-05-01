@@ -47,7 +47,7 @@ import com.google.inject.ImplementedBy;
 public interface DeferredIndexService {
 
   /**
-   * Returns one task per non-{@code COMPLETED} tracking row. Each task, when
+   * Returns one task per non-{@code COMPLETED} registration row. Each task, when
    * run, performs full reconciliation for its (table, index) — including the
    * {@code isIndexValid} check, status updates, and (where applicable) the
    * {@code DROP INDEX} + {@code CREATE INDEX} pair.
@@ -55,7 +55,7 @@ public interface DeferredIndexService {
    * <p>The list is a snapshot at call time. Adopter is free to run tasks in
    * any order, in parallel, or via whatever executor.</p>
    *
-   * @return one task per non-{@code COMPLETED} tracked deferred index.
+   * @return one task per non-{@code COMPLETED} registered deferred index.
    */
   List<DeferredIndexBuildTask> getBuildTasks();
 
@@ -63,7 +63,7 @@ public interface DeferredIndexService {
   /**
    * Read-only progress summary for monitoring/UI.
    *
-   * @return count of tracking rows grouped by {@link DeferredIndexStatus}.
+   * @return count of registration rows grouped by {@link DeferredIndexStatus}.
    */
   Map<DeferredIndexStatus, Integer> getProgress();
 }

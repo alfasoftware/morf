@@ -42,7 +42,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
 
-  /** Name of the table tracking all deferred indexes (deferred and non-deferred). */
+  /** Name of the table registration all deferred indexes (deferred and non-deferred). */
   public static final String DEFERRED_INDEXES_NAME = "DeferredIndexes";
 
 

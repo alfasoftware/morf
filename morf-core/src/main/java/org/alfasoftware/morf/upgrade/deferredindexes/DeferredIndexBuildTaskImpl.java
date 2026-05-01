@@ -36,14 +36,14 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Package-private build task for one deferred index. Each instance is bound
  * to a single ({@code tableName}, {@code indexName}) pair and reconciles
- * that row's tracked state with the physical schema each time {@link #run()}
+ * that row's registered state with the physical schema each time {@link #run()}
  * is called.
  *
  * <p>Algorithm:</p>
  * <ol>
  *   <li>Open a JDBC connection (autocommit on — required for PostgreSQL
  *       {@code CREATE INDEX CONCURRENTLY}).</li>
- *   <li>Re-fetch the tracking row (state may have changed since the service
+ *   <li>Re-fetch the registration row (state may have changed since the service
  *       handed out this task).</li>
  *   <li>If the row is missing or {@code COMPLETED}, return — nothing to do.</li>
  *   <li>Read the physical state via
@@ -89,7 +89,7 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
 
 
   /**
-   * @param snapshot the tracking row as observed when the service captured the
+   * @param snapshot the registration row as observed when the service captured the
    *     task list; exposed to adopters via the snapshot getters. The task does
    *     <i>not</i> use this for its own decisions -- {@link #run()} re-fetches
    *     the row before acting.
@@ -163,7 +163,7 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
   private void reconcile(Connection connection, SqlDialect dialect) {
     Optional<DeferredIndex> rowOpt = dao.findByTableAndIndex(tableName, indexName);
     if (rowOpt.isEmpty()) {
-      log.debug("No tracking row for [" + tableName + "." + indexName + "] — nothing to reconcile");
+      log.debug("No registration row for [" + tableName + "." + indexName + "] — nothing to reconcile");
       return;
     }
     DeferredIndex row = rowOpt.get();

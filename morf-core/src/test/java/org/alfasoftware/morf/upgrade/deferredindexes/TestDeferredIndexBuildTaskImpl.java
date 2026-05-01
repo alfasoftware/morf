@@ -97,7 +97,7 @@ public class TestDeferredIndexBuildTaskImpl {
 
   // ---- Trivial branches --------------------------------------------------
 
-  /** No tracking row found — task no-ops; no DAO writes, no SQL run. */
+  /** No registration row found — task no-ops; no DAO writes, no SQL run. */
   @Test
   public void testRowMissingNoOp() throws SQLException {
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.empty());
@@ -383,11 +383,11 @@ public class TestDeferredIndexBuildTaskImpl {
   @Test
   public void testDaoFindByTableAndIndexThrowsPropagates() {
     when(dao.findByTableAndIndex(TABLE, INDEX))
-        .thenThrow(new RuntimeSqlException("tracking-table connection broken", new SQLException("conn closed")));
+        .thenThrow(new RuntimeSqlException("registration-table connection broken", new SQLException("conn closed")));
 
     RuntimeException thrown = assertThrows(RuntimeException.class, task::run);
     assertTrue("expected the DAO failure to propagate; got: " + thrown.getMessage(),
-        thrown.getMessage().contains("tracking-table connection broken"));
+        thrown.getMessage().contains("registration-table connection broken"));
     verify(dao, never()).markStarted(any(), any(), anyLong(), anyInt());
     verify(dao, never()).markCompleted(any(), any(), anyLong());
     verify(dao, never()).markFailed(any(), any(), any());

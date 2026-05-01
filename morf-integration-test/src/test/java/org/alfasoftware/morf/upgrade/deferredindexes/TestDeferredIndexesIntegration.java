@@ -134,7 +134,7 @@ public class TestDeferredIndexesIntegration {
    * declaration.
    */
   @Test
-  public void testDeferredIndexProducesPendingTrackingRow() {
+  public void testDeferredIndexProducesPendingRegisteringRow() {
     // given
     Schema targetSchema = schemaWithIndex();
 
@@ -144,20 +144,20 @@ public class TestDeferredIndexesIntegration {
     // then -- physical index NOT built (deferred)
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
-    // then -- the tracking row is persisted as non-terminal
+    // then -- the registration row is persisted as non-terminal
     List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should persist at least one deferred tracking row", deferredJobs.isEmpty());
+    assertFalse("Should persist at least one deferred registration row", deferredJobs.isEmpty());
     assertTrue("Job should reference the index name",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
-    // then -- DeferredIndexes row is PENDING (slim: every tracked row is deferred by invariant)
+    // then -- DeferredIndexes row is PENDING (slim: every registered row is deferred by invariant)
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
   /**
    * An upgrade with no deferred indexes should leave the DeferredIndexes
-   * tracking table empty (no non-COMPLETED rows).
+   * registration table empty (no non-COMPLETED rows).
    */
   @Test
   public void testNoDeferredIndexesReturnsEmptyStatements() {
@@ -180,7 +180,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * Two deferred indexes added in a single upgrade step should both be
-   * persisted as non-COMPLETED tracking rows, neither should be physically
+   * persisted as non-COMPLETED registration rows, neither should be physically
    * built, and both rows should be PENDING.
    */
   @Test
@@ -218,7 +218,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * When deferredIndexCreationEnabled is false, deferred indexes should
-   * be built immediately and no tracking rows should be written.
+   * be built immediately and no registration rows should be written.
    */
   @Test
   public void testDisabledFeatureBuildsDeferredImmediately() {
@@ -275,7 +275,7 @@ public class TestDeferredIndexesIntegration {
   /**
    * Step A defers an index on column "name". Step B renames "name" to "label".
    * The DeferredIndexes table's indexColumns is updated via the change service,
-   * and the rebuilt schema preserves isDeferred() so the persisted tracking
+   * and the rebuilt schema preserves isDeferred() so the persisted registration
    * row references the new column name.
    */
   @Test
@@ -308,12 +308,12 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * Step A adds a non-deferred index on column "name". Step B renames "name"
-   * to "label". <b>Slim invariant:</b> non-deferred indexes are not tracked
+   * to "label". <b>Slim invariant:</b> non-deferred indexes are not registered
    * in {@code DeferredIndexes} — the rename is applied physically via
-   * ALTER TABLE and no tracking row exists to update.
+   * ALTER TABLE and no registration row exists to update.
    */
   @Test
-  public void testCrossStepColumnRenameOnNonDeferredIndexDoesNotTrack() {
+  public void testCrossStepColumnRenameOnNonDeferredIndexDoesNotRegister() {
     // given
     Schema renamedColSchema = schemaWith(
         table("Product").columns(
@@ -327,9 +327,9 @@ public class TestDeferredIndexesIntegration {
         AddImmediateIndex.class,
         RenameColumnWithDeferredIndex.class);
 
-    // then -- physical index exists (under the renamed column) and no tracking row
+    // then -- physical index exists (under the renamed column) and no registration row
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertNull("Slim: non-deferred indexes are not tracked in DeferredIndexes",
+    assertNull("Slim: non-deferred indexes are not registered in DeferredIndexes",
         queryDeferredIndexField("Product_Name_1", "status"));
   }
 
@@ -393,7 +393,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * Deferred indexes on multiple tables should each be persisted as their
-   * own non-COMPLETED tracking row.
+   * own non-COMPLETED registration row.
    */
   @Test
   public void testDeferredIndexesOnMultipleTables() {
@@ -429,7 +429,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * A non-deferred addIndex should be built immediately and exist physically.
-   * <b>Slim invariant:</b> non-deferred indexes are not tracked in
+   * <b>Slim invariant:</b> non-deferred indexes are not registered in
    * {@code DeferredIndexes}.
    */
   @Test
@@ -446,9 +446,9 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(targetSchema,
         AddImmediateIndex.class);
 
-    // then -- physical index exists and NO tracking row (slim invariant)
+    // then -- physical index exists and NO registration row (slim invariant)
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertNull("Slim: non-deferred indexes are not tracked in DeferredIndexes",
+    assertNull("Slim: non-deferred indexes are not registered in DeferredIndexes",
         queryDeferredIndexField("Product_Name_1", "status"));
   }
 
@@ -456,8 +456,8 @@ public class TestDeferredIndexesIntegration {
   /**
    * When forceImmediateIndexes is configured for an index name, a deferred
    * addIndex should be built immediately during upgrade. The physical index
-   * should exist and no tracking row should be written. Since the index ends
-   * up non-deferred after the force-immediate resolution, it is not tracked.
+   * should exist and no registration row should be written. Since the index ends
+   * up non-deferred after the force-immediate resolution, it is not registered.
    */
   @Test
   public void testForceImmediateBypassesDeferral() {
@@ -471,9 +471,9 @@ public class TestDeferredIndexesIntegration {
         Collections.singletonList(AddDeferredIndex.class),
         connectionResources, forceConfig, viewDeploymentValidator);
 
-    // then -- built immediately + no tracking row (slim: non-deferred not tracked)
+    // then -- built immediately + no registration row (slim: non-deferred not registered)
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertNull("Slim: force-immediate ends up non-deferred → not tracked",
+    assertNull("Slim: force-immediate ends up non-deferred → not registered",
         queryDeferredIndexField("Product_Name_1", "status"));
     assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
   }
@@ -498,7 +498,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * Same-step: add deferred then rename in the same step. The renamed
-   * deferred index should be persisted as a non-COMPLETED tracking row
+   * deferred index should be persisted as a non-COMPLETED registration row
    * under its new name.
    */
   @Test
@@ -528,7 +528,7 @@ public class TestDeferredIndexesIntegration {
   // Unique and multi-column deferred indexes
   // =========================================================================
 
-  /** Unique deferred index should preserve its unique flag in the persisted tracking row. */
+  /** Unique deferred index should preserve its unique flag in the persisted registration row. */
   @Test
   public void testUniqueDeferredIndex() {
     // given
@@ -588,7 +588,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * A second upgrade should leave previously-unbuilt deferred indexes
-   * persisted as non-COMPLETED tracking rows alongside any new ones.
+   * persisted as non-COMPLETED registration rows alongside any new ones.
    */
   @Test
   public void testSequentialUpgradeIncludesPreviousDeferred() {
@@ -642,10 +642,10 @@ public class TestDeferredIndexesIntegration {
     UpgradePath path = performUpgrade(targetSchema,
         AddTableWithInlineDeferredIndex.class);
 
-    // then -- physical index NOT built; tracking row PENDING; job available
+    // then -- physical index NOT built; registration row PENDING; job available
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
     assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
-    assertFalse("inline-deferred index should produce a non-COMPLETED tracking row",
+    assertFalse("inline-deferred index should produce a non-COMPLETED registration row",
         newDao().findNonTerminal().isEmpty());
 
     // when -- adopter executes the deferred SQL
@@ -661,7 +661,7 @@ public class TestDeferredIndexesIntegration {
    * Creating a new table should track all its indexes in DeferredIndexes.
    */
   @Test
-  public void testAddTableTracksIndexesInDeferredTable() {
+  public void testAddTableRegistersIndexesInDeferredTable() {
     // given
     Schema targetSchema = schemaWith(
         table("Product").columns(
@@ -677,7 +677,7 @@ public class TestDeferredIndexesIntegration {
     // when
     performUpgrade(targetSchema, AddTableWithDeferredIndex.class);
 
-    // then -- Category_Label_1 should be tracked (deferred)
+    // then -- Category_Label_1 should be registered (deferred)
     assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
   }
 
@@ -753,7 +753,7 @@ public class TestDeferredIndexesIntegration {
   /**
    * Row-existence model: after a deferred index is built (status=COMPLETED),
    * a subsequent column-rename upgrade still propagates correctly to the
-   * tracking row's indexColumns and to the physical index. The COMPLETED
+   * registration row's indexColumns and to the physical index. The COMPLETED
    * row stays as COMPLETED because the index is still currently declared
    * deferred — its declarative form is just rewritten.
    */
@@ -766,7 +766,7 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
     // when — upgrade 2 renames the underlying column (physical column rename
-    // propagates to the index's column reference; tracking-row indexColumns
+    // propagates to the index's column reference; registration-row indexColumns
     // is updated by the visitor)
     Schema renamedColSchema = schemaWith(
         table("Product").columns(
@@ -785,7 +785,7 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
-   * Self-heal policy: if a tracking row says non-terminal (e.g. PENDING) but
+   * Self-heal policy: if a registration row says non-terminal (e.g. PENDING) but
    * the physical index already exists, the enricher does NOT throw — it
    * rebuilds the index as deferred in the enriched schema and the build
    * task reconciles via {@code dialect.isIndexValid} on its next pass
@@ -816,7 +816,7 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
-   * Drift policy: a tracking row referencing a table not in the physical
+   * Drift policy: a registration row referencing a table not in the physical
    * schema is fatal. Could happen if the table was DROPped without removing
    * the row, or after restoring a partial backup.
    */
@@ -837,7 +837,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * Row-existence model: changing a built deferred index to non-deferred
-   * should DELETE the tracking row (no longer declared deferred). The
+   * should DELETE the registration row (no longer declared deferred). The
    * physical index is dropped and recreated as non-deferred via the
    * standard ChangeIndex flow.
    */
@@ -860,15 +860,15 @@ public class TestDeferredIndexesIntegration {
         AddDeferredIndex.class,
         ChangeDeferredToNonDeferred.class);
 
-    // then — tracking row deleted, physical index still exists (rebuilt as non-deferred)
-    assertNull("Tracking row for Product_Name_1 should be deleted (no longer declared deferred)",
+    // then — registration row deleted, physical index still exists (rebuilt as non-deferred)
+    assertNull("Registering row for Product_Name_1 should be deleted (no longer declared deferred)",
         queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
 
   /**
-   * Drift policy: if a tracking row says COMPLETED but the physical index
+   * Drift policy: if a registration row says COMPLETED but the physical index
    * is missing (manual DROP, restored backup, etc.), the next upgrade's
    * enricher must throw IllegalStateException. Morf does not auto-heal.
    */
@@ -1268,7 +1268,7 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
-   * Helper: drive every non-COMPLETED tracking row through the new
+   * Helper: drive every non-COMPLETED registration row through the new
    * {@link DeferredIndexService} build flow — the equivalent adopter
    * operation.
    */
@@ -1285,7 +1285,7 @@ public class TestDeferredIndexesIntegration {
   /**
    * Force-deferred: an addIndex() without .deferred() should be deferred
    * when forceDeferredIndexes config includes the index name. The physical
-   * index should NOT be built, and a non-COMPLETED tracking row should be
+   * index should NOT be built, and a non-COMPLETED registration row should be
    * persisted.
    */
   @Test
@@ -1367,7 +1367,7 @@ public class TestDeferredIndexesIntegration {
   }
 
   /**
-   * Drives every non-COMPLETED tracking row through the new
+   * Drives every non-COMPLETED registration row through the new
    * {@link DeferredIndexService} build flow — the equivalent adopter
    * operation.
    *
