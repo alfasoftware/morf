@@ -71,14 +71,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Whether DeferredIndexes registration is active.
-   */
-  private boolean isDeferredIndexesEnabled() {
-    return upgradeConfigAndContext.isDeferredIndexCreationEnabled();
-  }
-
-
-  /**
    * Converts and writes an INSERT against the DeferredIndexes table. Uses
    * the schema-free overload because DeferredIndexes is Morf infrastructure,
    * not part of the user schema model. Each typed overload is its own
@@ -88,7 +80,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @param s the INSERT.
    */
   private void writeDeferredIndexesDml(InsertStatement s) {
-    if (!isDeferredIndexesEnabled()) {
+    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
       return;
     }
     writeStatements(sqlDialect.convertStatementToSQL(s));
@@ -101,7 +93,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @param s the UPDATE.
    */
   private void writeDeferredIndexesDml(UpdateStatement s) {
-    if (!isDeferredIndexesEnabled()) {
+    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
       return;
     }
     writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
@@ -114,7 +106,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @param s the DELETE.
    */
   private void writeDeferredIndexesDml(DeleteStatement s) {
-    if (!isDeferredIndexesEnabled()) {
+    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
       return;
     }
     writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
