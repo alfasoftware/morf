@@ -402,34 +402,10 @@ public class SchemaChangeSequence {
      * @return true if the target should be deferred.
      */
     private boolean resolveTargetDeferred(Index index) {
-      if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-        return false;
-      }
-      if (isForcedImmediate(index.getName())) {
-        return false;
-      }
-      if (isForcedDeferred(index.getName())) {
-        return true;
-      }
-      return index.isDeferred();
-    }
-
-
-    /**
-     * @param indexName the index name to check.
-     * @return true if the config's force-immediate list contains {@code indexName} (case-insensitive).
-     */
-    private boolean isForcedImmediate(String indexName) {
-      return upgradeConfigAndContext.getForceImmediateIndexes().contains(indexName.toLowerCase());
-    }
-
-
-    /**
-     * @param indexName the index name to check.
-     * @return true if the config's force-deferred list contains {@code indexName} (case-insensitive).
-     */
-    private boolean isForcedDeferred(String indexName) {
-      return upgradeConfigAndContext.getForceDeferredIndexes().contains(indexName.toLowerCase());
+      if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) return false;
+      String name = index.getName().toLowerCase();
+      return !upgradeConfigAndContext.getForceImmediateIndexes().contains(name)
+          && (upgradeConfigAndContext.getForceDeferredIndexes().contains(name) || index.isDeferred());
     }
 
 
