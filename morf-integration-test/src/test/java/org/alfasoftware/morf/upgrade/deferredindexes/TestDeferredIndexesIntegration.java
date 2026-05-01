@@ -806,10 +806,10 @@ public class TestDeferredIndexesIntegration {
             + "indexColumns, status, attemptsCount, createdTime)"
             + "VALUES (42, 'GhostTable', 'GhostIdx', 0, 'col', 'PENDING', 0, 0)"));
 
-    // when / then — enricher detects the orphan
+    // when / then — enricher detects the orphan and names both the table and the index
     assertThrowsDriftWithMessageContaining(
         () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
-        "GhostTable");
+        "GhostTable", "GhostIdx");
   }
 
 
