@@ -176,8 +176,10 @@ public class TestDeferredIndexBuilder {
 
     builder.build(snapshot);
 
-    verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(5));
-    verify(dao).markFailed(eq(TABLE), eq(INDEX), eq("unique constraint violated"));
+    InOrder order = inOrder(dao, statement);
+    order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(5));
+    order.verify(statement).execute(CREATE_SQL);
+    order.verify(dao).markFailed(eq(TABLE), eq(INDEX), eq("unique constraint violated"));
     verify(dao, never()).markCompleted(any(), any(), anyLong());
   }
 
@@ -240,9 +242,11 @@ public class TestDeferredIndexBuilder {
 
     builder.build(snapshot);
 
-    verify(stmtDrop).execute(DROP_SQL);
-    verify(stmtCreate).execute(CREATE_SQL);
-    verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
+    InOrder order = inOrder(dao, stmtDrop, stmtCreate);
+    order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(1));
+    order.verify(stmtDrop).execute(DROP_SQL);
+    order.verify(stmtCreate).execute(CREATE_SQL);
+    order.verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
   }
 
 
@@ -291,9 +295,12 @@ public class TestDeferredIndexBuilder {
 
     builder.build(snapshot);
 
-    verify(dao).markFailed(eq(TABLE), eq(INDEX), eq("disk full"));
-    verify(stmtDrop).execute(DROP_SQL);
-    verify(stmtCreate).execute(CREATE_SQL);
+    InOrder order = inOrder(dao, stmtDrop, stmtCreate);
+    order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(2));
+    order.verify(stmtDrop).execute(DROP_SQL);
+    order.verify(stmtCreate).execute(CREATE_SQL);
+    order.verify(dao).markFailed(eq(TABLE), eq(INDEX), eq("disk full"));
+    verify(dao, never()).markCompleted(any(), any(), anyLong());
   }
 
 
