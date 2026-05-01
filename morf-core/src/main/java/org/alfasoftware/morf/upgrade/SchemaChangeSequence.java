@@ -228,6 +228,9 @@ public class SchemaChangeSequence {
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
 
+    /**
+     * @param visitor The visitor to pass the changes to.
+     */
     Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
       super();
       this.visitor = visitor;

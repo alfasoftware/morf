@@ -51,7 +51,7 @@ public class CreateDeferredIndexes implements UpgradeStep {
 
   @Override
   public String getJiraId() {
-    return "MORF-222";
+    return "MORF-225";
   }
 
   @Override
