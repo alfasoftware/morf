@@ -49,8 +49,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   @Override
   public List<DeferredIndexBuildTask> getBuildTasks() {
     return dao.findNonTerminal().stream()
-        .map(row -> (DeferredIndexBuildTask) new DeferredIndexBuildTaskImpl(
-            row, connectionResources, dao))
+        .map(row -> DeferredIndexBuildTask.create(row, connectionResources, dao))
         .collect(Collectors.toUnmodifiableList());
   }
 
