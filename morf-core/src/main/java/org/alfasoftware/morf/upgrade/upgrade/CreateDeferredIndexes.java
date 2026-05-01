@@ -42,6 +42,8 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @ExclusiveExecution
+// @Sequence(1) -- must run first; creates the DeferredIndexes registration
+// table that later steps INSERT into via the visitor's deferredIndexSession.
 @Sequence(1)
 @org.alfasoftware.morf.upgrade.UUID("0de6b9a8-76d7-4c1a-80bf-c66d83c2c515")
 @Version("2.31.1")
