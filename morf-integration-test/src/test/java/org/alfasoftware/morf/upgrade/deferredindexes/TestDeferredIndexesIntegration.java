@@ -364,6 +364,11 @@ public class TestDeferredIndexesIntegration {
 
     // then -- DeferredIndexes tableName updated
     assertEquals("Item", queryDeferredIndexField("Product_Name_1", "tableName"));
+
+    // then -- physical state: Product table renamed to Item, no physical index built yet
+    assertPhysicalTableExists("Item");
+    assertPhysicalTableDoesNotExist("Product");
+    assertPhysicalIndexDoesNotExist("Item", "Product_Name_1");
   }
 
 
@@ -1387,6 +1392,18 @@ public class TestDeferredIndexesIntegration {
       assertFalse("Index " + indexName + " should not exist on " + tableName,
           sr.getTable(tableName).indexes().stream()
               .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
+    }
+  }
+
+  private void assertPhysicalTableExists(String tableName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Physical table " + tableName + " should exist", sr.tableExists(tableName));
+    }
+  }
+
+  private void assertPhysicalTableDoesNotExist(String tableName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertFalse("Physical table " + tableName + " should NOT exist", sr.tableExists(tableName));
     }
   }
 
