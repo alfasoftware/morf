@@ -29,6 +29,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -90,7 +91,9 @@ public class TestDeferredIndexSessionImpl {
 
     // then
     assertEquals(1, stmts.size());
-    assertTrue("INSERT should target DeferredIndexes", stmts.get(0).toString().contains("DeferredIndexes"));
+    assertEquals("INSERT should target DeferredIndexes",
+        DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME,
+        ((InsertStatement) stmts.get(0)).getTable().getName());
     assertTrue("Should be registered", session.isRegistered("Table1", "Idx1"));
   }
 

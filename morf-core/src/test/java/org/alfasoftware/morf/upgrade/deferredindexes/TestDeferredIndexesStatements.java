@@ -212,7 +212,7 @@ public class TestDeferredIndexesStatements {
     // then
     assertEquals(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME,
         stmt.getTable().getName());
-    assertNotNull(stmt.getWhereCriterion());
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
@@ -223,7 +223,7 @@ public class TestDeferredIndexesStatements {
     DeleteStatement stmt = statements.unregisterAllFor("Product");
 
     // then
-    assertNotNull(stmt.getWhereCriterion());
+    assertWhereOnSingleField(stmt.getWhereCriterion(), "tableName", "Product");
   }
 
 
@@ -235,7 +235,9 @@ public class TestDeferredIndexesStatements {
 
     // then
     assertEquals(1, stmt.getFields().size());
-    assertNotNull(stmt.getWhereCriterion());
+    assertEquals("tableName", stmt.getFields().get(0).getAlias());
+    assertEquals("NewT", ((FieldLiteral) stmt.getFields().get(0)).getValue());
+    assertWhereOnSingleField(stmt.getWhereCriterion(), "tableName", "OldT");
   }
 
 
@@ -247,7 +249,9 @@ public class TestDeferredIndexesStatements {
 
     // then
     assertEquals(1, stmt.getFields().size());
-    assertNotNull(stmt.getWhereCriterion());
+    assertEquals("indexColumns", stmt.getFields().get(0).getAlias());
+    assertEquals("newCol", ((FieldLiteral) stmt.getFields().get(0)).getValue());
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
@@ -259,7 +263,9 @@ public class TestDeferredIndexesStatements {
 
     // then
     assertEquals(1, stmt.getFields().size());
-    assertNotNull(stmt.getWhereCriterion());
+    assertEquals("indexName", stmt.getFields().get(0).getAlias());
+    assertEquals("New", ((FieldLiteral) stmt.getFields().get(0)).getValue());
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Old");
   }
 
 
@@ -278,6 +284,17 @@ public class TestDeferredIndexesStatements {
 
 
   /**
+   * Assert that a WHERE criterion is a single EQ leaf
+   * {@code <fieldName>=<expectedValue>}.
+   */
+  private static void assertWhereOnSingleField(Criterion where, String fieldName, Object expectedValue) {
+    assertNotNull(where);
+    assertEquals(fieldName, ((FieldReference) where.getField()).getName());
+    assertEquals(expectedValue, unwrapLiteral(where.getValue()));
+  }
+
+
+  /**
    * Assert that a WHERE criterion is an AND of exactly two EQ leaves:
    * {@code tableName=<t>} and {@code indexName=<i>}, in any order.
    */
@@ -291,10 +308,16 @@ public class TestDeferredIndexesStatements {
         .sorted()
         .collect(Collectors.toList());
     List<Object> values = leaves.stream()
-        .map(Criterion::getValue)
+        .map(c -> unwrapLiteral(c.getValue()))
         .collect(Collectors.toList());
     assertEquals(List.of("indexName", "tableName"), fieldNames);
     assertTrue("values should include the expected table: " + values, values.contains(expectedTable));
     assertTrue("values should include the expected index: " + values, values.contains(expectedIndex));
+  }
+
+
+  /** Unwraps {@link FieldLiteral} to its String value; returns the input unchanged otherwise. */
+  private static Object unwrapLiteral(Object value) {
+    return value instanceof FieldLiteral ? ((FieldLiteral) value).getValue() : value;
   }
 }

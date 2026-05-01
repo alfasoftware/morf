@@ -390,7 +390,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.visit(changeIndex);
 
     // then
-    verify(n1, atLeast(2)).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> ((java.util.Collection<?>)c).containsAll(STATEMENTS)));
+    verify(n1, atLeast(2)).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
   }
 
 

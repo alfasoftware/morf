@@ -88,9 +88,9 @@ public class TestInlineTableUpgrader {
     upgradeConfigAndContext.setDeferredIndexCreationEnabled(true);
     when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
     // Default: allow DeferredIndexes DML to be converted without error
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeferredIndexes ..."));
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeferredIndexes ...");
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeferredIndexes ...");
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(InsertStatement.class))).thenReturn(List.of("INSERT INTO DeferredIndexes ..."));
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(UpdateStatement.class))).thenReturn("UPDATE DeferredIndexes ...");
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(DeleteStatement.class))).thenReturn("DELETE FROM DeferredIndexes ...");
 
     upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME),
         DeferredIndexSession.create());
@@ -198,7 +198,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(addIndex).apply(schema);
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -380,7 +380,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(sqlDialect).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockIndex));
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -625,7 +625,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(addIndex);
 
     // then -- INSERT into DeferredIndexes, no physical DDL
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter).writeSql(anyCollection());
     verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
   }
 
@@ -701,9 +701,9 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeIndex);
 
-    // then — no physical DROP INDEX (not built), but DeferredIndexes updated
+    // then — no physical DROP INDEX (not built); DELETE old registration + INSERT new = 2 writes
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
 
@@ -744,7 +744,7 @@ public class TestInlineTableUpgrader {
 
     // then — no physical RENAME INDEX DDL (index not built)
     verify(sqlDialect, never()).renameIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -784,7 +784,7 @@ public class TestInlineTableUpgrader {
 
     // then — no physical DROP INDEX (index not built)
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -844,9 +844,9 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeTable);
 
-    // then — DROP TABLE + DELETE from DeferredIndexes
+    // then — DROP TABLE + DELETE from DeferredIndexes = 2 writes
     verify(sqlDialect).dropStatements(mockTable);
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
 
@@ -883,9 +883,9 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeColumn);
 
-    // then — DELETE from DeferredIndexes + DROP COLUMN
+    // then — DELETE from DeferredIndexes + DROP COLUMN = 2 writes
     verify(sqlDialect).alterTableDropColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockColumn));
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
 
@@ -922,9 +922,9 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(renameTable);
 
-    // then — UPDATE in DeferredIndexes + RENAME TABLE DDL
+    // then — UPDATE in DeferredIndexes + RENAME TABLE DDL = 2 writes
     verify(sqlDialect).renameTableStatements(oldTable, newTable);
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
 
@@ -964,9 +964,9 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeColumn);
 
-    // then — UPDATE in DeferredIndexes + ALTER TABLE DDL
+    // then — UPDATE in DeferredIndexes + ALTER TABLE DDL = 2 writes
     verify(sqlDialect).alterTableChangeColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(fromColumn), ArgumentMatchers.eq(toColumn));
-    verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
 
@@ -1003,7 +1003,7 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
     // and — NO registration INSERT (only deferred indexes are registered)
-    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(InsertStatement.class));
   }
 
 
@@ -1050,6 +1050,6 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
     // and — NO registration INSERT (only deferred indexes are registered)
-    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(InsertStatement.class));
   }
 }
