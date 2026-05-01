@@ -29,9 +29,25 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.*;
+
+
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.DeleteStatementBuilder;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
+import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.OptimiseForRowCount;
+import org.alfasoftware.morf.sql.ParallelQueryHint;
+import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
+import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SelectStatementBuilder;
+import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
+import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
