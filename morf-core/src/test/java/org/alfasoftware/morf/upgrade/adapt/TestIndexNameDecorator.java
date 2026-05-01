@@ -33,9 +33,13 @@ public class TestIndexNameDecorator {
   /** getName returns the override; columnNames and isUnique delegate to the wrapped index. */
   @Test
   public void testDelegatesAndOverridesName() {
+    // given
     Index wrapped = index("Original_Idx").unique().columns("col1", "col2");
+
+    // when
     Index decorated = new IndexNameDecorator(wrapped, "Renamed_Idx");
 
+    // then
     assertEquals("Renamed_Idx", decorated.getName());
     assertEquals(wrapped.columnNames(), decorated.columnNames());
     assertTrue(decorated.isUnique());
@@ -45,9 +49,13 @@ public class TestIndexNameDecorator {
   /** isDeferred delegates to the wrapped index, preserving the deferred flag through renaming. */
   @Test
   public void testIsDeferredDelegatesToWrappedDeferredIndex() {
+    // given
     Index wrapped = index("Original_Idx").deferred().columns("col1");
+
+    // when
     Index decorated = new IndexNameDecorator(wrapped, "Renamed_Idx");
 
+    // then
     assertTrue(decorated.isDeferred());
   }
 
@@ -55,9 +63,13 @@ public class TestIndexNameDecorator {
   /** isDeferred returns false when the wrapped index is non-deferred. */
   @Test
   public void testIsDeferredFalseWhenWrappedIsNotDeferred() {
+    // given
     Index wrapped = index("Original_Idx").columns("col1");
+
+    // when
     Index decorated = new IndexNameDecorator(wrapped, "Renamed_Idx");
 
+    // then
     assertFalse(decorated.isDeferred());
   }
 }
