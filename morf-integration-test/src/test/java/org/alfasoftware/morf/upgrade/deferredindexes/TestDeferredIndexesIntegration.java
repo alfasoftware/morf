@@ -51,7 +51,6 @@ import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
-import org.alfasoftware.morf.upgrade.UpgradePath;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredIndex;
@@ -139,7 +138,7 @@ public class TestDeferredIndexesIntegration {
     Schema targetSchema = schemaWithIndex();
 
     // when
-    UpgradePath path = performUpgrade(targetSchema, AddDeferredIndex.class);
+    performUpgrade(targetSchema, AddDeferredIndex.class);
 
     // then -- physical index NOT built (deferred)
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
@@ -170,7 +169,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgrade(targetSchema,
+    performUpgrade(targetSchema,
         AddImmediateIndex.class);
 
     // then
@@ -197,7 +196,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
+    performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
 
     // then -- neither index physically built
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
@@ -227,7 +226,7 @@ public class TestDeferredIndexesIntegration {
     disabledConfig.setDeferredIndexCreationEnabled(false);
 
     // when
-    UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
+    Upgrade.performUpgrade(schemaWithIndex(),
         Collections.singletonList(AddDeferredIndex.class),
         connectionResources, disabledConfig, viewDeploymentValidator);
 
@@ -289,7 +288,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when -- defer an index, then rename the column it references
-    UpgradePath path = performUpgradeSteps(renamedColSchema,
+    performUpgradeSteps(renamedColSchema,
         AddDeferredIndex.class,
         RenameColumnWithDeferredIndex.class);
 
@@ -376,7 +375,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgradeSteps(renamedTableSchema,
+    performUpgradeSteps(renamedTableSchema,
         AddDeferredIndex.class,
         RenameTableWithDeferredIndex.class);
 
@@ -410,7 +409,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgradeSteps(multiTableSchema,
+    performUpgradeSteps(multiTableSchema,
         AddDeferredIndex.class,
         AddTableWithDeferredIndex.class);
 
@@ -466,7 +465,7 @@ public class TestDeferredIndexesIntegration {
     forceConfig.setForceImmediateIndexes(Set.of("Product_Name_1"));
 
     // when
-    UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
+    Upgrade.performUpgrade(schemaWithIndex(),
         Collections.singletonList(AddDeferredIndex.class),
         connectionResources, forceConfig, viewDeploymentValidator);
 
@@ -511,7 +510,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgrade(targetSchema,
+    performUpgrade(targetSchema,
         AddDeferredIndexThenRename.class);
 
     // then -- renamed deferred index in jobs
@@ -539,7 +538,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
+    performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
     // then
     List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
@@ -565,7 +564,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when
-    UpgradePath path = performUpgrade(targetSchema,
+    performUpgrade(targetSchema,
         AddDeferredMultiColumnIndex.class);
 
     // then -- not physically built
@@ -595,7 +594,7 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     // when — second upgrade with a new step (schema unchanged = same target)
-    UpgradePath path2 = performUpgradeSteps(
+    performUpgradeSteps(
         schemaWith(
             table("Product").columns(
                 column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -638,7 +637,7 @@ public class TestDeferredIndexesIntegration {
     );
 
     // when -- upgrade adds the table with the deferred index inline
-    UpgradePath path = performUpgrade(targetSchema,
+    performUpgrade(targetSchema,
         AddTableWithInlineDeferredIndex.class);
 
     // then -- physical index NOT built; registration row PENDING; job available
@@ -648,7 +647,7 @@ public class TestDeferredIndexesIntegration {
         newDao().findNonTerminal().isEmpty());
 
     // when -- adopter executes the deferred SQL
-    buildDeferredIndexesViaAdopter(path, "Category", "Category_Label_1");
+    runBuildTasks();
 
     // then -- physical built, row COMPLETED
     assertPhysicalIndexExists("Category", "Category_Label_1");
@@ -697,7 +696,7 @@ public class TestDeferredIndexesIntegration {
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
 
     // when -- second upgrade with same schema and steps
-    UpgradePath path2 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     // then -- no errors, state unchanged
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
@@ -735,13 +734,13 @@ public class TestDeferredIndexesIntegration {
   @Test
   public void testAppSideAdopterFlowBuildsAndMarksCompleted() {
     // given -- upgrade creates a PENDING deferred index
-    UpgradePath path = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertFalse("Should have a job to execute", newDao().findNonTerminal().isEmpty());
 
     // when -- the app-side loop
-    buildDeferredIndexesViaAdopter(path, "Product", "Product_Name_1");
+    runBuildTasks();
 
     // then -- physical index built AND row flipped to COMPLETED
     assertPhysicalIndexExists("Product", "Product_Name_1");
@@ -759,8 +758,8 @@ public class TestDeferredIndexesIntegration {
   @Test
   public void testCompletedDeferredIndexSurvivesColumnRename() {
     // given — upgrade 1 creates and adopter builds the deferred index
-    UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    buildDeferredIndexesViaAdopter(path1, "Product", "Product_Name_1");
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    runBuildTasks();
     assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
@@ -842,8 +841,8 @@ public class TestDeferredIndexesIntegration {
   @Test
   public void testCompletedDeferredChangedToNonDeferredDeletesRow() {
     // given — upgrade 1 creates and adopter builds the deferred index
-    UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    buildDeferredIndexesViaAdopter(path1, "Product", "Product_Name_1");
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    runBuildTasks();
     assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
@@ -1298,7 +1297,7 @@ public class TestDeferredIndexesIntegration {
     forceConfig.setForceDeferredIndexes(Set.of("Product_Name_1"));
 
     // when -- AddImmediateIndex uses addIndex() without .deferred()
-    UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
+    Upgrade.performUpgrade(schemaWithIndex(),
         Collections.singletonList(
             AddImmediateIndex.class),
         connectionResources, forceConfig, viewDeploymentValidator);
@@ -1337,14 +1336,14 @@ public class TestDeferredIndexesIntegration {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private UpgradePath performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> step) {
-    return Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
+  private void performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> step) {
+    Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
         connectionResources, config, viewDeploymentValidator);
   }
 
   @SafeVarargs
-  private UpgradePath performUpgradeSteps(Schema targetSchema, Class<? extends UpgradeStep>... steps) {
-    return Upgrade.performUpgrade(targetSchema, Arrays.asList(steps),
+  private void performUpgradeSteps(Schema targetSchema, Class<? extends UpgradeStep>... steps) {
+    Upgrade.performUpgrade(targetSchema, Arrays.asList(steps),
         connectionResources, config, viewDeploymentValidator);
   }
 
@@ -1366,25 +1365,6 @@ public class TestDeferredIndexesIntegration {
     all.add(deferredIndexesTable());
     Collections.addAll(all, tables);
     return schema(all);
-  }
-
-  /**
-   * Drives every non-COMPLETED registration row through the new
-   * {@link DeferredIndexService} build flow — the equivalent adopter
-   * operation.
-   *
-   * <p>The {@code path}, {@code tableName}, and {@code indexName} parameters
-   * are kept for caller compatibility but unused: the service picks up every
-   * non-COMPLETED row and reconciles each via isIndexValid / DROP / CREATE
-   * as needed.</p>
-   *
-   * <p>TODO (Phase 5): rewrite the surrounding tests to call this style
-   * directly.</p>
-   */
-  @SuppressWarnings("unused")
-  private void buildDeferredIndexesViaAdopter(UpgradePath path, String tableName, String indexName) {
-    DeferredIndexService service = newService();
-    service.getBuildTasks().forEach(Runnable::run);
   }
 
   /**
