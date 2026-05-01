@@ -67,6 +67,15 @@ public class IndexNameDecorator implements Index {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.metadata.Index#isDeferred()
+   */
+  @Override
+  public boolean isDeferred() {
+    return index.isDeferred();
+  }
+
+
   @Override
   public String toString() {
     return this.toStringHelper();
