@@ -404,22 +404,30 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Returns a Table view of {@code original} with deferred-on-supporting-
-   * dialect indexes filtered out and the remainder normalized via
-   * {@link DeferredIndexRegistrationPolicy#normalize}. Used at CREATE TABLE
-   * (and CREATE TABLE AS SELECT) emission time so the adopter, not the
-   * upgrade script, builds deferred indexes.
+   * Returns a copy of {@code original} containing only the indexes that
+   * should be emitted alongside the CREATE TABLE (or CTAS) statement. Each
+   * declared index is treated as follows:
+   * <ul>
+   *   <li>Non-deferred -- kept as-is. Built by CREATE TABLE.</li>
+   *   <li>Deferred + dialect supports deferred creation (e.g. PostgreSQL) --
+   *       filtered out. The adopter's build task will create it
+   *       asynchronously.</li>
+   *   <li>Deferred + dialect doesn't support deferred creation (e.g. MySQL) --
+   *       kept, with the {@code .deferred()} flag stripped via
+   *       {@link DeferredIndexRegistrationPolicy#normalize}, so it builds as
+   *       a regular immediate index.</li>
+   * </ul>
+   *
+   * <p>Preserves name, columns, and isTemporary on the returned Table.</p>
    *
    * @param original the table as declared by the upgrade step.
-   * @return a Table preserving name, columns and isTemporary, with the
-   *     index list filtered for immediate emission.
+   * @return a Table copy with the index list filtered for immediate emission.
    */
   private Table withoutDeferredOnSupportingDialect(Table original) {
     List<Index> kept = new ArrayList<>();
     for (Index idx : original.indexes()) {
       Index normalized = registrationPolicy.normalize(idx);
-      // Skip deferred-on-supporting (adopter will build); keep everything
-      // else (non-deferred + deferred-on-unsupported normalized to immediate).
+      // Skip iff the adopter will build this one later.
       if (registrationPolicy.shouldRegister(normalized)) continue;
       kept.add(normalized);
     }
