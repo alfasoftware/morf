@@ -61,6 +61,23 @@ public class SchemaChangeSequence {
   private final List<UpgradeStepWithChanges> allChanges;
 
 
+  /**
+   * @deprecated Use {@link #SchemaChangeSequence(UpgradeConfigAndContext, List)} instead.
+   *     This overload constructs a default {@link UpgradeConfigAndContext}, which means
+   *     the caller gets only the default upgrade settings (deferred-index creation
+   *     disabled, no force-immediate / force-deferred overrides, default schema-change
+   *     adaptor, etc.) and has no way to customise them. Retained for backwards
+   *     compatibility with pre-existing adopter code; new code should always pass an
+   *     explicit {@link UpgradeConfigAndContext}.
+   *
+   * @param steps the upgrade steps making up this sequence.
+   */
+  @Deprecated
+  public SchemaChangeSequence(List<UpgradeStep> steps) {
+    this(new UpgradeConfigAndContext(), steps);
+  }
+
+
   public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps) {
     this.upgradeConfigAndContext = upgradeConfigAndContext;
 
