@@ -311,8 +311,6 @@ public class TestDeferredIndexesModelEnricherImpl {
         ex.getMessage().contains("COMPLETED"));
     assertTrue("Message should mention INVALID",
         ex.getMessage().contains("INVALID"));
-    assertTrue("Message should hint at manual recovery",
-        ex.getMessage().toLowerCase().contains("manually"));
   }
 
 
@@ -337,9 +335,8 @@ public class TestDeferredIndexesModelEnricherImpl {
         ex.getMessage().contains("MyIdx"));
     assertTrue("Message should mention COMPLETED",
         ex.getMessage().contains("COMPLETED"));
-    assertTrue("Message should mention manual recovery",
-        ex.getMessage().toLowerCase().contains("backup")
-        || ex.getMessage().toLowerCase().contains("manual"));
+    assertTrue("Message should describe the missing physical",
+        ex.getMessage().contains("missing"));
   }
 
 

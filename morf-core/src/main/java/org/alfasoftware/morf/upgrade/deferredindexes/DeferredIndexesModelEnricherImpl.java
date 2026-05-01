@@ -279,9 +279,8 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
       }
       drifts.add(
           "row for index '" + row.getIndexName()
-              + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-              + " index is INVALID. Drop the invalid physical index manually, mark the row"
-              + " non-COMPLETED (e.g. PENDING) so the next build pass rebuilds it, and restart.");
+              + "' on table '" + row.getTableName()
+              + "' is COMPLETED but the physical index is INVALID.");
       return Optional.empty();
     }
     // Non-COMPLETED + physical present is the routine-restart case. The build
@@ -308,10 +307,8 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
     if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
       drifts.add(
           "row for index '" + row.getIndexName()
-              + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-              + " index is missing (someone dropped a built index out-of-band). Either"
-              + " restore the index from backup or mark the row non-COMPLETED (e.g. PENDING)"
-              + " so the next build pass rebuilds it, then restart.");
+              + "' on table '" + row.getTableName()
+              + "' is COMPLETED but the physical index is missing.");
       return Optional.empty();
     }
     return Optional.of(row.toIndex());
@@ -327,8 +324,8 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
       for (DeferredIndex row : rows.values()) {
         drifts.add(
             "row for index '" + row.getIndexName()
-                + "' references table '" + row.getTableName() + "' which is not in the"
-                + " physical schema. Reconcile manually before retrying.");
+                + "' references table '" + row.getTableName()
+                + "' which is not in the physical schema.");
       }
     }
   }
