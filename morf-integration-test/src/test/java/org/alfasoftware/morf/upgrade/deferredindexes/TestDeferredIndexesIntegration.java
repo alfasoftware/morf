@@ -599,10 +599,11 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
-   * Inline-deferred index on AddTable: the actually-defer fix. Declaring a
-   * deferred index inline on the addTable call must NOT emit CREATE INDEX at
-   * upgrade time. The index is queued for the adopter via the deferred
-   * pipeline; physical creation happens when the adopter executes the build task.
+   * Declaring a deferred index inline on an addTable call must NOT emit
+   * CREATE INDEX at upgrade time — the index is registered as PENDING and
+   * physical creation only happens when the adopter runs the build task.
+   * Verifies the inline-deferred path travels through the same registration
+   * pipeline as a stand-alone .deferred() addIndex.
    */
   @Test
   public void testAddTableWithInlineDeferredIndexDoesNotBuildImmediately() {
