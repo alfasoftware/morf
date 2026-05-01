@@ -176,9 +176,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = removeIndex.getTableName();
     Index indexToRemove = removeIndex.getIndexToBeRemoved();
 
-    // Capture BEFORE the registration/schema mutations below: both
-    // isRegistered and the enricher state would be out of sync by the
-    // time the DDL emission runs otherwise.
+    // Capture BEFORE the session-cache and currentSchema mutations below:
+    // willBePhysicallyPresentAtThisEmission consults isAwaitingBuild on the
+    // session, and unregisterIndex below clears that row -- reading after
+    // would flip the decision.
     boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, indexToRemove.getName());
 
     deferredIndexSession.unregisterIndex(tableName, indexToRemove.getName())
