@@ -92,13 +92,13 @@ class DeferredIndexesStatements {
 
   /** @return SELECT all rows, ordered by id. */
   SelectStatement selectAll() {
-    return selectAllColumns().orderBy(field(COL_ID));
+    return select().from(tableRef(TABLE)).orderBy(field(COL_ID));
   }
 
 
   /** @return SELECT rows whose status is non-terminal (PENDING/IN_PROGRESS/FAILED). */
   SelectStatement selectNonTerminal() {
-    return selectAllColumns()
+    return select().from(tableRef(TABLE))
         .where(or(
             field(COL_STATUS).eq(DeferredIndexStatus.PENDING.name()),
             field(COL_STATUS).eq(DeferredIndexStatus.IN_PROGRESS.name()),
@@ -113,7 +113,7 @@ class DeferredIndexesStatements {
    * @return SELECT the single row for ({@code tableName}, {@code indexName}).
    */
   SelectStatement selectByTableAndIndex(String tableName, String indexName) {
-    return selectAllColumns()
+    return select().from(tableRef(TABLE))
         .where(and(
             field(COL_TABLE_NAME).eq(tableName),
             field(COL_INDEX_NAME).eq(indexName)));
@@ -331,17 +331,4 @@ class DeferredIndexesStatements {
   }
 
 
-  // -------------------------------------------------------------------------
-  // Internals
-  // -------------------------------------------------------------------------
-
-  private SelectStatement selectAllColumns() {
-    return select(
-        field(COL_ID), field(COL_TABLE_NAME),
-        field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
-        field(COL_STATUS), field(COL_ATTEMPTS_COUNT),
-        field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
-        field(COL_ERROR_MESSAGE))
-        .from(tableRef(TABLE));
-  }
 }

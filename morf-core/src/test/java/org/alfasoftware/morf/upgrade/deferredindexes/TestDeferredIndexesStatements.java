@@ -51,7 +51,9 @@ public class TestDeferredIndexesStatements {
 
   // ---- Read queries ------------------------------------------------------
 
-  /** selectAll projects all columns and orders by id. */
+  /** selectAll targets the correct table, orders by id, and projects every
+   *  column (SELECT *). The DSL has no explicit field list -- mapRow reads
+   *  by column name so position doesn't matter. */
   @Test
   public void testSelectAll() {
     // when
@@ -62,8 +64,8 @@ public class TestDeferredIndexesStatements {
         stmt.getTable().getName());
     assertEquals(1, stmt.getOrderBys().size());
     assertEquals("id", ((FieldReference) stmt.getOrderBys().get(0)).getName());
-    // and -- projects all 11 registered columns (indexDeferred dropped in SP5 slim)
-    assertEquals(11, stmt.getFields().size());
+    // and -- empty field list = SELECT *
+    assertTrue(stmt.getFields().isEmpty());
   }
 
 
@@ -144,14 +146,15 @@ public class TestDeferredIndexesStatements {
   }
 
 
-  /** selectByTableAndIndex projects all columns and filters on (tableName, indexName). */
+  /** selectByTableAndIndex projects every column (SELECT *) and filters on
+   *  (tableName, indexName). */
   @Test
   public void testSelectByTableAndIndex() {
     // when
     SelectStatement stmt = statements.selectByTableAndIndex("Product", "Idx1");
 
-    // then -- projects all 11 columns (matching selectAll), no order-by needed for unique key
-    assertEquals(11, stmt.getFields().size());
+    // then -- empty field list = SELECT *, plus the WHERE criterion
+    assertTrue(stmt.getFields().isEmpty());
     assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
