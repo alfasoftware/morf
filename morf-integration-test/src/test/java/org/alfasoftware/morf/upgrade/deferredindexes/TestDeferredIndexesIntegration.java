@@ -671,12 +671,16 @@ public class TestDeferredIndexesIntegration {
     // given -- first upgrade defers an index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("First upgrade should produce exactly one registration row",
+        1, newDao().findNonTerminal().size());
 
     // when -- second upgrade with same schema and steps
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
-    // then -- no errors, state unchanged
+    // then -- no errors, state unchanged, no duplicate row from re-running
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("Re-run must not duplicate the registration row",
+        1, newDao().findNonTerminal().size());
   }
 
 
