@@ -33,125 +33,136 @@ import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
  */
 public class DeferredIndex {
 
+  /** Primary key. */
   private long id;
+  /** Name of the table the registered index belongs to. */
   private String tableName;
+  /** Name of the registered index. */
   private String indexName;
+  /** Whether the index is declared unique. */
   private boolean indexUnique;
+  /** Columns the index covers, in declared order. */
   private List<String> indexColumns;
+  /** Lifecycle status: PENDING -&gt; IN_PROGRESS -&gt; COMPLETED or FAILED. */
   private DeferredIndexStatus status;
+  /** Number of CREATE attempts for the deferred build. Reset to zero on COMPLETED. */
   private int attemptsCount;
+  /** Epoch ms when the registration row was created. */
   private long createdTime;
+  /** Epoch ms when the most recent build attempt began, or null before the first attempt. */
   private Long startedTime;
+  /** Epoch ms of the last successful COMPLETED transition, or null if never built. */
   private Long completedTime;
+  /** Most recent failure message; null when the row has never failed or after the most recent COMPLETED cleared it. */
   private String errorMessage;
 
 
-  /** @see #id */
+  /** @return the primary key. */
   public long getId() {
     return id;
   }
 
-  /** @see #id */
+  /** @param id the primary key. */
   public void setId(long id) {
     this.id = id;
   }
 
-  /** @see #tableName */
+  /** @return the name of the table the registered index belongs to. */
   public String getTableName() {
     return tableName;
   }
 
-  /** @see #tableName */
+  /** @param tableName the name of the table the registered index belongs to. */
   public void setTableName(String tableName) {
     this.tableName = tableName;
   }
 
-  /** @see #indexName */
+  /** @return the name of the registered index. */
   public String getIndexName() {
     return indexName;
   }
 
-  /** @see #indexName */
+  /** @param indexName the name of the registered index. */
   public void setIndexName(String indexName) {
     this.indexName = indexName;
   }
 
-  /** @see #indexUnique */
+  /** @return whether the index is declared unique. */
   public boolean isIndexUnique() {
     return indexUnique;
   }
 
-  /** @see #indexUnique */
+  /** @param indexUnique whether the index is declared unique. */
   public void setIndexUnique(boolean indexUnique) {
     this.indexUnique = indexUnique;
   }
 
-  /** @see #indexColumns */
+  /** @return the columns the index covers, in declared order. */
   public List<String> getIndexColumns() {
     return indexColumns;
   }
 
-  /** @see #indexColumns */
+  /** @param indexColumns the columns the index covers, in declared order. */
   public void setIndexColumns(List<String> indexColumns) {
     this.indexColumns = indexColumns;
   }
 
-  /** @see #status */
+  /** @return the current lifecycle status. */
   public DeferredIndexStatus getStatus() {
     return status;
   }
 
-  /** @see #status */
+  /** @param status the current lifecycle status. */
   public void setStatus(DeferredIndexStatus status) {
     this.status = status;
   }
 
-  /** @see #attemptsCount */
+  /** @return the number of CREATE attempts so far; reset to zero on COMPLETED. */
   public int getAttemptsCount() {
     return attemptsCount;
   }
 
-  /** @see #attemptsCount */
+  /** @param attemptsCount the number of CREATE attempts so far. */
   public void setAttemptsCount(int attemptsCount) {
     this.attemptsCount = attemptsCount;
   }
 
-  /** @see #createdTime */
+  /** @return epoch ms when the registration row was created. */
   public long getCreatedTime() {
     return createdTime;
   }
 
-  /** @see #createdTime */
+  /** @param createdTime epoch ms when the registration row was created. */
   public void setCreatedTime(long createdTime) {
     this.createdTime = createdTime;
   }
 
-  /** @see #startedTime */
+  /** @return epoch ms when the most recent build attempt began, or null before the first attempt. */
   public Long getStartedTime() {
     return startedTime;
   }
 
-  /** @see #startedTime */
+  /** @param startedTime epoch ms when the most recent build attempt began. */
   public void setStartedTime(Long startedTime) {
     this.startedTime = startedTime;
   }
 
-  /** @see #completedTime */
+  /** @return epoch ms of the last successful COMPLETED transition, or null if never built. */
   public Long getCompletedTime() {
     return completedTime;
   }
 
-  /** @see #completedTime */
+  /** @param completedTime epoch ms of the last successful COMPLETED transition. */
   public void setCompletedTime(Long completedTime) {
     this.completedTime = completedTime;
   }
 
-  /** @see #errorMessage */
+  /** @return the most recent failure message, or null when the row has never failed or after the most recent COMPLETED cleared it. */
   public String getErrorMessage() {
     return errorMessage;
   }
 
-  /** @see #errorMessage */
+  /** @param errorMessage the most recent failure message; null clears any prior message. */
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
   }
