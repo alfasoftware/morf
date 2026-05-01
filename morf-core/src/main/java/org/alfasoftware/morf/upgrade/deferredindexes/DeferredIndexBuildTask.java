@@ -17,8 +17,6 @@ package org.alfasoftware.morf.upgrade.deferredindexes;
 
 import java.util.Optional;
 
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-
 /**
  * One unit of background-build work for a single deferred index. Each task is
  * self-contained: when {@link #run()} executes, it opens its own JDBC
@@ -94,19 +92,17 @@ public interface DeferredIndexBuildTask extends Runnable {
 
 
   /**
-   * Constructs a build task for the supplied row snapshot, wired to the supplied
-   * connection resources and DAO. Used by {@link DeferredIndexServiceImpl} to fan
-   * out one task per non-{@code COMPLETED} row without exposing the package-private
+   * Constructs a build task for the supplied row snapshot, wired to the shared
+   * builder service. Used by {@link DeferredIndexServiceImpl} to fan out one
+   * task per non-{@code COMPLETED} row without exposing the package-private
    * implementation class.
    *
    * @param snapshot the row state captured at service-call time.
-   * @param connectionResources opens connections for {@link #run()}.
-   * @param dao persists the row state transitions.
+   * @param builder the stateless reconciliation algorithm shared across the
+   *     fan-out.
    * @return a new build task.
    */
-  static DeferredIndexBuildTask create(DeferredIndex snapshot,
-                                       ConnectionResources connectionResources,
-                                       DeferredIndexesDAO dao) {
-    return new DeferredIndexBuildTaskImpl(snapshot, connectionResources, dao);
+  static DeferredIndexBuildTask create(DeferredIndex snapshot, DeferredIndexBuilder builder) {
+    return new DeferredIndexBuildTaskImpl(snapshot, builder);
   }
 }

@@ -15,105 +15,51 @@
 
 package org.alfasoftware.morf.upgrade.deferredindexes;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.Duration;
 import java.util.Optional;
 
-import javax.sql.DataSource;
-
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.jdbc.RuntimeSqlException;
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Table;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 /**
- * Package-private build task for one deferred index. Each instance is bound
- * to a single ({@code tableName}, {@code indexName}) pair and reconciles
- * that row's registered state with the physical schema each time {@link #run()}
- * is called.
+ * Package-private holder paired with one registration row snapshot. Exposes the
+ * snapshot via {@link DeferredIndexBuildTask}'s read-only getters and delegates
+ * {@link #run()} to the shared {@link DeferredIndexBuilder} -- which carries
+ * the actual reconciliation algorithm.
  *
- * <p>Algorithm:</p>
- * <ol>
- *   <li>Open a JDBC connection (autocommit on — required for PostgreSQL
- *       {@code CREATE INDEX CONCURRENTLY}).</li>
- *   <li>Re-fetch the registration row (state may have changed since the service
- *       handed out this task).</li>
- *   <li>If the row is missing or {@code COMPLETED}, return — nothing to do.</li>
- *   <li>Read the physical state via
- *       {@link SqlDialect#isIndexValid(Connection, String, String)}.</li>
- *   <li>Dispatch:
- *     <ul>
- *       <li>{@code VALID} → mark COMPLETED.</li>
- *       <li>{@code ABSENT} → mark IN_PROGRESS, run CREATE INDEX, mark
- *           COMPLETED on success / FAILED on SQL error.</li>
- *       <li>{@code INVALID} → mark IN_PROGRESS, optionally
- *           {@link SqlDialect#setLockTimeoutSql} (PostgreSQL only), DROP, then
- *           CREATE. On DROP failure, mark FAILED with an explanatory prefix
- *           and stop — the next pass retries.</li>
- *     </ul>
- *   </li>
- *   <li>Close the connection.</li>
- * </ol>
- *
- * <p>Expected SQL outcomes (lock timeouts, unique-constraint violations, etc.)
- * are caught inside the task and persisted to {@code status} +
- * {@code errorMessage}. Unexpected runtime errors propagate as
- * {@link RuntimeException} for the adopter's executor to handle.</p>
+ * <p>Splitting the data (this class) from the behaviour (the builder) means
+ * one stateless builder is shared by the whole task fan-out, and each task
+ * is just the snapshot bundled with a callback. The algorithm is unit-testable
+ * in isolation against the builder; the wrapper is thin enough to need no
+ * dedicated test.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
 
-  private static final Log log = LogFactory.getLog(DeferredIndexBuildTaskImpl.class);
-
-  /**
-   * Bound on how long {@code DROP INDEX} waits for an interfering lock on a
-   * dialect that supports a session lock timeout (PostgreSQL). Short enough to
-   * fail-fast when an in-flight build still holds the index, long enough that
-   * routine momentary contention isn't mistaken for a stuck build.
-   */
-  static final Duration LOCK_TIMEOUT = Duration.ofSeconds(10);
-
   private final DeferredIndex snapshot;
-  private final String tableName;
-  private final String indexName;
-  private final ConnectionResources connectionResources;
-  private final DeferredIndexesDAO dao;
+  private final DeferredIndexBuilder builder;
 
 
   /**
-   * @param snapshot the registration row as observed when the service captured the
-   *     task list; exposed to adopters via the snapshot getters. The task does
-   *     <i>not</i> use this for its own decisions -- {@link #run()} re-fetches
-   *     the row before acting.
+   * @param snapshot the registration row state captured at task-creation time;
+   *     read-only, exposed via the snapshot getters. The builder re-fetches the
+   *     row before acting -- the snapshot is purely advisory for adopter-side
+   *     filtering and per-row diagnostics.
+   * @param builder the shared, stateless reconciliation algorithm. {@link #run()}
+   *     delegates straight to {@link DeferredIndexBuilder#build(DeferredIndex)}.
    */
-  DeferredIndexBuildTaskImpl(DeferredIndex snapshot,
-                             ConnectionResources connectionResources,
-                             DeferredIndexesDAO dao) {
+  DeferredIndexBuildTaskImpl(DeferredIndex snapshot, DeferredIndexBuilder builder) {
     this.snapshot = snapshot;
-    this.tableName = snapshot.getTableName();
-    this.indexName = snapshot.getIndexName();
-    this.connectionResources = connectionResources;
-    this.dao = dao;
+    this.builder = builder;
   }
 
 
   @Override
   public String getTableName() {
-    return tableName;
+    return snapshot.getTableName();
   }
 
 
   @Override
   public String getIndexName() {
-    return indexName;
+    return snapshot.getIndexName();
   }
 
 
@@ -137,129 +83,6 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
 
   @Override
   public void run() {
-    SqlDialect dialect = connectionResources.sqlDialect();
-    DataSource dataSource = connectionResources.getDataSource();
-
-    try (Connection connection = dataSource.getConnection()) {
-      if (dialect.deferredIndexBuildRequiresAutoCommit()) {
-        // PG CREATE INDEX CONCURRENTLY can't run in a transaction block.
-        boolean priorAutoCommit = connection.getAutoCommit();
-        connection.setAutoCommit(true);
-        try {
-          reconcile(connection, dialect);
-        } finally {
-          connection.setAutoCommit(priorAutoCommit);
-        }
-      } else {
-        reconcile(connection, dialect);
-      }
-    } catch (SQLException e) {
-      throw new RuntimeSqlException(
-          "Error reconciling deferred index [" + tableName + "." + indexName + "]", e);
-    }
-  }
-
-
-  private void reconcile(Connection connection, SqlDialect dialect) {
-    Optional<DeferredIndex> rowOpt = dao.findByTableAndIndex(tableName, indexName);
-    if (rowOpt.isEmpty()) {
-      log.debug("No registration row for [" + tableName + "." + indexName + "] — nothing to reconcile");
-      return;
-    }
-    DeferredIndex row = rowOpt.get();
-    if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
-      return;
-    }
-
-    Optional<Boolean> validity = dialect.isIndexValid(connection, tableName, indexName);
-    if (validity.isEmpty()) {
-      buildAbsent(connection, dialect, row);
-    } else if (Boolean.TRUE.equals(validity.get())) {
-      // Physical index already in place — declare success and reset attempts.
-      dao.markCompleted(tableName, indexName, System.currentTimeMillis());
-    } else {
-      rebuildInvalid(connection, dialect, row);
-    }
-  }
-
-
-  private void buildAbsent(Connection connection, SqlDialect dialect, DeferredIndex row) {
-    dao.markStarted(tableName, indexName, System.currentTimeMillis(), row.getAttemptsCount() + 1);
-    Table table = table(tableName);
-    Index index = row.toIndex();
-    try {
-      executeAll(connection, dialect.deferredIndexDeploymentStatements(table, index));
-      dao.markCompleted(tableName, indexName, System.currentTimeMillis());
-    } catch (SQLException e) {
-      log.warn("CREATE INDEX failed for [" + tableName + "." + indexName + "]: " + e.getMessage());
-      dao.markFailed(tableName, indexName, e.getMessage());
-    }
-  }
-
-
-  private void rebuildInvalid(Connection connection, SqlDialect dialect, DeferredIndex row) {
-    dao.markStarted(tableName, indexName, System.currentTimeMillis(), row.getAttemptsCount() + 1);
-    Table table = table(tableName);
-    Index index = row.toIndex();
-
-    Optional<String> lockTimeoutSql = dialect.setLockTimeoutSql(LOCK_TIMEOUT);
-    boolean lockTimeoutSet = false;
-    if (lockTimeoutSql.isPresent()) {
-      try {
-        executeOne(connection, lockTimeoutSql.get());
-        lockTimeoutSet = true;
-      } catch (SQLException e) {
-        // Fail-fast safety net is best-effort; proceed with dialect default.
-        log.debug("Could not set lock_timeout for [" + tableName + "." + indexName + "]: " + e.getMessage());
-      }
-    }
-
-    try {
-      try {
-        executeAll(connection, dialect.indexDropStatements(table, index));
-      } catch (SQLException e) {
-        log.warn("DROP INDEX failed for invalid leftover [" + tableName + "." + indexName + "]: " + e.getMessage());
-        dao.markFailed(tableName, indexName, "could not drop invalid leftover: " + e.getMessage());
-        return;
-      }
-
-      try {
-        executeAll(connection, dialect.deferredIndexDeploymentStatements(table, index));
-        dao.markCompleted(tableName, indexName, System.currentTimeMillis());
-      } catch (SQLException e) {
-        log.warn("CREATE INDEX failed for [" + tableName + "." + indexName + "]: " + e.getMessage());
-        dao.markFailed(tableName, indexName, e.getMessage());
-      }
-    } finally {
-      // Clear the session-scoped lock_timeout so it doesn't bleed back into pooled
-      // connections — the next caller borrowing this connection would otherwise
-      // inherit the 10s timeout we set above.
-      if (lockTimeoutSet) {
-        dialect.resetLockTimeoutSql().ifPresent(reset -> {
-          try {
-            executeOne(connection, reset);
-          } catch (SQLException e) {
-            log.warn("Could not reset lock_timeout on connection for [" + tableName + "." + indexName
-                + "]: " + e.getMessage() + " — connection will be discarded by the pool");
-          }
-        });
-      }
-    }
-  }
-
-
-  private static void executeAll(Connection connection, Iterable<String> sqlList) throws SQLException {
-    try (Statement stmt = connection.createStatement()) {
-      for (String sql : sqlList) {
-        stmt.execute(sql);
-      }
-    }
-  }
-
-
-  private static void executeOne(Connection connection, String sql) throws SQLException {
-    try (Statement stmt = connection.createStatement()) {
-      stmt.execute(sql);
-    }
+    builder.build(snapshot);
   }
 }

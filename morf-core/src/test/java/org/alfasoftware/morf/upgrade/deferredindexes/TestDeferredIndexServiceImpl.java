@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,16 +40,16 @@ import org.junit.Test;
  */
 public class TestDeferredIndexServiceImpl {
 
-  private ConnectionResources connectionResources;
+  private DeferredIndexBuilder builder;
   private DeferredIndexesDAO dao;
   private DeferredIndexServiceImpl service;
 
 
   @Before
   public void setUp() {
-    connectionResources = mock(ConnectionResources.class);
+    builder = mock(DeferredIndexBuilder.class);
     dao = mock(DeferredIndexesDAO.class);
-    service = new DeferredIndexServiceImpl(connectionResources, dao);
+    service = new DeferredIndexServiceImpl(builder, dao);
   }
 
 

@@ -19,29 +19,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 /**
  * Default implementation of {@link DeferredIndexService}. Reads non-{@code
  * COMPLETED} rows from {@link DeferredIndexesDAO} and wraps each in a
- * {@link DeferredIndexBuildTaskImpl}; progress reads delegate straight to the
- * DAO.
+ * {@link DeferredIndexBuildTaskImpl} bound to the shared builder; progress
+ * reads delegate straight to the DAO.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
 class DeferredIndexServiceImpl implements DeferredIndexService {
 
-  private final ConnectionResources connectionResources;
+  private final DeferredIndexBuilder builder;
   private final DeferredIndexesDAO dao;
 
 
   @Inject
-  DeferredIndexServiceImpl(ConnectionResources connectionResources, DeferredIndexesDAO dao) {
-    this.connectionResources = connectionResources;
+  DeferredIndexServiceImpl(DeferredIndexBuilder builder, DeferredIndexesDAO dao) {
+    this.builder = builder;
     this.dao = dao;
   }
 
@@ -49,7 +47,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   @Override
   public List<DeferredIndexBuildTask> getBuildTasks() {
     return dao.findNonTerminal().stream()
-        .map(row -> DeferredIndexBuildTask.create(row, connectionResources, dao))
+        .map(row -> DeferredIndexBuildTask.create(row, builder))
         .collect(Collectors.toUnmodifiableList());
   }
 
