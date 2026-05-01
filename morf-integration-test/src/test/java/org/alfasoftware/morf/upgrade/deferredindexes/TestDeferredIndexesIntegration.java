@@ -144,10 +144,10 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
     // then -- the registration row is persisted as non-terminal
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should persist at least one deferred registration row", deferredJobs.isEmpty());
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should persist at least one deferred registration row", rows.isEmpty());
     assertTrue("Job should reference the index name",
-        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
     // then -- DeferredIndexes row is PENDING
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
@@ -180,11 +180,11 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
     // then -- both rows persisted as non-COMPLETED
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
+    List<DeferredIndex> rows = newDao().findNonTerminal();
     assertTrue("Should contain Product_Name_1",
-        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain Product_IdName_1",
-        deferredJobs.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
 
     // then -- both PENDING in DeferredIndexes
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
@@ -274,10 +274,10 @@ public class TestDeferredIndexesIntegration {
     assertEquals("label", queryDeferredIndexField("Product_Name_1", "indexColumns"));
 
     // then -- the persisted row carries the new column name 'label'
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should have a deferred row after rename", deferredJobs.isEmpty());
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a deferred row after rename", rows.isEmpty());
     assertTrue("Row's indexColumns should reference new column name 'label'",
-        deferredJobs.stream().flatMap(j -> j.getIndexColumns().stream())
+        rows.stream().flatMap(j -> j.getIndexColumns().stream())
             .anyMatch(c -> c.equalsIgnoreCase("label")));
   }
 
@@ -356,11 +356,11 @@ public class TestDeferredIndexesIntegration {
         AddDeferredIndex.class,
         RenameTableWithDeferredIndex.class);
 
-    // then -- deferred index job references new table
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should have a deferred job", deferredJobs.isEmpty());
+    // then -- registration row references new table
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a registration row", rows.isEmpty());
     assertTrue("Job's table should be Item",
-        deferredJobs.stream().anyMatch(j -> "Item".equalsIgnoreCase(j.getTableName())));
+        rows.stream().anyMatch(j -> "Item".equalsIgnoreCase(j.getTableName())));
 
     // then -- DeferredIndexes tableName updated
     assertEquals("Item", queryDeferredIndexField("Product_Name_1", "tableName"));
@@ -396,11 +396,11 @@ public class TestDeferredIndexesIntegration {
         AddTableWithDeferredIndex.class);
 
     // then
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
+    List<DeferredIndex> rows = newDao().findNonTerminal();
     assertTrue("Should contain Product_Name_1",
-        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain Category_Label_1",
-        deferredJobs.stream().anyMatch(j -> "Category_Label_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Category_Label_1".equalsIgnoreCase(j.getIndexName())));
   }
 
 
@@ -495,12 +495,12 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(targetSchema,
         AddDeferredIndexThenRename.class);
 
-    // then -- renamed deferred index in jobs
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
+    // then -- renamed deferred index registered under its new name
+    List<DeferredIndex> rows = newDao().findNonTerminal();
     assertTrue("Should contain renamed index",
-        deferredJobs.stream().anyMatch(j -> "Product_Name_Renamed".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_Name_Renamed".equalsIgnoreCase(j.getIndexName())));
     assertFalse("Should not contain original name",
-        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
   }
 
 
@@ -523,10 +523,10 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
     // then
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should have a deferred row", deferredJobs.isEmpty());
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a deferred row", rows.isEmpty());
     assertTrue("Row's indexUnique flag should be true for a unique deferred index",
-        deferredJobs.stream().anyMatch(DeferredIndex::isIndexUnique));
+        rows.stream().anyMatch(DeferredIndex::isIndexUnique));
   }
 
 
@@ -553,8 +553,8 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
     // then -- SQL generated with both columns
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should have a deferred job", deferredJobs.isEmpty());
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a registration row", rows.isEmpty());
 
     // then -- DeferredIndexes has correct columns
     assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
@@ -590,11 +590,11 @@ public class TestDeferredIndexesIntegration {
         AddSecondDeferredIndex.class);
 
     // then — should include BOTH deferred indexes
-    List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
+    List<DeferredIndex> rows = newDao().findNonTerminal();
     assertTrue("Should contain first deferred index",
-        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain second deferred index",
-        deferredJobs.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
+        rows.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
   }
 
 
@@ -602,7 +602,7 @@ public class TestDeferredIndexesIntegration {
    * Inline-deferred index on AddTable: the actually-defer fix. Declaring a
    * deferred index inline on the addTable call must NOT emit CREATE INDEX at
    * upgrade time. The index is queued for the adopter via the deferred
-   * pipeline; physical creation happens when the adopter executes the job.
+   * pipeline; physical creation happens when the adopter executes the build task.
    */
   @Test
   public void testAddTableWithInlineDeferredIndexDoesNotBuildImmediately() {
@@ -622,7 +622,7 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(targetSchema,
         AddTableWithInlineDeferredIndex.class);
 
-    // then -- physical index NOT built; registration row PENDING; job available
+    // then -- physical index NOT built; registration row PENDING; build task pending
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
     assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
     assertFalse("inline-deferred index should produce a non-COMPLETED registration row",
@@ -725,7 +725,7 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
-    assertFalse("Should have a job to execute", newDao().findNonTerminal().isEmpty());
+    assertFalse("Should have a build task pending", newDao().findNonTerminal().isEmpty());
 
     // when -- the app-side loop
     runBuildTasks();
