@@ -209,18 +209,13 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
   /**
    * Rebuilds the index list for one physical table by reconciling against
-   * its registration rows. Applies these rules in order:
-   * <ul>
-   *   <li>physical index matching a COMPLETED row → check
-   *       {@link SqlDialect#isIndexValid} — VALID or unknown rebuilds with
-   *       {@code .deferred()}; INVALID records a drift</li>
-   *   <li>physical index matching a non-COMPLETED row → mark
-   *       {@code .deferred()} and let the build task reconcile (the
-   *       routine-restart case)</li>
-   *   <li>registration row with no matching physical → virtualize as deferred,
-   *       unless COMPLETED in which case records a drift (operator-caused
-   *       state corruption — manual recovery required)</li>
-   * </ul>
+   * its registration rows. Two passes:
+   * <ol>
+   *   <li>Walk the physical indexes -- {@link #chooseIndexFor} decides whether
+   *       to keep, mark deferred, or skip (drift) each one.</li>
+   *   <li>Walk any unmatched rows -- {@link #virtualizeRow} virtualizes them
+   *       as declared deferred indexes (or skips and records a drift).</li>
+   * </ol>
    *
    * <p>Drift findings are appended to {@code drifts} rather than thrown; the
    * caller emits a single {@link IllegalStateException} after every table is
@@ -237,49 +232,90 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
     for (Index physical : physicalTable.indexes()) {
       DeferredIndex row = rowsForTable.get(physical.getName().toUpperCase());
-      if (row == null) {
-        indexes.add(physical);
-        continue;
+      if (row != null) {
+        matchedRowNames.add(row.getIndexName().toUpperCase());
       }
-      matchedRowNames.add(row.getIndexName().toUpperCase());
-      if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
-        Optional<Boolean> valid = dialect.isIndexValid(connection, row.getTableName(), row.getIndexName());
-        if (valid.orElse(true)) {
-          indexes.add(asDeferred(physical));
-        } else {
-          drifts.add(
-              "row for index '" + row.getIndexName()
-                  + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-                  + " index is INVALID. Drop the invalid physical index manually, mark the row"
-                  + " non-COMPLETED (e.g. PENDING) so the next build pass rebuilds it, and restart.");
-        }
-      } else {
-        // Non-COMPLETED row + physical present is the routine-restart case.
-        // The build task's next pass will see this via isIndexValid and reconcile
-        // (mark COMPLETED if VALID, DROP+CREATE if INVALID).
-        indexes.add(asDeferred(physical));
-      }
+      chooseIndexFor(physical, row, dialect, connection, drifts).ifPresent(indexes::add);
     }
 
     for (DeferredIndex row : rowsForTable.values()) {
       if (matchedRowNames.contains(row.getIndexName().toUpperCase())) {
         continue;
       }
-      if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
-        drifts.add(
-            "row for index '" + row.getIndexName()
-                + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-                + " index is missing (someone dropped a built index out-of-band). Either"
-                + " restore the index from backup or mark the row non-COMPLETED (e.g. PENDING)"
-                + " so the next build pass rebuilds it, then restart.");
-        continue;
-      }
-      indexes.add(row.toIndex());
+      virtualizeRow(row, drifts).ifPresent(indexes::add);
     }
 
     return table(physicalTable.getName())
         .columns(physicalTable.columns())
         .indexes(indexes);
+  }
+
+
+  /**
+   * Picks the index to include in the enriched schema for one physical index,
+   * given the registration row that matches it (if any).
+   *
+   * <ul>
+   *   <li>No matching row → keep the physical index unchanged (non-deferred).</li>
+   *   <li>COMPLETED row + VALID (or unknown) physical → mark {@code .deferred()}.</li>
+   *   <li>COMPLETED row + INVALID physical → record a drift; omit from the schema.</li>
+   *   <li>Non-COMPLETED row + physical present → mark {@code .deferred()} and let the
+   *       build task reconcile on the next pass (the routine-restart case).</li>
+   * </ul>
+   *
+   * @return the index to add, or empty if the physical is being omitted as drift.
+   */
+  private Optional<Index> chooseIndexFor(Index physical,
+                                         DeferredIndex row,
+                                         SqlDialect dialect,
+                                         Connection connection,
+                                         List<String> drifts) {
+    if (row == null) {
+      return Optional.of(physical);
+    }
+    if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
+      Optional<Boolean> valid = dialect.isIndexValid(connection, row.getTableName(), row.getIndexName());
+      if (valid.orElse(true)) {
+        return Optional.of(asDeferred(physical));
+      }
+      drifts.add(
+          "row for index '" + row.getIndexName()
+              + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
+              + " index is INVALID. Drop the invalid physical index manually, mark the row"
+              + " non-COMPLETED (e.g. PENDING) so the next build pass rebuilds it, and restart.");
+      return Optional.empty();
+    }
+    // Non-COMPLETED + physical present is the routine-restart case. The build
+    // task's next pass observes this via isIndexValid and reconciles (mark
+    // COMPLETED if VALID, DROP+CREATE if INVALID).
+    return Optional.of(asDeferred(physical));
+  }
+
+
+  /**
+   * Virtualizes a registration row that has no matching physical index.
+   *
+   * <ul>
+   *   <li>Non-COMPLETED row → return the index built from the row -- the build
+   *       task will physically build it next.</li>
+   *   <li>COMPLETED row → record a drift; this is operator-caused state
+   *       corruption (someone dropped a built index out-of-band) which the
+   *       executor cannot auto-recover from.</li>
+   * </ul>
+   *
+   * @return the virtualized index to add, or empty if the row is a drift.
+   */
+  private Optional<Index> virtualizeRow(DeferredIndex row, List<String> drifts) {
+    if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
+      drifts.add(
+          "row for index '" + row.getIndexName()
+              + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
+              + " index is missing (someone dropped a built index out-of-band). Either"
+              + " restore the index from backup or mark the row non-COMPLETED (e.g. PENDING)"
+              + " so the next build pass rebuilds it, then restart.");
+      return Optional.empty();
+    }
+    return Optional.of(row.toIndex());
   }
 
 
