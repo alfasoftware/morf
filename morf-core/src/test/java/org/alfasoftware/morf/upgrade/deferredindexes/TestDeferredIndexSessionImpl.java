@@ -122,7 +122,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** removeIndex should return DELETE and unregister. */
   @Test
-  public void testRemoveIndex() {
+  public void testUnregisterIndex() {
     // given
     session.registerIndex("Table1", index("Idx1").columns("col1"));
 
@@ -137,7 +137,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** removeIndex for non-registered should return empty. */
   @Test
-  public void testRemoveNonRegisteredIndex() {
+  public void testUnregisterUnknownIndex() {
     // when
     List<? extends Statement> stmts = session.unregisterIndex("Table1", "NonExistent");
 
@@ -148,7 +148,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** unregisterAllFor should remove all indexes for that table. */
   @Test
-  public void testRemoveAllForTable() {
+  public void testUnregisterAllForTable() {
     // given
     session.registerIndex("Table1", index("Idx1").columns("col1"));
     session.registerIndex("Table1", index("Idx2").columns("col2"));
@@ -167,7 +167,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** unregisterByColumn should remove matching indexes. */
   @Test
-  public void testRemoveIndexesReferencingColumn() {
+  public void testUnregisterByColumn() {
     // given
     session.registerIndex("Table1", index("Idx1").columns("col1", "col2"));
     session.registerIndex("Table1", index("Idx2").columns("col3"));
@@ -243,7 +243,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** removeIndex for an unregistered (table, index) pair is a no-op. */
   @Test
-  public void testRemoveIndexOnUnregisteredTableIsNoOp() {
+  public void testUnregisterIndexOnUnregisteredTableIsNoOp() {
     // when
     List<? extends Statement> stmts = session.unregisterIndex("NoSuchTable", "NoSuchIdx");
 
@@ -254,7 +254,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** unregisterAllFor on a table that isn't registered is a no-op. */
   @Test
-  public void testRemoveAllForUnregisteredTableIsNoOp() {
+  public void testUnregisterAllForUnregisteredTableIsNoOp() {
     // when
     List<? extends Statement> stmts = session.unregisterAllFor("NoSuchTable");
 
@@ -265,7 +265,7 @@ public class TestDeferredIndexSessionImpl {
 
   /** unregisterByColumn on an unregistered table is a no-op. */
   @Test
-  public void testRemoveIndexesReferencingColumnOnUnregisteredTableIsNoOp() {
+  public void testUnregisterByColumnOnUnregisteredTableIsNoOp() {
     // when
     List<? extends Statement> stmts = session.unregisterByColumn("NoSuchTable", "anyCol");
 

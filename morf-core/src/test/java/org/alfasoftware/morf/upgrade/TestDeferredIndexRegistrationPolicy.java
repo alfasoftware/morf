@@ -43,7 +43,7 @@ public class TestDeferredIndexRegistrationPolicy {
     assertFalse("non-deferred should not be registered", policy.shouldRegister(idx));
     assertTrue("non-deferred requires immediate build",
         policy.requiresImmediateBuild(idx));
-    assertEquals("effective form unchanged for non-deferred",
+    assertEquals("normalized form unchanged for non-deferred",
         idx, policy.normalize(idx));
   }
 
@@ -58,13 +58,13 @@ public class TestDeferredIndexRegistrationPolicy {
         policy.shouldRegister(idx));
     assertFalse("deferred on supporting dialect skips immediate build",
         policy.requiresImmediateBuild(idx));
-    assertTrue("effective form preserves deferred flag",
+    assertTrue("normalized form preserves deferred flag",
         policy.normalize(idx).isDeferred());
   }
 
 
   /** Deferred index on non-supporting dialect: not registered, immediate build,
-   *  effective form normalizes to non-deferred. */
+   *  normalized form drops the deferred flag. */
   @Test
   public void testDeferredOnNonSupportingDialect() {
     DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
@@ -74,11 +74,11 @@ public class TestDeferredIndexRegistrationPolicy {
         policy.shouldRegister(idx));
     assertTrue("deferred on non-supporting dialect requires immediate build",
         policy.requiresImmediateBuild(idx));
-    Index effective = policy.normalize(idx);
-    assertFalse("effective form drops deferred flag on non-supporting dialect",
-        effective.isDeferred());
-    assertEquals("effective form preserves name", "Foo_Idx", effective.getName());
-    assertEquals("effective form preserves columns", idx.columnNames(), effective.columnNames());
+    Index normalized = policy.normalize(idx);
+    assertFalse("normalized form drops deferred flag on non-supporting dialect",
+        normalized.isDeferred());
+    assertEquals("normalized form preserves name", "Foo_Idx", normalized.getName());
+    assertEquals("normalized form preserves columns", idx.columnNames(), normalized.columnNames());
   }
 
 
@@ -97,7 +97,7 @@ public class TestDeferredIndexRegistrationPolicy {
   /** Idempotency: calling shouldRegister/requiresImmediateBuild on the
    *  already-normalized form returns the same answer as on the raw form. */
   @Test
-  public void testIdempotencyUnderEffectiveIndex() {
+  public void testIdempotencyUnderNormalize() {
     DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index raw = index("Foo_Idx").deferred().columns("col");
     Index normalized = policy.normalize(raw);
@@ -108,15 +108,15 @@ public class TestDeferredIndexRegistrationPolicy {
   }
 
 
-  /** Unique flag preserved through normalize normalization. */
+  /** Unique flag preserved through normalization. */
   @Test
   public void testUniqueFlagPreservedOnNormalization() {
     DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index uniqueDeferred = index("Foo_Idx").unique().deferred().columns("col");
 
-    Index effective = policy.normalize(uniqueDeferred);
-    assertTrue("uniqueness preserved", effective.isUnique());
-    assertFalse("deferred flag dropped", effective.isDeferred());
+    Index normalized = policy.normalize(uniqueDeferred);
+    assertTrue("uniqueness preserved", normalized.isUnique());
+    assertFalse("deferred flag dropped", normalized.isDeferred());
   }
 
 

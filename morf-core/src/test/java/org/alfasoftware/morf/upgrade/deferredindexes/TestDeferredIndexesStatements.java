@@ -205,7 +205,7 @@ public class TestDeferredIndexesStatements {
 
   /** removeIndex produces a DELETE with WHERE on (tableName, indexName). */
   @Test
-  public void testRemoveIndex() {
+  public void testUnregisterIndex() {
     // when
     DeleteStatement stmt = statements.unregisterIndex("Product", "Idx1");
 
@@ -218,7 +218,7 @@ public class TestDeferredIndexesStatements {
 
   /** unregisterAllFor produces a DELETE with WHERE on tableName only. */
   @Test
-  public void testRemoveAllForTable() {
+  public void testUnregisterAllForTable() {
     // when
     DeleteStatement stmt = statements.unregisterAllFor("Product");
 
