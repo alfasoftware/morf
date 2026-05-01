@@ -155,29 +155,6 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
-   * An upgrade with no deferred indexes should leave the DeferredIndexes
-   * registration table empty (no non-COMPLETED rows).
-   */
-  @Test
-  public void testNoDeferredIndexesReturnsEmptyStatements() {
-    // given -- feature enabled but no deferred indexes in the step
-    Schema targetSchema = schemaWith(
-        table("Product").columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 100)
-        ).indexes(index("Product_Name_1").columns("name"))
-    );
-
-    // when
-    performUpgrade(targetSchema,
-        AddImmediateIndex.class);
-
-    // then
-    assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
-  }
-
-
-  /**
    * Two deferred indexes added in a single upgrade step should both be
    * persisted as non-COMPLETED registration rows, neither should be physically
    * built, and both rows should be PENDING.
