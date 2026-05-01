@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -198,14 +199,9 @@ public class TestDeferredIndexesIntegration {
    */
   @Test
   public void testDisabledFeatureBuildsDeferredImmediately() {
-    // given
-    UpgradeConfigAndContext disabledConfig = new UpgradeConfigAndContext();
-    disabledConfig.setDeferredIndexCreationEnabled(false);
-
     // when
-    Upgrade.performUpgrade(schemaWithIndex(),
-        Collections.singletonList(AddDeferredIndex.class),
-        connectionResources, disabledConfig, viewDeploymentValidator);
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class,
+        cfg -> cfg.setDeferredIndexCreationEnabled(false));
 
     // then -- index built immediately
     assertPhysicalIndexExists("Product", "Product_Name_1");
@@ -438,15 +434,11 @@ public class TestDeferredIndexesIntegration {
    */
   @Test
   public void testForceImmediateBypassesDeferral() {
-    // given -- separate config to avoid polluting shared state
-    UpgradeConfigAndContext forceConfig = new UpgradeConfigAndContext();
-    forceConfig.setDeferredIndexCreationEnabled(true);
-    forceConfig.setForceImmediateIndexes(Set.of("Product_Name_1"));
-
     // when
-    Upgrade.performUpgrade(schemaWithIndex(),
-        Collections.singletonList(AddDeferredIndex.class),
-        connectionResources, forceConfig, viewDeploymentValidator);
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setForceImmediateIndexes(Set.of("Product_Name_1"));
+    });
 
     // then -- built immediately + no registration row (force-immediate ends up non-deferred → not registered)
     assertPhysicalIndexExists("Product", "Product_Name_1");
@@ -1277,16 +1269,11 @@ public class TestDeferredIndexesIntegration {
    */
   @Test
   public void testForceDeferredOverridesImmediate() {
-    // given
-    UpgradeConfigAndContext forceConfig = new UpgradeConfigAndContext();
-    forceConfig.setDeferredIndexCreationEnabled(true);
-    forceConfig.setForceDeferredIndexes(Set.of("Product_Name_1"));
-
     // when -- AddImmediateIndex uses addIndex() without .deferred()
-    Upgrade.performUpgrade(schemaWithIndex(),
-        Collections.singletonList(
-            AddImmediateIndex.class),
-        connectionResources, forceConfig, viewDeploymentValidator);
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddImmediateIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setForceDeferredIndexes(Set.of("Product_Name_1"));
+    });
 
     // then -- deferred despite no .deferred() on the index
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
@@ -1331,6 +1318,20 @@ public class TestDeferredIndexesIntegration {
   private void performUpgradeSteps(Schema targetSchema, Class<? extends UpgradeStep>... steps) {
     Upgrade.performUpgrade(targetSchema, Arrays.asList(steps),
         connectionResources, config, viewDeploymentValidator);
+  }
+
+  /**
+   * Runs the given step against a fresh {@link UpgradeConfigAndContext} customised by
+   * {@code customizer}. Use this when a test needs different config than {@link #setUp()}'s
+   * shared {@link #config} field — e.g. force-immediate, force-deferred, or
+   * deferred-index-creation disabled.
+   */
+  private void performUpgradeWithCustomConfig(Schema targetSchema, Class<? extends UpgradeStep> step,
+                                              Consumer<UpgradeConfigAndContext> customizer) {
+    UpgradeConfigAndContext customConfig = new UpgradeConfigAndContext();
+    customizer.accept(customConfig);
+    Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
+        connectionResources, customConfig, viewDeploymentValidator);
   }
 
   /** Helper: schema with Product table having one index on name. */
