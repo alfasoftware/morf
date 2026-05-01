@@ -156,7 +156,15 @@ public class Upgrade {
    * @param connectionResources Connection details for the database.
    * @param viewDeploymentValidator External view deployment validator.
    * @return the upgrade path; see the 5-arg overload for details about the
-   *     return value and deferred-index jobs.
+   *     return value and deferred-index build tasks.
+   * @deprecated Use {@link #performUpgrade(Schema, Collection, ConnectionResources,
+   *     UpgradeConfigAndContext, ViewDeploymentValidator)} instead. This overload
+   *     constructs a default {@link UpgradeConfigAndContext}, which means the caller
+   *     gets only the default upgrade settings (deferred-index creation disabled,
+   *     no force-immediate / force-deferred overrides, default schema-change adaptor,
+   *     etc.) and has no way to customise them. Retained for backwards compatibility
+   *     with pre-existing callers; new code should always pass an explicit
+   *     {@link UpgradeConfigAndContext}.
    */
   @Deprecated
   public static UpgradePath performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
