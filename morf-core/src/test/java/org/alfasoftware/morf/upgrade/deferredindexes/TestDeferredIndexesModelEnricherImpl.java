@@ -404,6 +404,37 @@ public class TestDeferredIndexesModelEnricherImpl {
   }
 
 
+  /**
+   * Physical index with no matching registration row — the enricher leaves
+   * it as-is (non-deferred). Documents the trivial-pass branch of the
+   * row-vs-physical reconciliation.
+   */
+  @Test
+  public void testPhysicalIndexWithNoRowKeptAsNonDeferred() {
+    // given — physical index exists, no registration row at all
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("Foo_Idx").columns("name"))
+    );
+    when(dao.findAll()).thenReturn(Collections.emptyList());
+    DeferredIndexesModelEnricher enricher = newEnricher();
+
+    // when
+    Schema result = enricher.enrich(input, session);
+
+    // then — physical index passed through unchanged, NOT marked deferred
+    assertEquals(1, result.getTable("MyTable").indexes().size());
+    Index passedThrough = result.getTable("MyTable").indexes().get(0);
+    assertEquals("Foo_Idx", passedThrough.getName());
+    assertFalse("Index without a registration row must not be marked deferred",
+        passedThrough.isDeferred());
+    assertEquals(List.of("name"), passedThrough.columnNames());
+  }
+
+
   /** Enricher primes the session with every persisted row regardless of status. */
   @Test
   public void testEnrichPrimesSessionWithEveryPersistedRow() {

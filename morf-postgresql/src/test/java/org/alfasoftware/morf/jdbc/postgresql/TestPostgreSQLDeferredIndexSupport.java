@@ -153,6 +153,19 @@ public class TestPostgreSQLDeferredIndexSupport {
   }
 
 
+  /**
+   * A whitespace-only schema name fails {@code SchemaValidatorUtil.validateSchemaName}
+   * at construction (the validator rejects anything outside {@code [A-Za-z0-9_]*}),
+   * so the {@code StringUtils.isNotBlank} check inside {@code isIndexValid} can never
+   * see a whitespace-only string. Documents the upstream guard rather than the dead
+   * defensive branch.
+   */
+  @Test
+  public void testWhitespaceSchemaNameRejectedAtConstruction() {
+    assertThrows(IllegalArgumentException.class, () -> new PostgreSQLDialect("   "));
+  }
+
+
   /** Index name lookup is case-insensitive (PG can fold quoted vs unquoted). */
   @Test
   public void testIsIndexValidUsesCaseInsensitiveCompare() throws SQLException {

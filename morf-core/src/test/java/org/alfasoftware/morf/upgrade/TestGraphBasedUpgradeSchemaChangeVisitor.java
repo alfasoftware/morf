@@ -321,17 +321,111 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
    * physical index isn't there yet.
    */
   @Test
-  public void testRemoveIndexVisitRespectsAwaitingBuildSession() {
-    // given — primed session with a PENDING entry for SomeIdx
-    DeferredIndexSession primedSession = DeferredIndexSession.create();
-    DeferredIndex pendingRow = new DeferredIndex();
-    pendingRow.setTableName("SomeTable");
-    pendingRow.setIndexName("SomeIdx");
-    pendingRow.setIndexUnique(false);
-    pendingRow.setIndexColumns(List.of("col1"));
-    pendingRow.setStatus(DeferredIndexStatus.PENDING);
-    primedSession.prime(pendingRow);
+  public void testRemoveIndexVisitRespectsAwaitingBuildSession_pending() {
+    assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus.PENDING);
+  }
 
+  /** IN_PROGRESS row — same self-heal contract as PENDING. */
+  @Test
+  public void testRemoveIndexVisitRespectsAwaitingBuildSession_inProgress() {
+    assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus.IN_PROGRESS);
+  }
+
+  /** FAILED row — same self-heal contract as PENDING. */
+  @Test
+  public void testRemoveIndexVisitRespectsAwaitingBuildSession_failed() {
+    assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus.FAILED);
+  }
+
+
+  /**
+   * ChangeIndex against an index whose registration row is awaiting build
+   * must not emit a physical DROP for the old index (the in-flight build
+   * hasn't produced it yet). With the new index also declared deferred,
+   * the immediate-build CREATE is suppressed too — only DeferredIndexes
+   * DML is written.
+   */
+  @Test
+  public void testChangeIndexVisitRespectsAwaitingBuildSession() {
+    DeferredIndexSession primedSession = primedSessionWithStatus("SomeTable", "SomeIdx", DeferredIndexStatus.PENDING);
+    GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
+        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
+            primedSession,
+            nodes);
+    visitorWithAwaitingBuild.startStep(U1.class);
+
+    Index fromIdx = mock(Index.class);
+    when(fromIdx.getName()).thenReturn("SomeIdx");
+
+    Index toIdx = mock(Index.class);
+    when(toIdx.getName()).thenReturn("SomeIdx");
+    when(toIdx.isUnique()).thenReturn(false);
+    when(toIdx.isDeferred()).thenReturn(true);
+    when(toIdx.columnNames()).thenReturn(List.of("col2"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.indexes()).thenReturn(List.of(fromIdx));
+    when(sourceSchema.getTable("SomeTable")).thenReturn(mockTable);
+    when(sourceSchema.tableExists("SomeTable")).thenReturn(true);
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    when(changeIndex.apply(ArgumentMatchers.any())).thenReturn(sourceSchema);
+    when(changeIndex.getTableName()).thenReturn("SomeTable");
+    when(changeIndex.getFromIndex()).thenReturn(fromIdx);
+    when(changeIndex.getToIndex()).thenReturn(toIdx);
+    when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
+    when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
+
+    // when
+    visitorWithAwaitingBuild.visit(changeIndex);
+
+    // then — no physical DROP/CREATE DDL emitted (session reports awaiting build,
+    // and the to-index is deferred so no immediate CREATE either)
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
+  }
+
+
+  /**
+   * RenameIndex against an index whose registration row is awaiting build
+   * must not emit physical RENAME INDEX DDL — the physical index doesn't
+   * exist yet, and the session-driven path will rewrite the registration row.
+   */
+  @Test
+  public void testRenameIndexVisitRespectsAwaitingBuildSession() {
+    DeferredIndexSession primedSession = primedSessionWithStatus("SomeTable", "OldIdx", DeferredIndexStatus.PENDING);
+    GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
+        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
+            primedSession,
+            nodes);
+    visitorWithAwaitingBuild.startStep(U1.class);
+
+    Index oldIdx = mock(Index.class);
+    when(oldIdx.getName()).thenReturn("OldIdx");
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.indexes()).thenReturn(List.of(oldIdx));
+    when(sourceSchema.getTable("SomeTable")).thenReturn(mockTable);
+    when(sourceSchema.tableExists("SomeTable")).thenReturn(true);
+
+    RenameIndex renameIndex = mock(RenameIndex.class);
+    when(renameIndex.apply(ArgumentMatchers.any())).thenReturn(sourceSchema);
+    when(renameIndex.getTableName()).thenReturn("SomeTable");
+    when(renameIndex.getFromIndexName()).thenReturn("OldIdx");
+    when(renameIndex.getToIndexName()).thenReturn("NewIdx");
+    when(sqlDialect.renameIndexStatements(nullable(Table.class), nullable(String.class), nullable(String.class)))
+        .thenReturn(STATEMENTS);
+
+    // when
+    visitorWithAwaitingBuild.visit(renameIndex);
+
+    // then — no physical RENAME INDEX DDL emitted
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
+  }
+
+
+  /** Drives the RemoveIndex awaiting-build assertion for any non-terminal status. */
+  private void assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus status) {
+    DeferredIndexSession primedSession = primedSessionWithStatus("SomeTable", "SomeIdx", status);
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
         new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
             primedSession,
@@ -352,11 +446,24 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIdx);
     when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
-    // when
     visitorWithAwaitingBuild.visit(removeIndex);
 
-    // then — no DROP INDEX DDL emitted (session reports awaiting build)
     verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
+  }
+
+
+  /** Helper: build a fresh session primed with one row of the given status. */
+  private static DeferredIndexSession primedSessionWithStatus(String tableName, String indexName,
+                                                              DeferredIndexStatus status) {
+    DeferredIndexSession primedSession = DeferredIndexSession.create();
+    DeferredIndex row = new DeferredIndex();
+    row.setTableName(tableName);
+    row.setIndexName(indexName);
+    row.setIndexUnique(false);
+    row.setIndexColumns(List.of("col1"));
+    row.setStatus(status);
+    primedSession.prime(row);
+    return primedSession;
   }
 
 

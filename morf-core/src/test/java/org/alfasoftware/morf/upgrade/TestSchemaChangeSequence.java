@@ -87,6 +87,34 @@ public class TestSchemaChangeSequence {
 
 
   /**
+   * Smoke test for the {@code @Deprecated} {@link SchemaChangeSequence#SchemaChangeSequence(List)}
+   * single-arg ctor, retained for backwards compatibility with pre-existing adopter
+   * code. Verifies it constructs successfully and produces the same change list as the
+   * preferred two-arg form invoked with a default {@link UpgradeConfigAndContext}.
+   */
+  @Test
+  @SuppressWarnings("deprecation")
+  public void testDeprecatedSingleArgCtorBehavesAsDefaultConfig() {
+    // given
+    when(index.getName()).thenReturn("TestIdx");
+    when(index.columnNames()).thenReturn(List.of("col1"));
+
+    List<UpgradeStep> steps = List.of(new StepWithAddIndex());
+
+    // when
+    SchemaChangeSequence singleArg = new SchemaChangeSequence(steps);
+    SchemaChangeSequence defaultConfig = new SchemaChangeSequence(new UpgradeConfigAndContext(), steps);
+
+    // then -- both produce equivalent change lists (same size, same kinds, same table)
+    List<SchemaChange> single = singleArg.getAllChanges();
+    List<SchemaChange> twoArg = defaultConfig.getAllChanges();
+    assertEquals(twoArg.size(), single.size());
+    assertEquals(twoArg.get(0).getClass(), single.get(0).getClass());
+    assertEquals(((AddIndex) twoArg.get(0)).getTableName(), ((AddIndex) single.get(0)).getTableName());
+  }
+
+
+  /**
    * A declared-deferred index ({@code .deferred()}) added through the schema editor is
    * recorded as an {@link AddIndex} change whose new index reports {@code isDeferred()=true}.
    */
