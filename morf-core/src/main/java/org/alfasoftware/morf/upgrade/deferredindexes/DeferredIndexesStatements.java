@@ -40,7 +40,6 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 /**
@@ -85,13 +84,6 @@ class DeferredIndexesStatements {
   static final String COL_COMPLETED_TIME = "completedTime";
   /** Column: failure message for FAILED builds. */
   static final String COL_ERROR_MESSAGE = "errorMessage";
-
-
-  /** Default constructor. No state, no dependencies. */
-  @Inject
-  DeferredIndexesStatements() {
-    // no-op
-  }
 
 
   // -------------------------------------------------------------------------
