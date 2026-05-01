@@ -80,9 +80,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @param s the INSERT.
    */
   private void writeDeferredIndexesDml(InsertStatement s) {
-    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-      return;
-    }
     writeStatements(sqlDialect.convertStatementToSQL(s));
   }
 
@@ -93,9 +90,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @param s the UPDATE.
    */
   private void writeDeferredIndexesDml(UpdateStatement s) {
-    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-      return;
-    }
     writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
   }
 
@@ -106,9 +100,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @param s the DELETE.
    */
   private void writeDeferredIndexesDml(DeleteStatement s) {
-    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-      return;
-    }
     writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
   }
 
