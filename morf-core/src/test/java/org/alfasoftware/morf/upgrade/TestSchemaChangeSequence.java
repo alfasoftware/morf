@@ -98,7 +98,7 @@ public class TestSchemaChangeSequence {
     // when
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then -- now produces AddIndex with isDeferred()=true
@@ -127,7 +127,7 @@ public class TestSchemaChangeSequence {
     config.setDeferredIndexCreationEnabled(false);
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then
@@ -151,7 +151,7 @@ public class TestSchemaChangeSequence {
     config.setForceImmediateIndexes(Set.of("TestIdx"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then
@@ -175,7 +175,7 @@ public class TestSchemaChangeSequence {
     config.setForceImmediateIndexes(Set.of("TESTIDX"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then
@@ -287,19 +287,13 @@ public class TestSchemaChangeSequence {
   }
 
 
+  /** Test step that adds the mocked {@code index} to {@code TestTable}.
+   *  Whether the resulting AddIndex is deferred is determined by the
+   *  test's stubbing of {@code index.isDeferred()} and by the active
+   *  config's force-immediate / force-deferred lists. */
   @UUID("bbbbbbbb-cccc-dddd-eeee-ffffffffffff")
   private class StepWithAddIndex implements UpgradeStep {
     @Override public String getJiraId() { return "TEST-2"; }
-    @Override public String getDescription() { return "test"; }
-    @Override public void execute(SchemaEditor schema, DataEditor data) {
-      schema.addIndex("TestTable", index);
-    }
-  }
-
-
-  @UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
-  private class StepWithDeferredAddIndex implements UpgradeStep {
-    @Override public String getJiraId() { return "TEST-1"; }
     @Override public String getDescription() { return "test"; }
     @Override public void execute(SchemaEditor schema, DataEditor data) {
       schema.addIndex("TestTable", index);

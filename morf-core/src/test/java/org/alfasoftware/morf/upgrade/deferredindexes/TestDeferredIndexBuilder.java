@@ -106,10 +106,7 @@ public class TestDeferredIndexBuilder {
 
     builder.build(snapshot);
 
-    verify(dao, never()).markStarted(any(), any(), anyLong(), anyInt());
-    verify(dao, never()).markCompleted(any(), any(), anyLong());
-    verify(dao, never()).markFailed(any(), any(), any());
-    verify(statement, never()).execute(any());
+    verifyNoBuildSideEffects();
   }
 
 
@@ -120,6 +117,12 @@ public class TestDeferredIndexBuilder {
 
     builder.build(snapshot);
 
+    verifyNoBuildSideEffects();
+  }
+
+
+  /** Asserts that build() produced no DAO writes and ran no SQL. */
+  private void verifyNoBuildSideEffects() throws SQLException {
     verify(dao, never()).markStarted(any(), any(), anyLong(), anyInt());
     verify(dao, never()).markCompleted(any(), any(), anyLong());
     verify(dao, never()).markFailed(any(), any(), any());

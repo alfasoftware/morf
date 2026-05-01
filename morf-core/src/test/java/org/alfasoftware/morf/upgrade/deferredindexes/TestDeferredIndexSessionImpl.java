@@ -76,35 +76,22 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** registerIndex should register and return INSERT statement. */
-  @Test
-  public void testRegisterIndexReturnsInsert() {
-    // given
-    Index idx = index("Idx1").columns("col1");
-
-    // when
-    List<? extends Statement> stmts = session.registerIndex("Table1", idx);
-
-    // then
-    assertEquals(1, stmts.size());
-    assertTrue("Should be registered", session.isRegistered("Table1", "Idx1"));
-    assertTrue("Should contain DeferredIndexes", stmts.get(0).toString().contains("DeferredIndexes"));
-  }
-
-
-  /** registerIndex for a deferred index sets isRegistered. The visitor only
-   *  ever calls registerIndex for deferred indexes (non-deferred indexes are
-   *  built directly), so there is no non-deferred case to test. */
+  /** registerIndex returns a single INSERT against DeferredIndexes and marks
+   *  the index as registered in-session. The visitor only ever calls
+   *  registerIndex for deferred indexes (non-deferred indexes are built
+   *  directly), so there is no non-deferred case to test. */
   @Test
   public void testRegisterDeferredIndex() {
     // given
     Index idx = index("Idx1").deferred().columns("col1");
 
     // when
-    session.registerIndex("Table1", idx);
+    List<? extends Statement> stmts = session.registerIndex("Table1", idx);
 
     // then
-    assertTrue("Should be registered as deferred", session.isRegistered("Table1", "Idx1"));
+    assertEquals(1, stmts.size());
+    assertTrue("INSERT should target DeferredIndexes", stmts.get(0).toString().contains("DeferredIndexes"));
+    assertTrue("Should be registered", session.isRegistered("Table1", "Idx1"));
   }
 
 
