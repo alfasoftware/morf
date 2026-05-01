@@ -43,7 +43,7 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  */
 @ExclusiveExecution
 @Sequence(1)
-@org.alfasoftware.morf.upgrade.UUID("c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f")
+@org.alfasoftware.morf.upgrade.UUID("0de6b9a8-76d7-4c1a-80bf-c66d83c2c515")
 @Version("2.31.1")
 public class CreateDeferredIndexes implements UpgradeStep {
 
