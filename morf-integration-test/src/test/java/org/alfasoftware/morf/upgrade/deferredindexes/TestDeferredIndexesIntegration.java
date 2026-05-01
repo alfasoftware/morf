@@ -134,7 +134,7 @@ public class TestDeferredIndexesIntegration {
    * declaration.
    */
   @Test
-  public void testDeferredIndexProducesPendingRegisteringRow() {
+  public void testDeferredIndexProducesPendingRegistrationRow() {
     // given
     Schema targetSchema = schemaWithIndex();
 
@@ -861,7 +861,7 @@ public class TestDeferredIndexesIntegration {
         ChangeDeferredToNonDeferred.class);
 
     // then — registration row deleted, physical index still exists (rebuilt as non-deferred)
-    assertNull("Registering row for Product_Name_1 should be deleted (no longer declared deferred)",
+    assertNull("Registration row for Product_Name_1 should be deleted (no longer declared deferred)",
         queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
@@ -1126,8 +1126,7 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
 
     // and — getProgress reports 2 COMPLETED + 1 FAILED
-    Map<DeferredIndexStatus, Integer> progress =
-        new DeferredIndexServiceImpl(connectionResources, newDao()).getProgress();
+    Map<DeferredIndexStatus, Integer> progress = newService().getProgress();
     assertEquals(Integer.valueOf(2), progress.get(DeferredIndexStatus.COMPLETED));
     assertEquals(Integer.valueOf(1), progress.get(DeferredIndexStatus.FAILED));
     assertEquals(Integer.valueOf(0), progress.get(DeferredIndexStatus.PENDING));
@@ -1203,7 +1202,7 @@ public class TestDeferredIndexesIntegration {
         AddDeferredIndex.class,
         AddSecondDeferredIndex.class,
         AddDeferredUniqueIndex.class);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, newDao());
+    DeferredIndexService service = newService();
 
     // pre-build
     Map<DeferredIndexStatus, Integer> before = service.getProgress();
@@ -1240,7 +1239,7 @@ public class TestDeferredIndexesIntegration {
             index("Product_IdName_1").columns("id", "name").deferred())
     );
     performUpgradeSteps(target, AddDeferredIndex.class, AddSecondDeferredIndex.class);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, newDao());
+    DeferredIndexService service = newService();
     assertEquals(2, service.getBuildTasks().size());
 
     // when — first call builds both
@@ -1267,14 +1266,20 @@ public class TestDeferredIndexesIntegration {
   }
 
 
+  /** Helper: construct a service paired with a freshly-built builder + DAO. */
+  private DeferredIndexService newService() {
+    DeferredIndexesDAO dao = newDao();
+    return new DeferredIndexServiceImpl(new DeferredIndexBuilder(connectionResources, dao), dao);
+  }
+
+
   /**
    * Helper: drive every non-COMPLETED registration row through the new
    * {@link DeferredIndexService} build flow — the equivalent adopter
    * operation.
    */
   private void runBuildTasks() {
-    new DeferredIndexServiceImpl(connectionResources, newDao()).getBuildTasks()
-        .forEach(Runnable::run);
+    newService().getBuildTasks().forEach(Runnable::run);
   }
 
 
@@ -1381,7 +1386,7 @@ public class TestDeferredIndexesIntegration {
    */
   @SuppressWarnings("unused")
   private void buildDeferredIndexesViaAdopter(UpgradePath path, String tableName, String indexName) {
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, newDao());
+    DeferredIndexService service = newService();
     service.getBuildTasks().forEach(Runnable::run);
   }
 
