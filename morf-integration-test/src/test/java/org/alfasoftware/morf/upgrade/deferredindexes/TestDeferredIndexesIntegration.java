@@ -638,10 +638,12 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
-   * Creating a new table should track all its indexes in DeferredIndexes.
+   * Creating a new table with a deferred index should register the index in
+   * the DeferredIndexes table as PENDING — the inline index travels through
+   * the registration path even when the table itself is brand-new.
    */
   @Test
-  public void testAddTableRegistersIndexesInDeferredTable() {
+  public void testAddTableRegistersIndexInDeferredTable() {
     // given
     Schema targetSchema = schemaWith(
         table("Product").columns(
