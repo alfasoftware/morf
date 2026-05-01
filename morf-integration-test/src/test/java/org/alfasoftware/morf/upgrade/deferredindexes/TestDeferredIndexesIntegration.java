@@ -273,12 +273,9 @@ public class TestDeferredIndexesIntegration {
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
     assertEquals("label", queryDeferredIndexField("Product_Name_1", "indexColumns"));
 
-    // then -- the persisted row carries the new column name 'label'
-    List<DeferredIndex> rows = newDao().findNonTerminal();
-    assertFalse("Should have a deferred row after rename", rows.isEmpty());
-    assertTrue("Row's indexColumns should reference new column name 'label'",
-        rows.stream().flatMap(j -> j.getIndexColumns().stream())
-            .anyMatch(c -> c.equalsIgnoreCase("label")));
+    // and -- the persisted row survives rename (not deleted)
+    assertFalse("Row should still exist after rename",
+        newDao().findNonTerminal().isEmpty());
   }
 
 
