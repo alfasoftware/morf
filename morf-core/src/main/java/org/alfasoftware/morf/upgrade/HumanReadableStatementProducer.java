@@ -179,7 +179,7 @@ public class HumanReadableStatementProducer {
 
         log.debug("Upgrade step version sanitised [ " + utils.sanitise(version) + " ], comparison: [ "
             + utils.versionCompare(utils.sanitise(entityConsumer.getVersionStart()), utils.sanitise(version)) + " ]");
-        if (populateEntityBasedChangelog && utils.versionCompare(utils.sanitise(entityConsumer.getVersionStart()), utils.sanitise(version)) >= 0){
+        if (populateEntityBasedChangelog && utils.versionCompare(utils.sanitise(entityConsumer.getVersionStart()), utils.sanitise(version)) <= 0){
           log.debug("Upgrade Step [" + currentStep.getClass().getSimpleName() + "] was added to entity based knowledge map");
           // Populate entityKnowledgeMapBuilder
           entityKnowledgeMapBuilder.upgradeStepStart(currentStep.getClass().getSimpleName(), currentStep.getDescription(), currentStep.getJiraId());
