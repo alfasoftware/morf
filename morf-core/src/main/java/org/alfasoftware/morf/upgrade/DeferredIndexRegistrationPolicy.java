@@ -20,19 +20,23 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 
 /**
- * Policy class encapsulating the dialect-aware "should we track this index
- * in DeferredIndexes?" decision and the matching "should we emit physical
- * CREATE INDEX immediately?" decision.
+ * Stateless, dialect-bound policy answering three coupled questions about a
+ * single index:
+ * <ul>
+ *   <li>{@link #shouldRegister} -- does this index need a row in the
+ *       DeferredIndexes table?</li>
+ *   <li>{@link #requiresImmediateBuild} -- must the visitor emit physical DDL
+ *       for it now (rather than queue it for the adopter)?</li>
+ *   <li>{@link #normalize} -- transform the index into the form the visitor
+ *       should emit DDL for (drops the {@code .deferred()} flag on dialects
+ *       that don't support deferred creation).</li>
+ * </ul>
  *
- * <p>Replaces three formerly-scattered concerns in
- * {@code AbstractSchemaChangeVisitor}: the {@code effectiveIndex}
- * normalization helper, plus copy-pasted {@code if (effective.isDeferred())}
- * gates in {@code visit(AddIndex)}, {@code visit(AddTable)}, and
- * {@code visit(ChangeIndex)}, plus the {@code shouldEmitPhysicalIndexDdl}
- * helper.</p>
+ * <p>{@link #shouldRegister} and {@link #requiresImmediateBuild} are logical
+ * complements: exactly one fires for any given index.</p>
  *
- * <p>Stateless, dialect-bound. Visitor instances construct one in their
- * constructor from the same {@code SqlDialect} they already hold.</p>
+ * <p>Visitor instances construct one in their constructor from the same
+ * {@code SqlDialect} they already hold.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
