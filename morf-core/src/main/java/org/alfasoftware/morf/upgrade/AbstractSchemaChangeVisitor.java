@@ -132,9 +132,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     writeStatements(sqlDialect.tableDeploymentStatements(withoutDeferredOnSupportingDialect(original)));
 
     for (Index index : original.indexes()) {
-      Index effective = registrationPolicy.effectiveIndex(index);
-      if (registrationPolicy.shouldRegister(effective)) {
-        registerInDeferredIndexes(original.getName(), effective);
+      Index normalized = registrationPolicy.normalize(index);
+      if (registrationPolicy.shouldRegister(normalized)) {
+        registerInDeferredIndexes(original.getName(), normalized);
       }
     }
   }
@@ -213,7 +213,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(ChangeIndex changeIndex) {
     String tableName = changeIndex.getTableName();
     Index fromIndex = changeIndex.getFromIndex();
-    Index toIndex = registrationPolicy.effectiveIndex(changeIndex.getToIndex());
+    Index toIndex = registrationPolicy.normalize(changeIndex.getToIndex());
 
     // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
     boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
@@ -291,9 +291,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
         withoutDeferredOnSupportingDialect(original), addTableFrom.getSelectStatement()));
 
     for (Index index : original.indexes()) {
-      Index effective = registrationPolicy.effectiveIndex(index);
-      if (registrationPolicy.shouldRegister(effective)) {
-        registerInDeferredIndexes(original.getName(), effective);
+      Index normalized = registrationPolicy.normalize(index);
+      if (registrationPolicy.shouldRegister(normalized)) {
+        registerInDeferredIndexes(original.getName(), normalized);
       }
     }
   }
@@ -361,7 +361,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
     String tableName = addIndex.getTableName();
-    Index newIndex = registrationPolicy.effectiveIndex(addIndex.getNewIndex());
+    Index newIndex = registrationPolicy.normalize(addIndex.getNewIndex());
 
     if (registrationPolicy.requiresImmediateBuild(newIndex)) {
       emitAddIndexOrRename(tableName, newIndex);
@@ -422,7 +422,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   /**
    * Returns a Table view of {@code original} with deferred-on-supporting-
    * dialect indexes filtered out and the remainder normalized via
-   * {@link DeferredIndexRegistrationPolicy#effectiveIndex}. Used at CREATE TABLE
+   * {@link DeferredIndexRegistrationPolicy#normalize}. Used at CREATE TABLE
    * (and CREATE TABLE AS SELECT) emission time so the adopter, not the
    * upgrade script, builds deferred indexes.
    *
@@ -433,11 +433,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private Table withoutDeferredOnSupportingDialect(Table original) {
     List<Index> kept = new ArrayList<>();
     for (Index idx : original.indexes()) {
-      Index effective = registrationPolicy.effectiveIndex(idx);
+      Index normalized = registrationPolicy.normalize(idx);
       // Skip deferred-on-supporting (adopter will build); keep everything
       // else (non-deferred + deferred-on-unsupported normalized to immediate).
-      if (registrationPolicy.shouldRegister(effective)) continue;
-      kept.add(effective);
+      if (registrationPolicy.shouldRegister(normalized)) continue;
+      kept.add(normalized);
     }
     TableBuilder builder = SchemaUtils.table(original.getName())
         .columns(original.columns())

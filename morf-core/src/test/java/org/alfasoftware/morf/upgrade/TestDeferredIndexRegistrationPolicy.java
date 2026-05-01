@@ -44,7 +44,7 @@ public class TestDeferredIndexRegistrationPolicy {
     assertTrue("non-deferred requires immediate build",
         policy.requiresImmediateBuild(idx));
     assertEquals("effective form unchanged for non-deferred",
-        idx, policy.effectiveIndex(idx));
+        idx, policy.normalize(idx));
   }
 
 
@@ -59,7 +59,7 @@ public class TestDeferredIndexRegistrationPolicy {
     assertFalse("deferred on supporting dialect skips immediate build",
         policy.requiresImmediateBuild(idx));
     assertTrue("effective form preserves deferred flag",
-        policy.effectiveIndex(idx).isDeferred());
+        policy.normalize(idx).isDeferred());
   }
 
 
@@ -74,7 +74,7 @@ public class TestDeferredIndexRegistrationPolicy {
         policy.shouldRegister(idx));
     assertTrue("deferred on non-supporting dialect requires immediate build",
         policy.requiresImmediateBuild(idx));
-    Index effective = policy.effectiveIndex(idx);
+    Index effective = policy.normalize(idx);
     assertFalse("effective form drops deferred flag on non-supporting dialect",
         effective.isDeferred());
     assertEquals("effective form preserves name", "Foo_Idx", effective.getName());
@@ -90,7 +90,7 @@ public class TestDeferredIndexRegistrationPolicy {
 
     assertFalse(policy.shouldRegister(idx));
     assertTrue(policy.requiresImmediateBuild(idx));
-    assertEquals(idx, policy.effectiveIndex(idx));
+    assertEquals(idx, policy.normalize(idx));
   }
 
 
@@ -100,21 +100,21 @@ public class TestDeferredIndexRegistrationPolicy {
   public void testIdempotencyUnderEffectiveIndex() {
     DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index raw = index("Foo_Idx").deferred().columns("col");
-    Index normalized = policy.effectiveIndex(raw);
+    Index normalized = policy.normalize(raw);
 
     assertEquals(policy.shouldRegister(raw), policy.shouldRegister(normalized));
     assertEquals(policy.requiresImmediateBuild(raw), policy.requiresImmediateBuild(normalized));
-    assertEquals(normalized, policy.effectiveIndex(normalized));
+    assertEquals(normalized, policy.normalize(normalized));
   }
 
 
-  /** Unique flag preserved through effectiveIndex normalization. */
+  /** Unique flag preserved through normalize normalization. */
   @Test
   public void testUniqueFlagPreservedOnNormalization() {
     DeferredIndexRegistrationPolicy policy = new DeferredIndexRegistrationPolicy(dialect(false));
     Index uniqueDeferred = index("Foo_Idx").unique().deferred().columns("col");
 
-    Index effective = policy.effectiveIndex(uniqueDeferred);
+    Index effective = policy.normalize(uniqueDeferred);
     assertTrue("uniqueness preserved", effective.isUnique());
     assertFalse("deferred flag dropped", effective.isDeferred());
   }

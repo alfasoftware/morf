@@ -57,7 +57,7 @@ final class DeferredIndexRegistrationPolicy {
    * deferred creation, declared-deferred indexes are normalized to
    * immediate (built at upgrade time, no registration row).</p>
    *
-   * <p>Idempotent under {@link #effectiveIndex} — calling on either the raw
+   * <p>Idempotent under {@link #normalize} — calling on either the raw
    * or the normalized form produces the same answer.</p>
    *
    * @param declared the index (raw or normalized).
@@ -76,7 +76,7 @@ final class DeferredIndexRegistrationPolicy {
    * support deferred creation. In both cases, the index has to be built
    * immediately during the upgrade rather than queued for the adopter.</p>
    *
-   * <p>Idempotent under {@link #effectiveIndex} — calling on either the raw
+   * <p>Idempotent under {@link #normalize} — calling on either the raw
    * or the normalized form produces the same answer.</p>
    *
    * @param declared the index (raw or normalized).
@@ -88,15 +88,20 @@ final class DeferredIndexRegistrationPolicy {
 
 
   /**
-   * Returns the index in the form the visitor should physically emit DDL
-   * for. On unsupported-dialect normalization, drops the {@code .deferred()}
-   * flag so dialect handlers don't go down a deferred-DDL path that doesn't
-   * exist. Idempotent: calling repeatedly returns the same form.
+   * Normalizes an index for DDL emission. If the index is declared
+   * {@code .deferred()} but the current dialect does not support deferred
+   * index creation (e.g. MySQL, SQL Server), strips the {@code .deferred()}
+   * flag so downstream dialect handlers treat it as a regular immediate
+   * index. All other indexes pass through unchanged.
    *
-   * @param declared the index as declared.
-   * @return the dialect-normalized form.
+   * <p>Preserves name, columns, and uniqueness.</p>
+   *
+   * <p>Idempotent: {@code normalize(normalize(x))} equals {@code normalize(x)}.</p>
+   *
+   * @param declared the index as declared by the upgrade step.
+   * @return the index in the form the visitor should emit DDL for.
    */
-  Index effectiveIndex(Index declared) {
+  Index normalize(Index declared) {
     if (!declared.isDeferred() || sqlDialect.supportsDeferredIndexCreation()) {
       return declared;
     }
