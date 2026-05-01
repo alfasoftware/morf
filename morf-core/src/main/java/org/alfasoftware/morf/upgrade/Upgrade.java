@@ -508,17 +508,11 @@ public class Upgrade {
    * session so the visitor can answer presence queries via
    * {@link DeferredIndexSession#isAwaitingBuild}.
    *
-   * <p>Falls back to the input schema when no enricher is available (e.g.
-   * legacy test paths that construct {@link Upgrade} with a null enricher).</p>
-   *
    * @param sourceSchema the source schema read from JDBC metadata.
    * @param session the per-upgrade session to prime.
    * @return the enriched schema.
    */
   private Schema enrichSourceSchema(Schema sourceSchema, DeferredIndexSession session) {
-    if (deferredIndexesModelEnricher == null) {
-      return sourceSchema;
-    }
     return deferredIndexesModelEnricher.enrich(sourceSchema, session);
   }
 
