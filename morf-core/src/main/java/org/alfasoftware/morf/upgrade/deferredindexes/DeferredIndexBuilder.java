@@ -137,16 +137,19 @@ class DeferredIndexBuilder {
     }
     DeferredIndex row = rowOpt.get();
     if (row.getStatus() == DeferredIndexStatus.COMPLETED) {
+      log.debug("Skipping [" + tableName + "." + indexName + "] — already COMPLETED");
       return;
     }
 
     Optional<Boolean> validity = dialect.isIndexValid(connection, tableName, indexName);
     if (validity.isEmpty()) {
+      log.debug("Physical state for [" + tableName + "." + indexName + "] = ABSENT — building");
       buildAbsent(connection, dialect, row);
     } else if (Boolean.TRUE.equals(validity.get())) {
-      // Physical index already in place -- declare success and reset attempts.
+      log.info("Physical index for [" + tableName + "." + indexName + "] already VALID — marking COMPLETED");
       dao.markCompleted(tableName, indexName, System.currentTimeMillis());
     } else {
+      log.debug("Physical state for [" + tableName + "." + indexName + "] = INVALID — rebuilding");
       rebuildInvalid(connection, dialect, row);
     }
   }
@@ -156,12 +159,15 @@ class DeferredIndexBuilder {
   private void buildAbsent(Connection connection, SqlDialect dialect, DeferredIndex row) {
     String tableName = row.getTableName();
     String indexName = row.getIndexName();
-    dao.markStarted(tableName, indexName, System.currentTimeMillis(), row.getAttemptsCount() + 1);
+    int attempt = row.getAttemptsCount() + 1;
+    log.info("Building deferred index [" + tableName + "." + indexName + "] (attempt " + attempt + ")");
+    dao.markStarted(tableName, indexName, System.currentTimeMillis(), attempt);
     Table table = table(tableName);
     Index index = row.toIndex();
     try {
       execute(connection, dialect.deferredIndexDeploymentStatements(table, index));
       dao.markCompleted(tableName, indexName, System.currentTimeMillis());
+      log.info("Built deferred index [" + tableName + "." + indexName + "]");
     } catch (SQLException e) {
       log.warn("CREATE INDEX failed for [" + tableName + "." + indexName + "]: " + e.getMessage());
       dao.markFailed(tableName, indexName, e.getMessage());
@@ -178,7 +184,9 @@ class DeferredIndexBuilder {
   private void rebuildInvalid(Connection connection, SqlDialect dialect, DeferredIndex row) {
     String tableName = row.getTableName();
     String indexName = row.getIndexName();
-    dao.markStarted(tableName, indexName, System.currentTimeMillis(), row.getAttemptsCount() + 1);
+    int attempt = row.getAttemptsCount() + 1;
+    log.info("Rebuilding invalid deferred index [" + tableName + "." + indexName + "] (attempt " + attempt + ")");
+    dao.markStarted(tableName, indexName, System.currentTimeMillis(), attempt);
     Table table = table(tableName);
     Index index = row.toIndex();
 
@@ -253,6 +261,7 @@ class DeferredIndexBuilder {
     try {
       execute(connection, dialect.deferredIndexDeploymentStatements(table, index));
       dao.markCompleted(tableName, indexName, System.currentTimeMillis());
+      log.info("Rebuilt deferred index [" + tableName + "." + indexName + "]");
     } catch (SQLException e) {
       log.warn("CREATE INDEX failed for [" + tableName + "." + indexName + "]: " + e.getMessage());
       dao.markFailed(tableName, indexName, e.getMessage());
