@@ -388,6 +388,11 @@ public class SchemaChangeSequence {
     }
 
 
+    /**
+     * Returns {@code index} unchanged if its declared {@code .deferred()}
+     * matches the resolved target (per kill-switch and force lists), or
+     * a copy with the flag flipped otherwise.
+     */
     private Index resolveDeferred(Index index) {
       boolean targetDeferred = resolveTargetDeferred(index);
       return index.isDeferred() == targetDeferred ? index : rebuildIndex(index, targetDeferred);
@@ -409,6 +414,10 @@ public class SchemaChangeSequence {
     }
 
 
+    /**
+     * Reconstructs an Index with the supplied deferred flag, preserving name,
+     * columns, and uniqueness from the original.
+     */
     private Index rebuildIndex(Index index, boolean deferred) {
       SchemaUtils.IndexBuilder builder = SchemaUtils.index(index.getName()).columns(index.columnNames());
       if (index.isUnique()) {

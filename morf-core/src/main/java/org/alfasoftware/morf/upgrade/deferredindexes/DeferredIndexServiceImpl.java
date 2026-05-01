@@ -37,6 +37,11 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   private final DeferredIndexesDAO dao;
 
 
+  /**
+   * @param builder shared reconciliation algorithm; bound to every fan-out task
+   *     returned by {@link #getBuildTasks()}.
+   * @param dao persistence layer for the DeferredIndexes table.
+   */
   @Inject
   DeferredIndexServiceImpl(DeferredIndexBuilder builder, DeferredIndexesDAO dao) {
     this.builder = builder;
