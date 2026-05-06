@@ -1368,6 +1368,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   *  @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints3b
+   */
+  @Override
+  protected String expectedHints3b() {
+    return "UPDATE /*+ index(customer cust_primary_key_idx) */ " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideCustomHint()
    */
   @Override

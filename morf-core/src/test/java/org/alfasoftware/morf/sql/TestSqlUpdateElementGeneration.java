@@ -63,6 +63,7 @@ public class TestSqlUpdateElementGeneration {
     assertTrue("Use parallel dml hint", stmt.getHints().contains(new UseParallelDml()));
   }
 
+
   /**
    * Tests that the {@link UseParallelDml} hint can be added to the update statement.
    */
@@ -73,6 +74,24 @@ public class TestSqlUpdateElementGeneration {
 
     assertTrue("Use parallel dml hint with degreeOfParallelism", stmt.getHints().contains(new UseParallelDml(4)));
   }
+
+
+  /**
+   * Tests that the {@link DialectSpecificHint} hint can be added to the update statement.
+   */
+  @Test
+  public void testUpdateWithDialectSpecificHint() {
+
+    String hintContents = "index(customer cust_primary_key_idx)";
+    String database = "ORACLE";
+
+    UpdateStatement stmt = new UpdateStatement(new TableReference("Agreement"))
+            .set(new FieldLiteral("A1001001").as("agreementNumber"))
+            .withDialectSpecificHint(database, hintContents);
+
+    assertTrue("Use dialect specific hint", stmt.getHints().contains(new DialectSpecificHint(database, hintContents)));
+  }
+
 
   /**
    * Tests update statement with where clause

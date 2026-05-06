@@ -181,6 +181,20 @@ public class UpdateStatementBuilder implements Builder<UpdateStatement> {
 
 
   /**
+   * Supplies a specified custom hint and database type to the database for the statement.
+   *
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
+   * @return this, for method chaining.
+   */
+  public UpdateStatementBuilder withDialectSpecificHint(String databaseType, String hintContents) {
+    DialectSpecificHint dialectSpecificHint = new DialectSpecificHint(databaseType, hintContents);
+    this.hints.add(dialectSpecificHint);
+    return this;
+  }
+
+
+    /**
    * Request that this statement is translated into a CTAS.
    *
    * @param useCtasDuringUpgrade If true, this statement is translated into a CTAS.
