@@ -134,7 +134,7 @@ public class GraphBasedUpgradeNode {
    *         node should be executed while this one is being processed)
    */
   public boolean requiresExclusiveExecution() {
-    return exclusiveExecution || reads.isEmpty() && modifies.isEmpty();
+    return exclusiveExecution || isRoot();
   }
 
 

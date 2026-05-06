@@ -353,7 +353,7 @@ public class TestGraphBasedUpgradeBuilder {
   public void testExclusiveNodeNotAParent() {
     // given
     when(upgradeTableResolution.getModifiedTables(U1000.class.getName())).thenReturn(Sets.newHashSet("t1"));
-    when(upgradeTableResolution.getModifiedTables(U1000.class.getName())).thenReturn(Sets.newHashSet("t1", "t2"));
+    when(upgradeTableResolution.getModifiedTables(U1001.class.getName())).thenReturn(Sets.newHashSet("t1", "t2"));
     upgradeSteps.addAll(Lists.newArrayList(eu1, u1000, u1001));
 
     // when
