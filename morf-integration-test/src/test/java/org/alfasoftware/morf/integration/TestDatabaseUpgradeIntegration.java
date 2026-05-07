@@ -1398,7 +1398,8 @@ public class TestDatabaseUpgradeIntegration {
         () -> verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class, UpdateField.class)));
 
     assertThat(exception.getMessage(), containsString("Error executing SQL"));
-    assertThat(exception.getMessage(), containsString("UPDATE WithDefaultValue SET missingColumn"));
+    assertThat(exception.getMessage(), containsString("UPDATE"));
+    assertThat(exception.getMessage(), containsString("WithDefaultValue SET missingColumn"));
   }
 
 

@@ -82,6 +82,7 @@ public class TestDatabaseUpgradePathValidationService {
   public void tearDown() {
     dropUpgradeStatusTable();
     schemaManager.invalidateCache();
+    schemaManager.dropAllTables();
   }
 
 

@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -56,6 +57,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
 /**
@@ -116,6 +118,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
+  protected Supplier<Set<RealName>> ignoredPartitionTables = Suppliers.memoize(this::loadIgnoredPartitionTables);
+  protected Supplier<Set<RealName>> partitionedTables = Suppliers.memoize(this::loadPartitionedTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -148,6 +152,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  protected Set<RealName> loadIgnoredPartitionTables() { return ImmutableSet.of(); }
+
+  protected Set<RealName> loadPartitionedTables() { return ImmutableSet.of(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -306,6 +313,10 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
           }
         }
+        // add partitioned tables to list
+        partitionedTables.get().forEach(table -> {
+          tableNameMappings.put(table, table);
+        });
 
         long end = System.currentTimeMillis();
         Map<AName, RealName> tableNameMap = tableNameMappings.build();
@@ -389,8 +400,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * @param tableName The table which we are accessing.
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
-  protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
-    return false;
+  protected boolean isIgnoredTable(RealName tableName) {
+    return ignoredPartitionTables.get().contains(tableName);
   }
 
 
@@ -1129,22 +1140,16 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
     if (log.isTraceEnabled()) log.trace("runSQL: " + sql);
     try {
-      PreparedStatement statement = connection.prepareStatement(sql);
-      try {
+      try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
         // pass through the schema name
         if (schemaName != null && !schemaName.isBlank()) {
           statement.setString(1, schemaName);
         }
 
-        ResultSet resultSet = statement.executeQuery();
-        try {
+        try (ResultSet resultSet = statement.executeQuery()) {
           handler.handle(resultSet);
-        } finally {
-          resultSet.close();
         }
-      } finally {
-        statement.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
@@ -1196,7 +1201,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * @return {@link RealName} instance holding the two name versions.
    *         Can also be used as a key in the lookup maps, like {@link AName}.
    */
-  protected static RealName createRealName(String dbName, String realName) {
+  public static RealName createRealName(String dbName, String realName) {
     return new RealName(dbName, realName);
   }
 
@@ -1210,7 +1215,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * see {@link DatabaseMetaDataProvider#named(String)}
    * and {@link DatabaseMetaDataProvider#createRealName(String, String)}
    */
-  protected static class AName {
+  public static class AName {
     private final String aName;
     private final int hashCode;
 
@@ -1255,11 +1260,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * see {@link DatabaseMetaDataProvider#named(String)}
    * and {@link DatabaseMetaDataProvider#createRealName(String, String)}
    */
-  protected static final class RealName extends AName {
+  public static final class RealName extends AName {
 
     private final String realName;
 
-    private RealName(String dbName, String realName) {
+    public RealName(String dbName, String realName) {
       super(dbName);
       this.realName = realName;
     }
