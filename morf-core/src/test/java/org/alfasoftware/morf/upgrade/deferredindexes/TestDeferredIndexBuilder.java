@@ -102,10 +102,13 @@ public class TestDeferredIndexBuilder {
   /** No registration row found — task no-ops; no DAO writes, no SQL run. */
   @Test
   public void testRowMissingNoOp() throws SQLException {
+    // given
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.empty());
 
+    // when
     builder.build(snapshot);
 
+    // then
     verifyNoBuildSideEffects();
   }
 
@@ -113,10 +116,13 @@ public class TestDeferredIndexBuilder {
   /** Row already COMPLETED (race) — task no-ops. */
   @Test
   public void testRowCompletedNoOp() throws SQLException {
+    // given
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.COMPLETED, 0)));
 
+    // when
     builder.build(snapshot);
 
+    // then
     verifyNoBuildSideEffects();
   }
 
@@ -135,11 +141,14 @@ public class TestDeferredIndexBuilder {
   /** Physical index already valid — markCompleted; no SQL run. */
   @Test
   public void testValidMarksCompleted() throws SQLException {
+    // given
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.IN_PROGRESS, 1)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.TRUE));
 
+    // when
     builder.build(snapshot);
 
+    // then
     verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
     verify(dao, never()).markStarted(any(), any(), anyLong(), anyInt());
     verify(dao, never()).markFailed(any(), any(), any());
@@ -152,12 +161,15 @@ public class TestDeferredIndexBuilder {
   /** Physical index absent — markStarted (attempts++), CREATE, markCompleted. */
   @Test
   public void testAbsentHappyPath() throws SQLException {
+    // given
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.PENDING, 2)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.empty());
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
 
+    // when
     builder.build(snapshot);
 
+    // then
     InOrder order = inOrder(dao, statement);
     order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(3));
     order.verify(statement).execute(CREATE_SQL);
@@ -169,13 +181,16 @@ public class TestDeferredIndexBuilder {
   /** Physical index absent + CREATE fails — markStarted then markFailed with the SQL message. */
   @Test
   public void testAbsentCreateFailsMarksFailed() throws SQLException {
+    // given
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.FAILED, 4)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.empty());
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
     doThrow(new SQLException("unique constraint violated")).when(statement).execute(CREATE_SQL);
 
+    // when
     builder.build(snapshot);
 
+    // then
     InOrder order = inOrder(dao, statement);
     order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(5));
     order.verify(statement).execute(CREATE_SQL);
@@ -199,6 +214,7 @@ public class TestDeferredIndexBuilder {
    */
   @Test
   public void testInvalidHappyPathPostgresLockTimeout() throws SQLException {
+    // given
     Statement stmtSet = mock(Statement.class);
     Statement stmtDrop = mock(Statement.class);
     Statement stmtCreate = mock(Statement.class);
@@ -211,8 +227,10 @@ public class TestDeferredIndexBuilder {
     when(dialect.indexDropStatements(any(), any())).thenReturn(List.of(DROP_SQL));
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
 
+    // when
     builder.build(snapshot);
 
+    // then
     verify(stmtSet).execute(LOCK_TIMEOUT_SQL);
     verify(stmtDrop).execute(DROP_SQL);
     verify(stmtCreate).execute(CREATE_SQL);
@@ -231,6 +249,7 @@ public class TestDeferredIndexBuilder {
   /** Dialect does not supply lock_timeout (Oracle/H2) — the SET is skipped; DROP + CREATE proceed; no reset. */
   @Test
   public void testInvalidNoLockTimeoutSkipsSet() throws SQLException {
+    // given
     Statement stmtDrop = mock(Statement.class);
     Statement stmtCreate = mock(Statement.class);
     when(connection.createStatement()).thenReturn(stmtDrop, stmtCreate);
@@ -240,8 +259,10 @@ public class TestDeferredIndexBuilder {
     when(dialect.indexDropStatements(any(), any())).thenReturn(List.of(DROP_SQL));
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
 
+    // when
     builder.build(snapshot);
 
+    // then
     InOrder order = inOrder(dao, stmtDrop, stmtCreate);
     order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(1));
     order.verify(stmtDrop).execute(DROP_SQL);
@@ -253,6 +274,7 @@ public class TestDeferredIndexBuilder {
   /** INVALID + DROP fails (e.g. lock timeout) — markFailed with the "could not drop" prefix; CREATE not attempted; lock_timeout still reset. */
   @Test
   public void testInvalidDropFailsMarksFailedWithPrefixAndDoesNotCreate() throws SQLException {
+    // given
     Statement stmtSet = mock(Statement.class);
     Statement stmtDrop = mock(Statement.class);
     Statement stmtReset = mock(Statement.class);
@@ -265,8 +287,10 @@ public class TestDeferredIndexBuilder {
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
     doThrow(new SQLException("canceling statement due to lock timeout")).when(stmtDrop).execute(DROP_SQL);
 
+    // when
     builder.build(snapshot);
 
+    // then
     verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(8));
     ArgumentCaptor<String> errMsg = ArgumentCaptor.forClass(String.class);
     verify(dao).markFailed(eq(TABLE), eq(INDEX), errMsg.capture());
@@ -283,6 +307,7 @@ public class TestDeferredIndexBuilder {
   /** INVALID + DROP succeeds + CREATE fails — markFailed with the raw SQL message (no prefix). */
   @Test
   public void testInvalidCreateAfterDropFailsMarksFailedWithRawMessage() throws SQLException {
+    // given
     Statement stmtDrop = mock(Statement.class);
     Statement stmtCreate = mock(Statement.class);
     when(connection.createStatement()).thenReturn(stmtDrop, stmtCreate);
@@ -293,8 +318,10 @@ public class TestDeferredIndexBuilder {
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
     doThrow(new SQLException("disk full")).when(stmtCreate).execute(CREATE_SQL);
 
+    // when
     builder.build(snapshot);
 
+    // then
     InOrder order = inOrder(dao, stmtDrop, stmtCreate);
     order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(2));
     order.verify(stmtDrop).execute(DROP_SQL);
@@ -311,6 +338,7 @@ public class TestDeferredIndexBuilder {
    */
   @Test
   public void testInvalidLockTimeoutSetFailsStillProceeds() throws SQLException {
+    // given
     Statement stmtSet = mock(Statement.class);
     Statement stmtDrop = mock(Statement.class);
     Statement stmtCreate = mock(Statement.class);
@@ -323,8 +351,10 @@ public class TestDeferredIndexBuilder {
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
     doThrow(new SQLException("permission denied")).when(stmtSet).execute(LOCK_TIMEOUT_SQL);
 
+    // when
     builder.build(snapshot);
 
+    // then
     verify(stmtDrop).execute(DROP_SQL);
     verify(stmtCreate).execute(CREATE_SQL);
     verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
@@ -343,13 +373,16 @@ public class TestDeferredIndexBuilder {
    */
   @Test
   public void testAutoCommitSetTrueAndRestoredWhenDialectRequires() throws SQLException {
+    // given
     when(dialect.deferredIndexBuildRequiresAutoCommit()).thenReturn(true);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.PENDING, 0)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.TRUE));
     when(connection.getAutoCommit()).thenReturn(false);
 
+    // when
     builder.build(snapshot);
 
+    // then
     InOrder order = inOrder(connection);
     order.verify(connection).getAutoCommit();
     order.verify(connection).setAutoCommit(true);
@@ -364,12 +397,15 @@ public class TestDeferredIndexBuilder {
    */
   @Test
   public void testAutoCommitNotTouchedWhenDialectDoesNotRequire() throws SQLException {
+    // given
     when(dialect.deferredIndexBuildRequiresAutoCommit()).thenReturn(false);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.PENDING, 0)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.TRUE));
 
+    // when
     builder.build(snapshot);
 
+    // then
     verify(connection, never()).getAutoCommit();
     verify(connection, never()).setAutoCommit(anyBoolean());
   }
@@ -378,8 +414,10 @@ public class TestDeferredIndexBuilder {
   /** Unexpected SQLException from getConnection propagates as RuntimeSqlException — not caught + persisted. */
   @Test
   public void testUnexpectedSqlExceptionPropagatesAsRuntimeSqlException() throws SQLException {
+    // given
     when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
+    // when / then
     RuntimeSqlException thrown = assertThrows(RuntimeSqlException.class, () -> builder.build(snapshot));
     assertTrue(thrown.getMessage().contains(TABLE + "." + INDEX));
     verify(dao, never()).markFailed(any(), any(), any());
@@ -393,9 +431,11 @@ public class TestDeferredIndexBuilder {
    */
   @Test
   public void testDaoFindByTableAndIndexThrowsPropagates() {
+    // given
     when(dao.findByTableAndIndex(TABLE, INDEX))
         .thenThrow(new RuntimeSqlException("registration-table connection broken", new SQLException("conn closed")));
 
+    // when / then
     RuntimeException thrown = assertThrows(RuntimeException.class, () -> builder.build(snapshot));
     assertTrue("expected the DAO failure to propagate; got: " + thrown.getMessage(),
         thrown.getMessage().contains("registration-table connection broken"));

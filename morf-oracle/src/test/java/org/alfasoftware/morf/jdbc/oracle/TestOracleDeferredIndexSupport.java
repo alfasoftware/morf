@@ -63,11 +63,14 @@ public class TestOracleDeferredIndexSupport {
   /** {@code USER_INDEXES.STATUS = 'VALID'} → {@code Optional.of(true)}. */
   @Test
   public void testIsIndexValidWhenStatusValidReturnsTrue() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getString(1)).thenReturn("VALID");
 
+    // when
     Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
+    // then
     assertEquals(Optional.of(Boolean.TRUE), result);
   }
 
@@ -75,11 +78,14 @@ public class TestOracleDeferredIndexSupport {
   /** {@code USER_INDEXES.STATUS = 'UNUSABLE'} → {@code Optional.of(false)}. */
   @Test
   public void testIsIndexValidWhenStatusUnusableReturnsFalse() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getString(1)).thenReturn("UNUSABLE");
 
+    // when
     Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
+    // then
     assertEquals(Optional.of(Boolean.FALSE), result);
   }
 
@@ -87,10 +93,13 @@ public class TestOracleDeferredIndexSupport {
   /** No matching row in {@code USER_INDEXES} → {@code Optional.empty()}. */
   @Test
   public void testIsIndexValidWhenNoRowReturnsEmpty() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(false);
 
+    // when
     Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
+    // then
     assertEquals(Optional.empty(), result);
   }
 
@@ -102,11 +111,14 @@ public class TestOracleDeferredIndexSupport {
    */
   @Test
   public void testIsIndexValidUppercasesIndexName() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getString(1)).thenReturn("VALID");
 
+    // when
     dialect.isIndexValid(connection, "Product", "MIXEDcase_Idx");
 
+    // then
     verify(statement).setString(1, "MIXEDCASE_IDX");
   }
 
@@ -114,8 +126,10 @@ public class TestOracleDeferredIndexSupport {
   /** Any {@link SQLException} propagates as {@link RuntimeSqlException} carrying the index name. */
   @Test
   public void testIsIndexValidWrapsSqlExceptionAsRuntimeSqlException() throws SQLException {
+    // given
     when(connection.prepareStatement(anyString())).thenThrow(new SQLException("ORA-12541"));
 
+    // when / then
     RuntimeSqlException ex = assertThrows(RuntimeSqlException.class,
         () -> dialect.isIndexValid(connection, "Product", "Product_Idx"));
     assertTrue(ex.getMessage().contains("Product_Idx"));
@@ -125,6 +139,7 @@ public class TestOracleDeferredIndexSupport {
   /** Oracle declines to gate lock-timeouts — its default behaviour already fail-fasts. */
   @Test
   public void testSetLockTimeoutSqlReturnsEmpty() {
+    // when / then
     assertEquals(Optional.empty(), dialect.setLockTimeoutSql(Duration.ofSeconds(10)));
   }
 
@@ -132,6 +147,7 @@ public class TestOracleDeferredIndexSupport {
   /** No reset needed when there's no SET. */
   @Test
   public void testResetLockTimeoutSqlReturnsEmpty() {
+    // when / then
     assertEquals(Optional.empty(), dialect.resetLockTimeoutSql());
   }
 
@@ -139,6 +155,7 @@ public class TestOracleDeferredIndexSupport {
   /** Oracle does not require autocommit for the build path -- DDL is implicitly committed. */
   @Test
   public void testDeferredIndexBuildDoesNotRequireAutoCommit() {
+    // when / then
     assertFalse(dialect.deferredIndexBuildRequiresAutoCommit());
   }
 }

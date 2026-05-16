@@ -39,13 +39,16 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testValidStepsWithVersionAnnotation() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(ValidStepWithVersion.class);
     steps.add(ValidStepMinimalVersion.class);
     steps.add(ValidStepComplexVersion.class);
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     Collection<Class<? extends UpgradeStep>> ordered = graph.orderedSteps();
     assertEquals("Should contain all three steps", 3, ordered.size());
   }
@@ -56,11 +59,14 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testValidStepsWithPackageName() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(org.alfasoftware.morf.upgrade.testupgradegraph.upgrade.v1_0.ValidPackageStep.class);
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     Collection<Class<? extends UpgradeStep>> ordered = graph.orderedSteps();
     assertEquals("Should contain the step", 1, ordered.size());
   }
@@ -71,14 +77,17 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testStepsOrderedBySequence() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(ValidStepComplexVersion.class);     // seq 4000
     steps.add(ValidStepWithVersion.class);        // seq 1000
     steps.add(ValidStepHighSequence.class);       // seq 9999
     steps.add(ValidStepMinimalVersion.class);     // seq 3000
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     List<Class<? extends UpgradeStep>> ordered = new ArrayList<>(graph.orderedSteps());
     assertEquals("First should be seq 1000", ValidStepWithVersion.class, ordered.get(0));
     assertEquals("Second should be seq 3000", ValidStepMinimalVersion.class, ordered.get(1));
@@ -92,10 +101,13 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testEmptyStepsCollection() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     assertThat("Should be empty", graph.orderedSteps(), empty());
   }
 
@@ -105,9 +117,11 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testMissingSequenceAnnotation() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepMissingSequence.class);
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     assertThat(e.getMessage(), containsString("does not have an @Sequence annotation"));
     assertThat(e.getMessage(), containsString("StepMissingSequence"));
@@ -119,10 +133,12 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testDuplicateSequenceNumbers() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(ValidStepWithVersion.class);    // seq 1000
     steps.add(StepDuplicateSequence.class);   // seq 1000
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     assertThat(e.getMessage(), containsString("share the same @Sequence annotation"));
     assertThat(e.getMessage(), containsString("[1000]"));
@@ -134,9 +150,11 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testInvalidVersionAnnotation() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepInvalidVersionFormat.class);
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     assertThat(e.getMessage(), containsString("invalid @Version annotation"));
     assertThat(e.getMessage(), containsString("StepInvalidVersionFormat"));
@@ -148,9 +166,11 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testRejectsVersionWithNoMinor() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepInvalidVersionNoMinor.class);
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     assertThat(e.getMessage(), containsString("invalid @Version annotation"));
   }
@@ -161,9 +181,11 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testRejectsVersionWithLeadingV() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepInvalidVersionLeadingV.class);
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     assertThat(e.getMessage(), containsString("invalid @Version annotation"));
   }
@@ -174,9 +196,11 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testInvalidPackageName() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepNoVersionInvalidPackage.class);
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     assertThat(e.getMessage(), containsString("not contained in a package named after the release version"));
     assertThat(e.getMessage(), containsString("StepNoVersionInvalidPackage"));
@@ -188,12 +212,14 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testMultipleValidationErrors() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepMissingSequence.class);
     steps.add(ValidStepWithVersion.class);      // seq 1000
     steps.add(StepDuplicateSequence.class);     // seq 1000
     steps.add(StepInvalidVersionFormat.class);
 
+    // when / then
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     String message = e.getMessage();
     assertThat(message, containsString("does not have an @Sequence annotation"));
@@ -207,14 +233,17 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testVersionAnnotationValidFormats() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(ValidStepMinimalVersion.class);     // "1.0"
     steps.add(ValidStepWithVersion.class);        // "1.0.0"
     steps.add(ValidStepComplexVersion.class);     // "5.3.20a"
     steps.add(ValidStepMultiSegmentVersion.class); // "10.20.30.40"
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     assertEquals("All valid formats should be accepted", 4, graph.orderedSteps().size());
   }
 
@@ -224,13 +253,16 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testSequenceOrderingBoundaryValues() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(ValidStepHighSequence.class);       // seq 9999
     steps.add(ValidStepWithVersion.class);        // seq 1000
     steps.add(ValidStepMinimalVersion.class);     // seq 3000
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     List<Class<? extends UpgradeStep>> ordered = new ArrayList<>(graph.orderedSteps());
     assertEquals("Should be sorted in ascending order", 3, ordered.size());
     assertEquals("First", ValidStepWithVersion.class, ordered.get(0));
@@ -244,12 +276,15 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testOrderedStepsReturnsSortedCollection() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(ValidStepComplexVersion.class);
     steps.add(ValidStepWithVersion.class);
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     Collection<Class<? extends UpgradeStep>> ordered = graph.orderedSteps();
     List<Class<? extends UpgradeStep>> orderedList = new ArrayList<>(ordered);
 
@@ -263,11 +298,14 @@ public class TestUpgradeGraph {
    */
   @Test
   public void testComplexValidPackageNames() {
+    // given
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(org.alfasoftware.morf.upgrade.testupgradegraph.upgrade.v10_20_30a.ComplexValidPackageStep.class);
 
+    // when
     UpgradeGraph graph = new UpgradeGraph(steps);
 
+    // then
     assertEquals("Should contain the step", 1, graph.orderedSteps().size());
   }
 

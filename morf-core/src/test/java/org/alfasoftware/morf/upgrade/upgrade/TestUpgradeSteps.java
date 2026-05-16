@@ -40,21 +40,31 @@ public class TestUpgradeSteps {
 
     @Test
     public void testCreateDeployedViews() {
+        // given
         CreateDeployedViews upgradeStep = new CreateDeployedViews();
         testUpgradeStep(upgradeStep);
         SchemaEditor schema = mock(SchemaEditor.class);
         DataEditor dataEditor = mock(DataEditor.class);
+
+        // when
         upgradeStep.execute(schema, dataEditor);
+
+        // then
         verify(schema, times(1)).addTable(any());
     }
 
     @Test
     public void testRecreateOracleSequences() {
+        // given
         RecreateOracleSequences upgradeStep = new RecreateOracleSequences();
         testUpgradeStep(upgradeStep);
         SchemaEditor schema = mock(SchemaEditor.class);
         DataEditor dataEditor = mock(DataEditor.class);
+
+        // when
         upgradeStep.execute(schema, dataEditor);
+
+        // then
         verifyNoInteractions(schema);
     }
 

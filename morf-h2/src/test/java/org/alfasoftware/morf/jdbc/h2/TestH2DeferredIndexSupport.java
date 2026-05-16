@@ -63,10 +63,13 @@ public class TestH2DeferredIndexSupport {
   /** Index present in {@code INFORMATION_SCHEMA.INDEXES} → {@code Optional.of(true)}. */
   @Test
   public void testIsIndexValidWhenIndexPresentReturnsTrue() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(true);
 
+    // when
     Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
+    // then
     assertEquals(Optional.of(Boolean.TRUE), result);
   }
 
@@ -74,10 +77,13 @@ public class TestH2DeferredIndexSupport {
   /** Index absent → {@code Optional.empty()} (H2 has no INVALID state to surface). */
   @Test
   public void testIsIndexValidWhenIndexAbsentReturnsEmpty() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(false);
 
+    // when
     Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
+    // then
     assertEquals(Optional.empty(), result);
   }
 
@@ -89,10 +95,13 @@ public class TestH2DeferredIndexSupport {
    */
   @Test
   public void testIsIndexValidUppercasesIndexName() throws SQLException {
+    // given
     when(resultSet.next()).thenReturn(true);
 
+    // when
     dialect.isIndexValid(connection, "Product", "MIXEDcase_Idx");
 
+    // then
     verify(statement).setString(1, "MIXEDCASE_IDX");
   }
 
@@ -100,8 +109,10 @@ public class TestH2DeferredIndexSupport {
   /** Any {@link SQLException} propagates as {@link RuntimeSqlException} carrying the index name. */
   @Test
   public void testIsIndexValidWrapsSqlExceptionAsRuntimeSqlException() throws SQLException {
+    // given
     when(connection.prepareStatement(anyString())).thenThrow(new SQLException("conn closed"));
 
+    // when / then
     RuntimeSqlException ex = assertThrows(RuntimeSqlException.class,
         () -> dialect.isIndexValid(connection, "Product", "Product_Idx"));
     assertTrue(ex.getMessage().contains("Product_Idx"));
@@ -111,6 +122,7 @@ public class TestH2DeferredIndexSupport {
   /** H2 declines to gate lock-timeouts — its 1s default is short enough; atomic CREATE means no contention. */
   @Test
   public void testSetLockTimeoutSqlReturnsEmpty() {
+    // when / then
     assertEquals(Optional.empty(), dialect.setLockTimeoutSql(Duration.ofSeconds(10)));
   }
 
@@ -118,6 +130,7 @@ public class TestH2DeferredIndexSupport {
   /** No reset needed when there's no SET. */
   @Test
   public void testResetLockTimeoutSqlReturnsEmpty() {
+    // when / then
     assertEquals(Optional.empty(), dialect.resetLockTimeoutSql());
   }
 
@@ -125,6 +138,7 @@ public class TestH2DeferredIndexSupport {
   /** H2 does not require autocommit for the build path -- atomic CREATE, DDL implicitly committed. */
   @Test
   public void testDeferredIndexBuildDoesNotRequireAutoCommit() {
+    // when / then
     assertFalse(dialect.deferredIndexBuildRequiresAutoCommit());
   }
 }
