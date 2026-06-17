@@ -18,6 +18,8 @@ package org.alfasoftware.morf.metadata;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.google.common.collect.Iterables;
 
 
@@ -47,6 +49,26 @@ class TableBean implements Table {
    * Indicates whether the table is temporary.
    */
   private final boolean      isTemporary;
+
+  /**
+   * The column used to partition by.
+   */
+  protected String partitionColumn;
+
+  /**
+   * The rule to use to partition by on the table.
+   */
+  protected PartitioningRule partitioningRule;
+
+  /**
+   * The table partitions collection on the table.
+   */
+  protected Partitions partitions;
+
+  /**
+   * The table to use as an example scheme for partitioning this one.
+   */
+  protected String partitionedLikeTable;
 
   /**
    * Creates a table bean.
@@ -164,6 +186,17 @@ class TableBean implements Table {
     return isTemporary;
   }
 
+  @Override
+  public boolean isPartitioned() {
+    return !StringUtils.isEmpty(partitionColumn);
+  }
+
+
+  @Override
+  public PartitioningRule partitioningRule() { return partitioningRule; }
+
+  @Override
+  public Partitions partitions() { return partitions; }
 
   @Override
   public String toString() {

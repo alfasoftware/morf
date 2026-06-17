@@ -15,7 +15,9 @@
 
 package org.alfasoftware.morf.upgrade.adapt;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -24,12 +26,11 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Table;
 
 /**
  * Test the functionality provided by {@link TableSetSchema}

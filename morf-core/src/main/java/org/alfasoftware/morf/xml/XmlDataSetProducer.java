@@ -43,13 +43,17 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Partition;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.PartitioningRuleType;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
@@ -423,10 +427,26 @@ public class XmlDataSetProducer implements DataSetProducer {
      */
     private final List<Index>  indexes = new LinkedList<>();
 
+    private Partitions partitions;
+
     /**
      * Holds the table name.
      */
     private final String       tableName;
+
+
+    @Override
+    public boolean isPartitioned() { return partitions != null; }
+
+    @Override
+    public PartitioningRule partitioningRule() {
+      return partitions.partitioningRule();
+    }
+
+    @Override
+    public Partitions partitions() {
+      return partitions;
+    }
 
 
     /**
@@ -455,6 +475,10 @@ public class XmlDataSetProducer implements DataSetProducer {
 
           if (XmlDataSetNode.INDEX_NODE.equals(nextTag)) {
             indexes.add(new PullProcessorIndex());
+          }
+
+          if (XmlDataSetNode.PARTITIONS_NODE.equals(nextTag)) {
+            partitions = new PullProcessorPartitions();
           }
         }
 
@@ -683,6 +707,12 @@ public class XmlDataSetProducer implements DataSetProducer {
         return autonumberStart == null ? 0 : autonumberStart;
       }
 
+      @Override
+      public boolean isPartitioned() {
+        //TODO: implement this method to read whether the table is partitioned from XML
+        return false;
+      }
+
 
       @Override
       public String toString() {
@@ -741,6 +771,18 @@ public class XmlDataSetProducer implements DataSetProducer {
         return isUnique;
       }
 
+      @Override
+      public boolean isGlobalPartitioned() {
+        //TODO: support global index part spec reading from XML
+        return false;
+      }
+
+      @Override
+      public boolean isLocalPartitioned() {
+        //TODO: support local index part spec reading from XML
+        return false;
+      }
+
 
       /**
        * @see org.alfasoftware.morf.metadata.Index#columnNames()
@@ -757,6 +799,84 @@ public class XmlDataSetProducer implements DataSetProducer {
       }
     }
 
+    /**
+     * Implementation of {@link Partitions} that can read from the pull processor.
+     *
+     * @author Copyright (c) Alfa Financial Software 2010
+     */
+    private class PullProcessorPartitions implements Partitions {
+      private String columnName;
+      private Column column;
+      private PartitioningRuleType partitioningRuleType;
+      private List<Partition> partitions = new ArrayList<>();
+
+      public PullProcessorPartitions() {
+        super();
+        columnName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.COLUMN_NODE);
+        column = columns.stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
+
+        if (column != null) {
+          int colIndex = columns.indexOf(column);
+          columns.remove(column);
+          columns.add(colIndex, SchemaUtils.column(column).partitioned());
+        }
+
+        String partitioningType = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.TYPE_ATTRIBUTE);
+        switch (partitioningType) {
+          case "hash":
+            partitioningRuleType = PartitioningRuleType.hashPartitioning;
+            break;
+          case "range":
+            partitioningRuleType = PartitioningRuleType.rangePartitioning;
+            break;
+          default:
+            break;
+        }
+
+        for (String nextTag = readNextTagInsideParent(XmlDataSetNode.PARTITIONS_NODE); nextTag != null; nextTag = readNextTagInsideParent(XmlDataSetNode.PARTITIONS_NODE)) {
+          if (nextTag.equals(XmlDataSetNode.PARTITION_NODE)) {
+            String partitionName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
+            Partition partition = null;
+            if (partitioningRuleType == PartitioningRuleType.hashPartitioning) {
+              SchemaUtils.PartitionByHashBuilder partitionByHash = SchemaUtils.partitionByHash(partitionName);
+              String divider = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.DIVIDER_ATTRIBUTE);
+              String remainder = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.REMAINDER_ATTRIBUTE);
+              partition = partitionByHash.divider(divider).remainder(remainder);
+            } else if (partitioningRuleType == PartitioningRuleType.rangePartitioning) {
+              SchemaUtils.PartitionByRangeBuilder partitionByRange = SchemaUtils.partitionByRange(partitionName);
+              String start = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.START_ATTRIBUTE);
+              String end = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.END_ATTRIBUTE);
+              partition = partitionByRange.start(start).end(end);
+            }
+            if (partition != null) {
+              partitions.add(partition);
+            }
+            readNextTagInsideParent(XmlDataSetNode.PARTITION_NODE);
+          }
+        }
+      }
+
+      @Override
+      public Column column() {
+        return column;
+      }
+
+      @Override
+      public PartitioningRuleType partitioningType() {
+        return partitioningRuleType;
+      }
+
+      @Override
+      public PartitioningRule partitioningRule() {
+        return null;
+      }
+
+      @Override
+      public List<Partition> getPartitions() {
+        return partitions;
+      }
+    }
+
 
     /**
      * {@inheritDoc}
@@ -769,6 +889,7 @@ public class XmlDataSetProducer implements DataSetProducer {
     }
 
   }
+
 
   /**
    * Provides on demand XML reading as a record iterator.

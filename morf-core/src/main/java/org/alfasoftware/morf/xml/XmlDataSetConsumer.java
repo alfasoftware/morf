@@ -29,6 +29,11 @@ import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Partition;
+import org.alfasoftware.morf.metadata.PartitionByHash;
+import org.alfasoftware.morf.metadata.PartitionByRange;
+import org.alfasoftware.morf.metadata.PartitioningRuleType;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
@@ -298,7 +303,71 @@ public class XmlDataSetConsumer implements DataSetConsumer {
       emptyElement(contentHandler, XmlDataSetNode.INDEX_NODE, buildIndexAttributes(index));
     }
 
+    if (table.isPartitioned()) {
+      contentHandler.startElement(XmlDataSetNode.URI, XmlDataSetNode.PARTITIONS_NODE, XmlDataSetNode.PARTITIONS_NODE, buildPartitionsAttribute(table.partitions()));
+      for (Partition partition : table.partitions().getPartitions()) {
+        emptyElement(contentHandler, XmlDataSetNode.PARTITION_NODE, buildPartitionAttribute(table.partitions(), partition));
+      }
+      contentHandler.endElement(XmlDataSetNode.URI, XmlDataSetNode.PARTITIONS_NODE, XmlDataSetNode.PARTITIONS_NODE);
+    }
+
     contentHandler.endElement(XmlDataSetNode.URI, XmlDataSetNode.METADATA_NODE, XmlDataSetNode.METADATA_NODE);
+  }
+
+  private Attributes buildPartitionAttribute(Partitions partitions, Partition partition) {
+    AttributesImpl partitionAttributes = new AttributesImpl();
+
+    partitionAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE, XmlDataSetNode.NAME_ATTRIBUTE,
+      XmlDataSetNode.STRING_TYPE, partition.name());
+
+    switch (partitions.partitioningType()) {
+      case rangePartitioning:
+        PartitionByRange partitionByRange = (PartitionByRange) partition;
+        partitionAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.START_ATTRIBUTE, XmlDataSetNode.START_ATTRIBUTE,
+          XmlDataSetNode.STRING_TYPE, partitionByRange.start());
+        partitionAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.END_ATTRIBUTE, XmlDataSetNode.END_ATTRIBUTE,
+          XmlDataSetNode.STRING_TYPE, partitionByRange.end());
+        break;
+      case hashPartitioning:
+        PartitionByHash partitionByHash = (PartitionByHash) partition;
+        partitionAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.DIVIDER_ATTRIBUTE, XmlDataSetNode.DIVIDER_ATTRIBUTE,
+          XmlDataSetNode.STRING_TYPE, partitionByHash.divider());
+        partitionAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.REMAINDER_ATTRIBUTE, XmlDataSetNode.REMAINDER_ATTRIBUTE,
+          XmlDataSetNode.STRING_TYPE, partitionByHash.remainder());
+        break;
+      default:
+        break;
+    }
+
+    return partitionAttributes;
+  }
+
+  private Attributes buildPartitionsAttribute(Partitions partitions) {
+    AttributesImpl partitionsAttributes = new AttributesImpl();
+
+    partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.COLUMN_NODE, XmlDataSetNode.COLUMN_NODE,
+      XmlDataSetNode.STRING_TYPE, partitions.column().getName());
+
+    String partitioningType = "";
+    switch (partitions.partitioningType()) {
+      case rangePartitioning:
+        partitioningType = "range";
+        break;
+      case hashPartitioning:
+        partitioningType = "hash";
+        break;
+      default:
+        break;
+    }
+
+    partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.TYPE_ATTRIBUTE, XmlDataSetNode.TYPE_ATTRIBUTE,
+      XmlDataSetNode.STRING_TYPE, partitioningType);
+    if (partitions.partitioningType().equals(PartitioningRuleType.hashPartitioning)) {
+      partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.HASH_FUNCTION_ATTRIBUTE, XmlDataSetNode.HASH_FUNCTION_ATTRIBUTE,
+        XmlDataSetNode.STRING_TYPE, "MOD");
+    }
+
+    return partitionsAttributes;
   }
 
   /**

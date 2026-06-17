@@ -575,6 +575,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Test
   public void testAddIndexWithExistingPRFIndex() {
+    boolean isOracle = connectionResources.getDatabaseType().equals("ORACLE");
     Table tableWithNewAddIndex = table("BasicTableWithIndex")
       .columns(
         column("stringCol", DataType.STRING, 20).primaryKey(),
@@ -590,7 +591,12 @@ public class TestDatabaseUpgradeIntegration {
 
     Schema reAdded = replaceTablesInSchema(tableWithNewAddIndex);
 
-    verifyUpgrade(reAdded, AddIndex.class);
+    if (isOracle) {
+      RuntimeSqlException sqlException = assertThrows(RuntimeSqlException.class, () -> verifyUpgrade(reAdded, AddIndex.class));
+      assertTrue("Oracle exception ORA-01408: such column list already indexed", sqlException.getMessage().contains("[1408]"));
+    } else {
+      verifyUpgrade(reAdded, AddIndex.class);
+    }
   }
 
 

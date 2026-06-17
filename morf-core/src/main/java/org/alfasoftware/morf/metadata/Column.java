@@ -79,6 +79,12 @@ public interface Column extends ColumnType {
 
 
   /**
+   * @return True if the column is the partition by source
+   */
+  boolean isPartitioned();
+
+
+  /**
    * Helper for {@link Object#toString()} implementations.
    *
    * @return String representation of the column.

@@ -382,7 +382,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
-            String currentTableName = currentTable.getName().toUpperCase();
+            String currentTableName = currentTable.getName();
             if (ignoredIndexes.containsKey(currentTableName)) {
               ignoredIndexes.compute(currentTableName, (k, tableIgnoredIndexes) -> {
                 List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<>(tableIgnoredIndexes);
@@ -412,6 +412,16 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           public boolean isUnique() {
             return unique;
           }
+
+            @Override
+            public boolean isGlobalPartitioned() {
+              return false;
+            }
+
+            @Override
+            public boolean isLocalPartitioned() {
+              return false;
+            }
 
 
           @Override
@@ -471,7 +481,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index lastIndex = null;
-            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toUpperCase())) {
+            for (Index currentIndex : ignoredIndexes.get(currentTable.getName())) {
               if (currentIndex.getName().equalsIgnoreCase(indexName)) {
                 lastIndex = currentIndex;
                 break;
@@ -1116,6 +1126,11 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     @Override
     public int getAutoNumberStart() {
       return autoIncrementFrom;
+    }
+
+    @Override
+    public boolean isPartitioned() {
+      return false;
     }
 
     @Override

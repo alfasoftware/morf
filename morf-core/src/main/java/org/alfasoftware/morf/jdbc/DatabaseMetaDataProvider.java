@@ -28,16 +28,20 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -116,6 +120,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
+  protected Supplier<Set<String>> ignoredTables = Suppliers.memoize(this::getIgnoredTables);
+  protected Supplier<Set<String>> partitionedTables = Suppliers.memoize(this::getPartitionedTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -148,6 +154,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  protected Set<String> getIgnoredTables() { return new HashSet<>(); }
+
+  protected Set<String> getPartitionedTables() { return new HashSet<>(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -306,6 +315,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
           }
         }
+        // add partitioned tables to list
+        partitionedTables.get().forEach(table -> {
+          RealName partionedTableName = createRealName(table, table);
+          tableNameMappings.put(partionedTableName, partionedTableName);
+        });
 
         long end = System.currentTimeMillis();
         Map<AName, RealName> tableNameMap = tableNameMappings.build();
@@ -587,7 +601,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sets column default value.
-   *
    * Note: Uses an empty string for any column other than version.
    * Database-schema level default values are not supported by ALFA's domain model
    * hence we don't want to include a default value in the definition of tables.
@@ -677,6 +690,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
     final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
     final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName, false));
+    final Supplier<Partitions> partitions = Suppliers.memoize(() -> loadTablePartitions(realTableName));
 
     return new Table() {
       @Override
@@ -697,6 +711,19 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       @Override
       public boolean isTemporary() {
         return false;
+      }
+
+      @Override
+      public boolean isPartitioned() { return partitions.get() != null; }
+
+      @Override
+      public PartitioningRule partitioningRule() {
+        return partitions.get() == null ? null : partitions.get().partitioningRule();
+      }
+
+      @Override
+      public Partitions partitions() {
+        return partitions.get();
       }
     };
   }
@@ -854,6 +881,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     catch (SQLException e) {
       throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", e);
     }
+  }
+
+
+  protected Partitions loadTablePartitions(RealName tableName) {
+   return null;
   }
 
 
@@ -1112,8 +1144,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Build the SQL to return sequence information from the metadata.
-   * @param schemaName
-   * @return
+   * @param schemaName the schema name
+   * @return the sql for the sequence
    */
   protected abstract String buildSequenceSql(String schemaName);
 
@@ -1379,6 +1411,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
 
     @Override
+    public boolean isPartitioned() {
+      return false;
+    }
+
+    @Override
     public String getDefaultValue() {
       throw new UnexpectedDataTypeException(this.toString());
     }
@@ -1422,6 +1459,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
     @Override
     public ColumnBuilder dataType(DataType dataType) {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder partitioned() {
       return this;
     }
   }

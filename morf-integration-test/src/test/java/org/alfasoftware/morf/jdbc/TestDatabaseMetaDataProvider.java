@@ -25,7 +25,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.either;
@@ -33,7 +32,10 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -67,6 +69,7 @@ import org.junit.Test;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.inject.Inject;
 
 import net.jcip.annotations.NotThreadSafe;
@@ -131,7 +134,12 @@ public class TestDatabaseMetaDataProvider {
           column("bigIntegerCol", DataType.BIG_INTEGER).defaultValue("8"),
           column("booleanCol", DataType.BOOLEAN).defaultValue("1"),
           column("integerTenCol", DataType.INTEGER).defaultValue("17"),
-          column("dateCol", DataType.DATE).defaultValue("2020-01-01"))
+          column("dateCol", DataType.DATE).defaultValue("2020-01-01")),
+      table("WithPartition")
+        .columns(
+          SchemaUtils.idColumn(),
+          column("stringCol", DataType.STRING, 20)
+          )
     ),
     schema(
       view("ViewWithTypes", select(field("primaryStringCol"), field("id")).from("WithTypes").crossJoin(tableRef("WithDefaults"))),
@@ -208,6 +216,7 @@ public class TestDatabaseMetaDataProvider {
         tableNameEqualTo("WithTypes"),
         tableNameEqualTo("WithDefaults"),
         tableNameEqualTo("WithLobs"),
+        tableNameEqualTo("WithPartition"),
         equalToIgnoringCase("WithTimestamp") // can read table names even if they contain unsupported columns
       )));
 
@@ -216,6 +225,7 @@ public class TestDatabaseMetaDataProvider {
         tableNameMatcher("WithTypes"),
         tableNameMatcher("WithDefaults"),
         tableNameMatcher("WithLobs"),
+        tableNameMatcher("WithPartition"),
         propertyMatcher(Table::getName, "name", equalToIgnoringCase("WithTimestamp")) // can read table names even if they contain unsupported columns
       )));
     }
@@ -284,7 +294,7 @@ public class TestDatabaseMetaDataProvider {
       ));
 
       schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
-        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
+        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes"), containsInAnyOrder(ImmutableList.of(
           indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
       ))));
     }
@@ -315,6 +325,36 @@ public class TestDatabaseMetaDataProvider {
       ));
 
       assertThat(table.indexes(), empty());
+    }
+  }
+
+
+  @Test
+  public void testTableWithPartition() throws SQLException {
+    boolean isPostgres = databaseType.equals("PGSQL");
+    // RE-CREATE table with two partitions on table WithPartition
+    try (Connection connection = database.getDataSource().getConnection()) {
+      if (isPostgres) {
+        String tableSchema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
+        connection.createStatement().executeUpdate("DROP TABLE " + tableSchema + "WithPartition");
+        connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition(id numeric(19) NOT NULL, stringCol VARCHAR(20)) PARTITION BY RANGE (id)");
+        connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition_p0 PARTITION OF " + tableSchema + "WithPartition FOR VALUES FROM (0) TO (10000)");
+        connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition_p1 PARTITION OF " + tableSchema + "WithPartition FOR VALUES FROM (10000) TO (99999)");
+      }
+    }
+
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithPartition"));
+
+      if (isPostgres) {
+        UncheckedExecutionException uncheckedExecutionException = assertThrows(UncheckedExecutionException.class, () -> schemaResource.getTable("WithPartition_p0"));
+        assertTrue("partition must not be found on getTable", uncheckedExecutionException.getMessage().contains("Table [WithPartition_p0/*] not found."));
+
+        Table table = schemaResource.getTable("WithPartition");
+        assertEquals("table must have 2 columns", 2, table.columns().size());
+        assertEquals("first column must match", "id", table.columns().get(0).getName());
+        assertEquals("second column column must match", "stringcol", table.columns().get(1).getName());
+      }
     }
   }
 

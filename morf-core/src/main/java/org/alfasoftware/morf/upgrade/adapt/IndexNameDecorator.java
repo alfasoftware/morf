@@ -58,6 +58,16 @@ public class IndexNameDecorator implements Index {
     return index.isUnique();
   }
 
+  @Override
+  public boolean isGlobalPartitioned() {
+    return false;
+  }
+
+  @Override
+  public boolean isLocalPartitioned() {
+    return false;
+  }
+
   /**
    * @see org.alfasoftware.morf.metadata.Index#getName()
    */
