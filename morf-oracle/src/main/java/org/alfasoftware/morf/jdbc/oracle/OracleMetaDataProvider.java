@@ -204,9 +204,6 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           String columnComment = resultSet.getString(4);
           String dataTypeName = resultSet.getString(5);
 
-          if (isSystemTable(tableName))
-            continue;
-
           try {
             Integer dataLength;
             if (dataTypeName.contains("CHAR")) {

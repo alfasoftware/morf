@@ -16,6 +16,9 @@
 package org.alfasoftware.morf.jdbc;
 
 import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.DATABASE_MINOR_VERSION;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.DATABASE_PRODUCT_VERSION;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
@@ -42,6 +45,7 @@ import static org.junit.Assert.fail;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -59,6 +63,9 @@ import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Level;
 import org.hamcrest.FeatureMatcher;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
@@ -155,6 +162,10 @@ public class TestDatabaseMetaDataProvider {
 
   @Before
   public void before() throws SQLException {
+    Log log =  LogFactory.getLog(DatabaseMetaDataProvider.class);
+    if (log instanceof org.apache.commons.logging.impl.Log4JLogger) {
+      ((org.apache.commons.logging.impl.Log4JLogger)log).getLogger().setLevel(Level.DEBUG);
+    }
 
     databaseType = database.getDatabaseType();
 
@@ -298,10 +309,12 @@ public class TestDatabaseMetaDataProvider {
 
         // open schema resource again to re-read index definitions
         try (SchemaResource schemaResource = database.openSchemaResource()) {
-          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata -> {
+              assertFalse("repeat read of ignored indexes for coverage", additionalMetadata.ignoredIndexes().isEmpty());
               assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
                   indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
-              ))));
+              )));
+        });
         }
         break;
       case "ORACLE":
@@ -310,10 +323,12 @@ public class TestDatabaseMetaDataProvider {
 
         // open schema resource again to re-read index definitions
         try (SchemaResource schemaResource = database.openSchemaResource()) {
-          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
-              assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toUpperCase()), containsInAnyOrder(ImmutableList.of(
-                  indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
-              ))));
+          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata -> {
+            assertFalse("repeat read of ignored indexes for coverage", additionalMetadata.ignoredIndexes().isEmpty());
+            assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toUpperCase()), containsInAnyOrder(ImmutableList.of(
+                indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+            )));
+          });
         }
         break;
       default:
@@ -522,6 +537,35 @@ public class TestDatabaseMetaDataProvider {
     }
     catch (RuntimeException e) {
       assertThat(e.getMessage(), equalToIgnoringCase("Exception copying table [WITHTIMESTAMP]"));
+    }
+  }
+
+
+  @Test
+  public void testDatabaseInformation() {
+    try (Connection connection = this.database.getDataSource().getConnection()) {
+      Schema schema = DatabaseType.Registry.findByIdentifier(database.getDatabaseType()).openSchema(connection, database.getDatabaseName(), database.getSchemaName());
+
+      Map<String, String> databaseInformation = ((DatabaseMetaDataProvider) schema).getDatabaseInformation();
+      assertTrue(databaseInformation.containsKey(DATABASE_PRODUCT_VERSION));
+      assertTrue(databaseInformation.containsKey(DATABASE_MAJOR_VERSION));
+      assertTrue(databaseInformation.containsKey(DATABASE_MINOR_VERSION));
+    }
+    catch (RuntimeException | SQLException e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("Exception copying table [WITHTIMESTAMP]"));
+    }
+  }
+
+
+  @Test
+  public void testSequenceExists() {
+    try (Connection connection = this.database.getDataSource().getConnection()) {
+      Schema schema = DatabaseType.Registry.findByIdentifier(database.getDatabaseType()).openSchema(connection, database.getDatabaseName(), database.getSchemaName());
+
+      assertFalse(schema.sequenceExists("NonExisting_SEQ"));
+    }
+    catch (RuntimeException | SQLException e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("Exception with sequence exists."));
     }
   }
 
