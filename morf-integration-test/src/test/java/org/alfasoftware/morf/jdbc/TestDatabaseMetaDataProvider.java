@@ -33,7 +33,9 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -56,6 +58,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.hamcrest.FeatureMatcher;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
@@ -87,6 +90,8 @@ public class TestDatabaseMetaDataProvider {
   @Inject
   private ConnectionResources database;
 
+  @Inject
+  private SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
   private final Schema schema = schema(
     schema(
@@ -282,11 +287,89 @@ public class TestDatabaseMetaDataProvider {
         indexMatcher(
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
+    }
 
-      schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
-        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
-          indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
-      ))));
+    SqlScriptExecutor sqlExecutor;
+
+    switch (database.sqlDialect().getDatabaseType().identifier()) {
+      case "PGSQL":
+        sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+        sqlExecutor.execute("CREATE INDEX WithTypes_PRF2 ON " + database.getSchemaName() + ".WithTypes (LENGTH(primaryStringCol))");
+
+        // open schema resource again to re-read index definitions
+        try (SchemaResource schemaResource = database.openSchemaResource()) {
+          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+              assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
+                  indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+              ))));
+        }
+        break;
+      case "ORACLE":
+        sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+        sqlExecutor.execute("CREATE INDEX WithTypes_PRF2 ON " + database.getSchemaName() + ".WithTypes (LENGTH(primaryStringCol))");
+
+        // open schema resource again to re-read index definitions
+        try (SchemaResource schemaResource = database.openSchemaResource()) {
+          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+              assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toUpperCase()), containsInAnyOrder(ImmutableList.of(
+                  indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+              ))));
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+
+  /**
+   * Validates that the openSchemaResources throws an exception when an invalid expression index that is not a
+   * performance index exists on a table.
+   */
+  @Test
+  public void testTableWithTypesWithInvalidExpressionIndexThrowsException() {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithTypes"));
+      Table table = schemaResource.getTable("WithTypes");
+
+      assertThat(table.isTemporary(), is(false));
+      assertThat(table.getName(), tableNameEqualTo("WithTypes"));
+
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+          columnMatcher(
+              column("primaryStringCol", DataType.STRING, 15).primaryKey()),
+          columnMatcher(
+              column("primaryBigIntegerCol", DataType.BIG_INTEGER).primaryKey()))
+      ));
+
+      assertThat(table.indexes(), containsInAnyOrder(ImmutableList.of(
+          indexMatcher(
+              index("WithTypes_1").columns("booleanCol", "dateCol")),
+          indexMatcher(
+              index("NaturalKey").columns("decimalElevenCol").unique()))
+      ));
+    }
+
+    SqlScriptExecutor sqlExecutor;
+
+    switch(database.sqlDialect().getDatabaseType().identifier()) {
+      case "PGSQL":
+      case "ORACLE":
+        sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+        sqlExecutor.execute("CREATE INDEX WithTypes_2 ON " + database.getSchemaName() + ".WithTypes (LENGTH(primaryStringCol))");
+
+        // open schema resource again to re-read index definitions and throw exception due to invalid index
+        assertThrows(IllegalArgumentException.class, () -> {
+          try (SchemaResource schemaResource = database.openSchemaResource()) {
+            schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+                assertEquals(0, additionalMetadata.ignoredIndexes().size()));
+          }
+        });
+
+        sqlExecutor.execute("DROP INDEX WithTypes_2");
+        break;
+      default:
+        break;
     }
   }
 

@@ -342,6 +342,7 @@ public class TestInlineTableUpgrader {
     // given
     ChangeIndex changeIndex = mock(ChangeIndex.class);
     given(changeIndex.apply(schema)).willReturn(schema);
+    when(changeIndex.getTableName()).thenReturn(ID_TABLE_NAME);
 
     // when
     upgrader.visit(changeIndex);
@@ -350,6 +351,47 @@ public class TestInlineTableUpgrader {
     verify(changeIndex).apply(schema);
     verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection()); // index drop and index deployment
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.ChangeIndex)}.
+   */
+  @Test
+  public void testVisitChangeIndexWithPRFIndex() {
+    // given
+    Index index1 = mock(Index.class);
+    when(index1.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(index1.columnNames()).thenReturn(Collections.singletonList("column_0"));
+    Index index2 = mock(Index.class);
+    when(index2.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(index2.columnNames()).thenReturn(Collections.singletonList("column_1"));
+
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(Collections.singletonList("column_1"));
+    when(indexPrf.isUnique()).thenReturn(false);
+    Index indexPrf1 = mock(Index.class);
+    when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
+    when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
+    when(indexPrf1.isUnique()).thenReturn(true);
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    when(changeIndex.getFromIndex()).thenReturn(index1);
+    when(changeIndex.getToIndex()).thenReturn(index2);
+    when(changeIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    given(changeIndex.apply(schema)).willReturn(schema);
+
+    upgradeConfigAndContext.setIgnoredIndexes(Map.of(ID_TABLE_NAME, List.of(indexPrf, indexPrf1)));
+
+    // when
+    upgrader.visit(changeIndex);
+
+    // then
+    verify(changeIndex).apply(schema);
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), eq(index1));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
     verify(sqlStatementWriter, times(2)).writeSql(anyCollection()); // index drop and index deployment
   }
 

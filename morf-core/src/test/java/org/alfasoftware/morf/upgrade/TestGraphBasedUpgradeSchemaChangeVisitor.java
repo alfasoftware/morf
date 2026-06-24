@@ -273,6 +273,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     ChangeIndex changeIndex = mock(ChangeIndex.class);
     when(changeIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(changeIndex.getTableName()).thenReturn("TABLE");
     when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
