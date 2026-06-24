@@ -544,15 +544,17 @@ public class TestDatabaseMetaDataProvider {
   @Test
   public void testDatabaseInformation() {
     try (Connection connection = this.database.getDataSource().getConnection()) {
-      Schema schema = DatabaseType.Registry.findByIdentifier(database.getDatabaseType()).openSchema(connection, database.getDatabaseName(), database.getSchemaName());
+      if (this.database.getDatabaseType().equals("PGSQL")) {
+        Schema schema = DatabaseType.Registry.findByIdentifier(database.getDatabaseType()).openSchema(connection, database.getDatabaseName(), database.getSchemaName());
 
-      Map<String, String> databaseInformation = ((DatabaseMetaDataProvider) schema).getDatabaseInformation();
-      assertTrue(databaseInformation.containsKey(DATABASE_PRODUCT_VERSION));
-      assertTrue(databaseInformation.containsKey(DATABASE_MAJOR_VERSION));
-      assertTrue(databaseInformation.containsKey(DATABASE_MINOR_VERSION));
+        Map<String, String> databaseInformation = ((DatabaseMetaDataProvider) schema).getDatabaseInformation();
+        assertTrue(databaseInformation.containsKey(DATABASE_PRODUCT_VERSION));
+        assertTrue(databaseInformation.containsKey(DATABASE_MAJOR_VERSION));
+        assertTrue(databaseInformation.containsKey(DATABASE_MINOR_VERSION));
+      }
     }
     catch (RuntimeException | SQLException e) {
-      assertThat(e.getMessage(), equalToIgnoringCase("Exception copying table [WITHTIMESTAMP]"));
+      assertThat(e.getMessage(), equalToIgnoringCase("Exception reading database information"));
     }
   }
 

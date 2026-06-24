@@ -586,7 +586,7 @@ public class TestDatabaseUpgradeIntegration {
       .indexes(
         index("WrongIndexName_1").columns("bigIntegerCol"),
         index("BasicTableWithIndex_1").columns("decimalTenZeroCol"),
-        index("BasicTableWithIndex_2").columns("decimalNineFiveCol"));
+        index("BasicTableWithIndex_2").columns("decimalNineFiveCol").unique());
 
     Schema reAdded = replaceTablesInSchema(tableWithNewAddIndex);
 
@@ -1398,7 +1398,7 @@ public class TestDatabaseUpgradeIntegration {
         () -> verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class, UpdateField.class)));
 
     assertThat(exception.getMessage(), containsString("Error executing SQL"));
-    assertThat(exception.getMessage(), containsString("UPDATE WithDefaultValue SET missingColumn"));
+    assertThat(exception.getMessage().replace(connectionResources.getSchemaName() + ".", ""), containsString("UPDATE WithDefaultValue SET missingColumn"));
   }
 
 
