@@ -167,15 +167,15 @@ public class TestOracleMetaDataProvider {
     // This is the table that's returned.
     when(statement.executeQuery()).thenAnswer(invocation -> {
       final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
-      when(resultSet.next()).thenReturn(true, false);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
 
       //
-      when(resultSet.getString(1)).thenReturn("AREALTABLE");
-      when(resultSet.getString(2)).thenReturn("TableComment");
-      when(resultSet.getString(3)).thenReturn("ID");
-      when(resultSet.getString(4)).thenReturn("IDComment");
-      when(resultSet.getString(5)).thenReturn("VARCHAR2");
-      when(resultSet.getString(6)).thenReturn("10");
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("TableComment", "TableComment", "TableComment", "TableComment");
+      when(resultSet.getString(3)).thenReturn("ID", "column1", "column2", "column3");
+      when(resultSet.getString(4)).thenReturn("IDComment", "column1Comment", "column2Comment", "column3Comment");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2", "VARCHAR2", "VARCHAR2", "VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10", "11", "12", "13");
       return resultSet;
     }).thenAnswer(new ReturnTablesMockResultSet(4));
 
