@@ -16,6 +16,9 @@
 package org.alfasoftware.morf.jdbc;
 
 import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.DATABASE_MINOR_VERSION;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.DATABASE_PRODUCT_VERSION;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
@@ -33,13 +36,16 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -56,6 +62,10 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Level;
 import org.hamcrest.FeatureMatcher;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
@@ -87,6 +97,8 @@ public class TestDatabaseMetaDataProvider {
   @Inject
   private ConnectionResources database;
 
+  @Inject
+  private SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
   private final Schema schema = schema(
     schema(
@@ -150,6 +162,10 @@ public class TestDatabaseMetaDataProvider {
 
   @Before
   public void before() throws SQLException {
+    Log log =  LogFactory.getLog(DatabaseMetaDataProvider.class);
+    if (log instanceof org.apache.commons.logging.impl.Log4JLogger) {
+      ((org.apache.commons.logging.impl.Log4JLogger)log).getLogger().setLevel(Level.DEBUG);
+    }
 
     databaseType = database.getDatabaseType();
 
@@ -282,11 +298,93 @@ public class TestDatabaseMetaDataProvider {
         indexMatcher(
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
+    }
 
-      schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
-        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
-          indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
-      ))));
+    SqlScriptExecutor sqlExecutor;
+
+    switch (database.sqlDialect().getDatabaseType().identifier()) {
+      case "PGSQL":
+        sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+        sqlExecutor.execute("CREATE INDEX WithTypes_PRF2 ON " + database.getSchemaName() + ".WithTypes (LENGTH(primaryStringCol))");
+
+        // open schema resource again to re-read index definitions
+        try (SchemaResource schemaResource = database.openSchemaResource()) {
+          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata -> {
+              assertFalse("repeat read of ignored indexes for coverage", additionalMetadata.ignoredIndexes().isEmpty());
+              assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
+                  indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+              )));
+        });
+        }
+        break;
+      case "ORACLE":
+        sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+        sqlExecutor.execute("CREATE INDEX WithTypes_PRF2 ON " + database.getSchemaName() + ".WithTypes (LENGTH(primaryStringCol))");
+
+        // open schema resource again to re-read index definitions
+        try (SchemaResource schemaResource = database.openSchemaResource()) {
+          schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata -> {
+            assertFalse("repeat read of ignored indexes for coverage", additionalMetadata.ignoredIndexes().isEmpty());
+            assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toUpperCase()), containsInAnyOrder(ImmutableList.of(
+                indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+            )));
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+
+  /**
+   * Validates that the openSchemaResources throws an exception when an invalid expression index that is not a
+   * performance index exists on a table.
+   */
+  @Test
+  public void testTableWithTypesWithInvalidExpressionIndexThrowsException() {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithTypes"));
+      Table table = schemaResource.getTable("WithTypes");
+
+      assertThat(table.isTemporary(), is(false));
+      assertThat(table.getName(), tableNameEqualTo("WithTypes"));
+
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+          columnMatcher(
+              column("primaryStringCol", DataType.STRING, 15).primaryKey()),
+          columnMatcher(
+              column("primaryBigIntegerCol", DataType.BIG_INTEGER).primaryKey()))
+      ));
+
+      assertThat(table.indexes(), containsInAnyOrder(ImmutableList.of(
+          indexMatcher(
+              index("WithTypes_1").columns("booleanCol", "dateCol")),
+          indexMatcher(
+              index("NaturalKey").columns("decimalElevenCol").unique()))
+      ));
+    }
+
+    SqlScriptExecutor sqlExecutor;
+
+    switch(database.sqlDialect().getDatabaseType().identifier()) {
+      case "PGSQL":
+      case "ORACLE":
+        sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+        sqlExecutor.execute("CREATE INDEX WithTypes_2 ON " + database.getSchemaName() + ".WithTypes (LENGTH(primaryStringCol))");
+
+        // open schema resource again to re-read index definitions and throw exception due to invalid index
+        assertThrows(IllegalArgumentException.class, () -> {
+          try (SchemaResource schemaResource = database.openSchemaResource()) {
+            schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+                assertEquals(0, additionalMetadata.ignoredIndexes().size()));
+          }
+        });
+
+        sqlExecutor.execute("DROP INDEX WithTypes_2");
+        break;
+      default:
+        break;
     }
   }
 
@@ -439,6 +537,37 @@ public class TestDatabaseMetaDataProvider {
     }
     catch (RuntimeException e) {
       assertThat(e.getMessage(), equalToIgnoringCase("Exception copying table [WITHTIMESTAMP]"));
+    }
+  }
+
+
+  @Test
+  public void testDatabaseInformation() {
+    try (Connection connection = this.database.getDataSource().getConnection()) {
+      if (this.database.getDatabaseType().equals("PGSQL")) {
+        Schema schema = DatabaseType.Registry.findByIdentifier(database.getDatabaseType()).openSchema(connection, database.getDatabaseName(), database.getSchemaName());
+
+        Map<String, String> databaseInformation = ((DatabaseMetaDataProvider) schema).getDatabaseInformation();
+        assertTrue(databaseInformation.containsKey(DATABASE_PRODUCT_VERSION));
+        assertTrue(databaseInformation.containsKey(DATABASE_MAJOR_VERSION));
+        assertTrue(databaseInformation.containsKey(DATABASE_MINOR_VERSION));
+      }
+    }
+    catch (RuntimeException | SQLException e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("Exception reading database information"));
+    }
+  }
+
+
+  @Test
+  public void testSequenceExists() {
+    try (Connection connection = this.database.getDataSource().getConnection()) {
+      Schema schema = DatabaseType.Registry.findByIdentifier(database.getDatabaseType()).openSchema(connection, database.getDatabaseName(), database.getSchemaName());
+
+      assertFalse(schema.sequenceExists("NonExisting_SEQ"));
+    }
+    catch (RuntimeException | SQLException e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("Exception with sequence exists."));
     }
   }
 

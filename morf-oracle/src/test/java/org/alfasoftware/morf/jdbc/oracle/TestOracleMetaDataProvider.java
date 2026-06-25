@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -46,6 +47,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
@@ -151,6 +153,7 @@ public class TestOracleMetaDataProvider {
     expectedPrimaryKeyIndexNames.put("AREALTABLE", "AREALTABLE_PK");
     expectedPrimaryKeyIndexNames.put("AREALTABLE2", "AREALTABLE2_PK");
     assertEquals("Primary key index names.", expectedPrimaryKeyIndexNames, oracleMetaDataProvider.primaryKeyIndexNames());
+    assertEquals("Repeat for coverage - Primary key index names.", expectedPrimaryKeyIndexNames, oracleMetaDataProvider.primaryKeyIndexNames());
   }
 
   /**
@@ -167,15 +170,18 @@ public class TestOracleMetaDataProvider {
     // This is the table that's returned.
     when(statement.executeQuery()).thenAnswer(invocation -> {
       final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
-      when(resultSet.next()).thenReturn(true, false);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
 
       //
-      when(resultSet.getString(1)).thenReturn("AREALTABLE");
-      when(resultSet.getString(2)).thenReturn("TableComment");
-      when(resultSet.getString(3)).thenReturn("ID");
-      when(resultSet.getString(4)).thenReturn("IDComment");
-      when(resultSet.getString(5)).thenReturn("VARCHAR2");
-      when(resultSet.getString(6)).thenReturn("10");
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("REALNAME:[ArealTable]", "REALNAME:[ArealTable]", "REALNAME:[ArealTable]", "REALNAME:[ArealTable]");
+      when(resultSet.getString(3)).thenReturn("ID", "column1", "column2", "column3");
+      when(resultSet.getString(4)).thenReturn("REALNAME:[ID]/TYPE:[STRING]/AUTONUMSTART:[3]", "REALNAME:[column1]/TYPE:[DECIMAL]",
+          "REALNAME:[column2]/TYPE:[STRING]", "REALNAME:[column3]/TYPE:[STRING]");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2", "DECIMAL", "VARCHAR2", "VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10", "11", "12", "13");
+      when(resultSet.getInt(8)).thenReturn(0, 13, 0, 0); // precision
+      when(resultSet.getInt(9)).thenReturn(0, 2, 0, 0); // scale
       return resultSet;
     }).thenAnswer(new ReturnTablesMockResultSet(4));
 
@@ -185,11 +191,11 @@ public class TestOracleMetaDataProvider {
     // two indexes, one of which is an ignored index
     when(statement1.executeQuery()).thenAnswer(answer -> {
       ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
-      when(resultSet.next()).thenReturn(true, true, true, false);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
       when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE");
-      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2");
-      when(resultSet.getString(3)).thenReturn("", "", "UNIQUE");
-      when(resultSet.getString(4)).thenReturn("VALID", "VALID");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2", "AREALTABLE_PRF3");
+      when(resultSet.getString(3)).thenReturn("", "", "UNIQUE", "");
+      when(resultSet.getString(4)).thenReturn("VALID", "VALID", "VALID", "VALID");
       return resultSet;
     });
 
@@ -197,13 +203,13 @@ public class TestOracleMetaDataProvider {
     PreparedStatement statement2 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement("select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position")).thenReturn(statement2);
 
-    // two indexes, one of which is an ignored index
+    // four indexes, three of which is an ignored index. The last one is an index with a function expression
     when(statement2.executeQuery()).thenAnswer(answer -> {
       ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
-      when(resultSet.next()).thenReturn(true, true, true, false);
-      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE");
-      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2");
-      when(resultSet.getString(3)).thenReturn("column1", "column2", "column3");
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2", "AREALTABLE_PRF3");
+      when(resultSet.getString(3)).thenReturn("column1", "column2", "column3", "length(column1)");
       return resultSet;
     });
 
@@ -215,16 +221,82 @@ public class TestOracleMetaDataProvider {
     assertEquals("Ignored indexes size.", 2, actualIgnoredIndexes.size());
     assertEquals("Ignored AREALTABLE table indexes size.", 2, actualIgnoredIndexes.size());
     Index index = actualIgnoredIndexes.get(0);
-    assertEquals("Ignored index name.", "AREALTABLE_PRF1", index.getName());
+    assertEquals("Ignored index name.", "ArealTable_PRF1", index.getName());
     assertEquals("Ignored index column.", "column2", index.columnNames().get(0));
     assertFalse("Ignored index uniqueness.", index.isUnique());
-    assertEquals("Index-AREALTABLE_PRF1--column2", index.toStringHelper());
+    assertEquals("Index-ArealTable_PRF1--column2", index.toStringHelper());
 
     Index index2 = actualIgnoredIndexes.get(1);
-    assertEquals("Ignored index name.", "AREALTABLE_PRF2", index2.getName());
+    assertEquals("Ignored index name.", "ArealTable_PRF2", index2.getName());
     assertEquals("Ignored index column.", "column3", index2.columnNames().get(0));
     assertTrue("Ignored index uniqueness.", index2.isUnique());
-    assertEquals("Index-AREALTABLE_PRF2-unique-column3", index2.toStringHelper());
+    assertEquals("Index-ArealTable_PRF2-unique-column3", index2.toStringHelper());
+
+    assertEquals("Only two prf indexes", 2, actualIgnoredIndexes.size());
+  }
+
+  /**
+   * Checks the building of the collection of primary key index names.
+   * @throws SQLException
+   */
+  @Test
+  public void testDifferentColumnDefaultValues() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement);
+
+    mockGetTableKeysQuery(0, false, false);
+    // This is the table that's returned.
+    when(statement.executeQuery()).thenAnswer(invocation -> {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
+
+      //
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("REALNAME:[ArealTable]", "REALNAME:[ArealTable]", "REALNAME:[ArealTable]", "REALNAME:[ArealTable]");
+      when(resultSet.getString(3)).thenReturn("ID", "column1", "column2", "column3");
+      when(resultSet.getString(4)).thenReturn("REALNAME:[ID]/TYPE:[STRING]/AUTONUMSTART:[3]", "REALNAME:[column1]/TYPE:[DECIMAL]", "REALNAME:[column2]/TYPE:[STRING]", "REALNAME:[column3]/TYPE:[STRING]");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2", "DECIMAL", "VARCHAR2", "VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10", "11", "12", "13");
+      when(resultSet.getInt(8)).thenReturn(0, 13, 0, 0); // precision
+      when(resultSet.getInt(9)).thenReturn(0, 2, 0, 0); // scale
+      when(resultSet.getString(11)).thenReturn("'10'", "'11'", "'12'", "'13'");
+      return resultSet;
+    }).thenAnswer(new ReturnTablesMockResultSet(4));
+
+    PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name")).thenReturn(statement1);
+
+    // one index
+    when(statement1.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1");
+      when(resultSet.getString(3)).thenReturn("");
+      when(resultSet.getString(4)).thenReturn("VALID");
+      return resultSet;
+    });
+
+    // "select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position"
+    PreparedStatement statement2 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position")).thenReturn(statement2);
+
+    // two indexes, one of which is an ignored index
+    when(statement2.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1");
+      when(resultSet.getString(3)).thenReturn("column1");
+      return resultSet;
+    });
+
+    // When
+    final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    Table table = oracleMetaDataProvider.getTable("AREALTABLE");
+
+    assertNotNull("Table null", table);
   }
 
   @Test

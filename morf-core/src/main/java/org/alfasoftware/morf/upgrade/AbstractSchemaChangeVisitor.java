@@ -101,8 +101,23 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(ChangeIndex changeIndex) {
     currentSchema = changeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+
+    Index foundIndex = null;
+    List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(changeIndex.getTableName());
+    for (Index index : ignoredIndexes) {
+      if (index.columnNames().equals(changeIndex.getToIndex().columnNames()) && index.isUnique() == changeIndex.getToIndex().isUnique()) {
+        foundIndex = index;
+        break;
+      }
+    }
+
+    if (foundIndex != null) {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
+      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(changeIndex.getTableName()), foundIndex.getName(), changeIndex.getToIndex().getName()));
+    } else {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
+      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+    }
   }
 
 

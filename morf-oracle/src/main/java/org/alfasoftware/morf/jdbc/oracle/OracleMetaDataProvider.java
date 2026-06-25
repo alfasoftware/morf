@@ -204,9 +204,6 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           String columnComment = resultSet.getString(4);
           String dataTypeName = resultSet.getString(5);
 
-          if (isSystemTable(tableName))
-            continue;
-
           try {
             Integer dataLength;
             if (dataTypeName.contains("CHAR")) {
@@ -488,6 +485,11 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
             lastIndex.columnNames().add(columnName);
 
+            if (StringUtils.isEmpty(columnName)) {
+              // remove invalid index has it has an expression
+              ignoredIndexes.get(currentTable.getName().toUpperCase()).remove(lastIndex);
+            }
+
             continue;
           }
 
@@ -506,19 +508,23 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           // Correct the case on the column name
           columnName = getColumnCorrectCase(currentTable, columnName);
+          if (StringUtils.isEmpty(columnName)) {
+            throw new IllegalArgumentException("Found a column that is an expression in an index.");
+          }
 
           lastIndex.columnNames().add(columnName);
         }
       }
 
       private String getColumnCorrectCase(Table currentTable, String columnName) {
+        String columnNameFound = "";
         for (Column currentColumn : currentTable.columns()) {
           if (currentColumn.getName().equalsIgnoreCase(columnName)) {
-            columnName = currentColumn.getName();
+            columnNameFound = currentColumn.getName();
             break;
           }
         }
-        return columnName;
+        return columnNameFound;
       }
     });
 
