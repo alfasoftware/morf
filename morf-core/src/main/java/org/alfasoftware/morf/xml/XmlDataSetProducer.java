@@ -43,13 +43,13 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
@@ -706,6 +706,9 @@ public class XmlDataSetProducer implements DataSetProducer {
       /**
        */
       private final List<String> columnNames = new LinkedList<>();
+      /**
+       */
+      private final List<String> partialIndexColumnNames = new LinkedList<>();
 
 
       /**
@@ -717,9 +720,16 @@ public class XmlDataSetProducer implements DataSetProducer {
         isUnique = Boolean.parseBoolean(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.UNIQUE_ATTRIBUTE));
 
         String columnsNamesCombined = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.COLUMNS_ATTRIBUTE);
+        String partialIndexColumnsNamesCombined = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.PARTIAL_INDEX_COLUMNS_ATTRIBUTE);
 
         for (String columnName : StringUtils.split(columnsNamesCombined, ",")) {
           columnNames.add(columnName.trim());
+        }
+        String[] partialIndexColumns = StringUtils.split(partialIndexColumnsNamesCombined, ",");
+        if (partialIndexColumns != null) {
+          for (String columnName : partialIndexColumns) {
+            partialIndexColumnNames.add(columnName.trim());
+          }
         }
       }
 
@@ -748,6 +758,15 @@ public class XmlDataSetProducer implements DataSetProducer {
       @Override
       public List<String> columnNames() {
         return columnNames;
+      }
+
+
+      /**
+       * @see org.alfasoftware.morf.metadata.Index#partialIndexColumnNames()
+       */
+      @Override
+      public List<String> partialIndexColumnNames() {
+        return partialIndexColumnNames;
       }
 
 

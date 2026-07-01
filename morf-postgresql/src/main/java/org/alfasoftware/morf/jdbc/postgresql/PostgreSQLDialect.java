@@ -29,14 +29,13 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-
-
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
+import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
@@ -47,7 +46,6 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
@@ -66,6 +64,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 class PostgreSQLDialect extends SqlDialect {
+
+  static final String INDEX_COLUMNS_COMMENT_LABEL = "INDEXCOLUMNS";
 
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
@@ -907,18 +907,46 @@ class PostgreSQLDialect extends SqlDialect {
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
-             .append(Joiner.on(", ").join(index.columnNames()))
-             .append(")");
+             .append(Joiner.on(", ").join(indexColumnNamesForDeployment(index)))
+             .append(")")
+             .append(partialIndexPredicateClause(index));
 
     return ImmutableList.<String>builder()
       .add(statement.toString())
-      .add(addIndexComment(index.getName()))
+      .add(addIndexComment(index))
       .build();
   }
 
 
   private String addIndexComment(String indexName) {
-    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+    return "COMMENT ON INDEX " + indexName + " IS '" + REAL_NAME_COMMENT_LABEL + ":[" + indexName + "]'";
+  }
+
+
+  private String addIndexComment(Index index) {
+    if (!index.isPartial()) {
+      return addIndexComment(index.getName());
+    }
+
+    StringBuilder comment = new StringBuilder("COMMENT ON INDEX ")
+      .append(index.getName())
+      .append(" IS '")
+      .append(REAL_NAME_COMMENT_LABEL)
+      .append(":[")
+      .append(index.getName())
+      .append("]/")
+      .append(INDEX_COLUMNS_COMMENT_LABEL)
+      .append(":[")
+      .append(Joiner.on(",").join(index.columnNames()))
+      .append("]'");
+
+    return comment.toString();
+  }
+
+
+  @Override
+  protected boolean supportsPartialIndexPredicates() {
+    return true;
   }
 
 

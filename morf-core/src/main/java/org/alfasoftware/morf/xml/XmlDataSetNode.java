@@ -94,6 +94,11 @@ public class XmlDataSetNode {
   public static final String COLUMNS_ATTRIBUTE = "columns";
 
   /**
+   * Attribute name for the partial-index null-predicate columns of an index.
+   */
+  public static final String PARTIAL_INDEX_COLUMNS_ATTRIBUTE = "partialIndexColumns";
+
+  /**
    * Node name for the data node.
    */
   public static final String DATA_NODE = "data";

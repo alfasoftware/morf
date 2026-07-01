@@ -59,6 +59,14 @@ public class IndexNameDecorator implements Index {
   }
 
   /**
+   * @see org.alfasoftware.morf.metadata.Index#partialIndexColumnNames()
+   */
+  @Override
+  public List<String> partialIndexColumnNames() {
+    return index.partialIndexColumnNames();
+  }
+
+  /**
    * @see org.alfasoftware.morf.metadata.Index#getName()
    */
   @Override

@@ -849,6 +849,18 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddPartialIndexStatementsOnNullColumns()
+   */
+  @Override
+  protected List<String> expectedAddPartialIndexStatementsOnNullColumns() {
+    return Arrays.asList(
+      "CREATE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id, version, stringField, intField, floatField) PARALLEL NOLOGGING",
+      "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUnique()
    */

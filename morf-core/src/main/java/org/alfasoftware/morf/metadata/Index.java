@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Joiner;
@@ -43,6 +44,23 @@ public interface Index {
 
 
   /**
+   * @return The ordered list of column names which form the partial index predicate.
+   * These names are a subset of {@link #columnNames()}.
+   */
+  public default List<String> partialIndexColumnNames() {
+    return Collections.emptyList();
+  }
+
+
+  /**
+   * @return True if this is a partial index.
+   */
+  public default boolean isPartial() {
+    return !partialIndexColumnNames().isEmpty();
+  }
+
+
+  /**
    * Helper for {@link Object#toString()} implementations.
    *
    * @return String representation of the index.
@@ -52,6 +70,7 @@ public interface Index {
         .append("Index-").append(getName())
         .append("-").append(isUnique() ? "unique" : "")
         .append("-").append(Joiner.on(',').join(columnNames()))
+        .append(isPartial() ? "-partial-where-null-" + Joiner.on(',').join(partialIndexColumnNames()) : "")
         .toString();
   }
 }

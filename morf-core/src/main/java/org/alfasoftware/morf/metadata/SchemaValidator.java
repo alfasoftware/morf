@@ -411,6 +411,10 @@ public class SchemaValidator {
         validationFailures.add("Index [" + index.getName() + "] on table [" + table.getName() + "] is not allowed - indexes by 'id' only are superfluous since 'id' is the primary key.");
       }
 
+      if (!index.columnNames().containsAll(index.partialIndexColumnNames())) {
+        validationFailures.add("Partial index [" + index.getName() + "] on table [" + table.getName() + "] is not allowed - partial-index null columns must also appear in the index column list for fallback deployment.");
+      }
+
       // validate that there aren't any duplicate indexes
       Index other = indexesBySignature.put(new IndexSignature(index), index);
 
@@ -445,7 +449,9 @@ public class SchemaValidator {
      */
     @Override
     public int hashCode() {
-      return index.columnNames().hashCode() + Boolean.valueOf(index.isUnique()).hashCode();
+      return index.columnNames().hashCode()
+          + index.partialIndexColumnNames().hashCode()
+          + Boolean.valueOf(index.isUnique()).hashCode();
     }
 
 
@@ -460,7 +466,9 @@ public class SchemaValidator {
 
       IndexSignature other = (IndexSignature) obj;
 
-      return Objects.equals(other.index.columnNames(), index.columnNames()) && other.index.isUnique() == index.isUnique();
+      return Objects.equals(other.index.columnNames(), index.columnNames())
+          && Objects.equals(other.index.partialIndexColumnNames(), index.partialIndexColumnNames())
+          && other.index.isUnique() == index.isUnique();
     }
   }
 }

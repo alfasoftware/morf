@@ -358,6 +358,7 @@ public class SchemaHomology {
     matches("Index name on table [" + tableName + "]", index1.getName().toUpperCase(), index2.getName().toUpperCase());
     matches("Index [" + index1.getName() + "] on table [" + tableName + "] uniqueness", index1.isUnique(), index2.isUnique());
     matches("Index [" + index1.getName() + "] on table [" + tableName + "] columnNames", toUpperCase(index1.columnNames()), toUpperCase(index2.columnNames()));
+    matches("Index [" + index1.getName() + "] on table [" + tableName + "] partialIndexColumnNames", toUpperCase(index1.partialIndexColumnNames()), toUpperCase(index2.partialIndexColumnNames()));
   }
 
 

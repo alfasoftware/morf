@@ -615,6 +615,30 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public IndexBuilder unique();
+
+
+    /**
+     * Mark this as a partial index, restricted to rows where these columns are null.
+     *
+     * <p>The partial predicate columns should also be present in {@link Index#columnNames()}
+     * so that dialects without partial-index support can deploy the full composite fallback.</p>
+     *
+     * @param columnNames The column names to include in the partial index predicate.
+     * @return this, for method chaining.
+     */
+    public IndexBuilder whereColumnsAreNull(String... columnNames);
+
+
+    /**
+     * Mark this as a partial index, restricted to rows where these columns are null.
+     *
+     * <p>The partial predicate columns should also be present in {@link Index#columnNames()}
+     * so that dialects without partial-index support can deploy the full composite fallback.</p>
+     *
+     * @param columnNames The column names to include in the partial index predicate.
+     * @return this, for method chaining.
+     */
+    public IndexBuilder whereColumnsAreNull(Iterable<String> columnNames);
   }
 
 
@@ -780,8 +804,8 @@ public final class SchemaUtils {
     }
 
 
-    private IndexBuilderImpl(String name, boolean unique, Iterable<String> columnNames) {
-      super(name, unique, columnNames);
+    private IndexBuilderImpl(String name, boolean unique, Iterable<String> columnNames, Iterable<String> partialIndexColumnNames) {
+      super(name, unique, columnNames, partialIndexColumnNames);
     }
 
 
@@ -790,7 +814,7 @@ public final class SchemaUtils {
      */
     @Override
     public IndexBuilder columns(String... columnNames) {
-      return new IndexBuilderImpl(getName(), isUnique(), Arrays.asList(columnNames));
+      return new IndexBuilderImpl(getName(), isUnique(), Arrays.asList(columnNames), partialIndexColumnNames());
     }
 
 
@@ -799,7 +823,7 @@ public final class SchemaUtils {
      */
     @Override
     public IndexBuilder columns(Iterable<String> columnNames) {
-      return new IndexBuilderImpl(getName(), isUnique(), columnNames);
+      return new IndexBuilderImpl(getName(), isUnique(), columnNames, partialIndexColumnNames());
     }
 
 
@@ -808,7 +832,25 @@ public final class SchemaUtils {
      */
     @Override
     public IndexBuilder unique() {
-      return new IndexBuilderImpl(getName(), true, columnNames());
+      return new IndexBuilderImpl(getName(), true, columnNames(), partialIndexColumnNames());
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder#whereColumnsAreNull(java.lang.String[])
+     */
+    @Override
+    public IndexBuilder whereColumnsAreNull(String... columnNames) {
+      return whereColumnsAreNull(Arrays.asList(columnNames));
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder#whereColumnsAreNull(java.lang.Iterable)
+     */
+    @Override
+    public IndexBuilder whereColumnsAreNull(Iterable<String> columnNames) {
+      return new IndexBuilderImpl(getName(), isUnique(), columnNames(), columnNames);
     }
 
 

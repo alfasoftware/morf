@@ -29,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 /**
@@ -42,7 +43,12 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
+  private static final Pattern NULL_PREDICATE_COLUMN_MATCHER = Pattern.compile("\\\"?([A-Za-z_][A-Za-z0-9_]*)\\\"?\\s+IS\\s+NULL", Pattern.CASE_INSENSITIVE);
+
+  private static final Pattern INDEX_COLUMNS_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.INDEX_COLUMNS_COMMENT_LABEL+":\\[([^\\]]*)\\].*");
+
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
+  private final Supplier<Map<RealName, List<RealName>>> allPartialIndexDefinitionColumnNames = Suppliers.memoize(this::loadAllPartialIndexDefinitionColumnNames);
   private final Supplier<Map<String, List<Index>>> allIgnoredIndexes = Suppliers.memoize(this::loadIgnoredIndexes);
   private final Set<RealName> allIgnoredIndexesTables = new HashSet<>();
 
@@ -197,6 +203,132 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     catch (SQLException e) {
       throw new RuntimeSqlException(e);
     }
+  }
+
+
+  @Override
+  protected Map<RealName, List<RealName>> loadPartialIndexColumnNames(RealName tableName) {
+    String schema = StringUtils.isNotBlank(schemaName)
+        ? " JOIN pg_catalog.pg_namespace n ON n.oid = ci.relnamespace AND n.nspname = '" + schemaName + "'"
+        : "";
+
+    String sql = "SELECT ci.relname AS indexName, pg_catalog.pg_get_expr(i.indpred, i.indrelid) AS predicate"
+                + " FROM pg_catalog.pg_index i"
+                + " JOIN pg_catalog.pg_class ci ON ci.oid = i.indexrelid"
+                + " JOIN pg_catalog.pg_class t ON t.oid = i.indrelid"
+                + schema
+                + " WHERE i.indpred IS NOT NULL"
+                + " AND t.relname = '" + tableName.getDbName() + "'";
+
+    ImmutableMap.Builder<RealName, List<RealName>> partialIndexColumnNames = ImmutableMap.builder();
+    try (Statement createStatement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+      try (ResultSet indexResultSet = createStatement.executeQuery(sql)) {
+        while (indexResultSet.next()) {
+          RealName indexName = readIndexNameFromDatabaseName(indexResultSet.getString(1));
+          partialIndexColumnNames.put(indexName, partialIndexColumnNamesFromPredicate(indexResultSet.getString(2)));
+        }
+      }
+      return partialIndexColumnNames.build();
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading partial index metadata for table [" + tableName + "]", e);
+    }
+  }
+
+
+  private RealName readIndexNameFromDatabaseName(String indexName) {
+    RealName readIndexName = createRealName(indexName, indexName);
+    return allIndexNames.get().getOrDefault(readIndexName, readIndexName);
+  }
+
+
+  private List<RealName> partialIndexColumnNamesFromPredicate(String predicate) {
+    ImmutableList.Builder<RealName> partialIndexColumnNames = ImmutableList.builder();
+    Matcher matcher = NULL_PREDICATE_COLUMN_MATCHER.matcher(StringUtils.defaultString(predicate));
+    while (matcher.find()) {
+      String columnName = matcher.group(1);
+      partialIndexColumnNames.add(createRealName(columnName, columnName));
+    }
+    return partialIndexColumnNames.build();
+  }
+
+
+  @Override
+  protected List<RealName> columnNamesForIndexDefinition(RealName indexName, List<RealName> physicalColumnNames, List<RealName> partialIndexColumnNames) {
+    if (partialIndexColumnNames.isEmpty()) {
+      return physicalColumnNames;
+    }
+
+    List<RealName> storedColumnNames = allPartialIndexDefinitionColumnNames.get().get(indexName);
+    if (storedColumnNames != null) {
+      return storedColumnNames;
+    }
+
+    ImmutableList.Builder<RealName> fallbackColumnNames = ImmutableList.builder();
+    fallbackColumnNames.addAll(physicalColumnNames);
+    for (RealName partialIndexColumnName : partialIndexColumnNames) {
+      if (!physicalColumnNames.contains(partialIndexColumnName)) {
+        fallbackColumnNames.add(partialIndexColumnName);
+      }
+    }
+    return fallbackColumnNames.build();
+  }
+
+
+  private Map<RealName, List<RealName>> loadAllPartialIndexDefinitionColumnNames() {
+    String schema = StringUtils.isNotBlank(schemaName)
+        ? " JOIN pg_catalog.pg_namespace n ON n.oid = ci.relnamespace AND n.nspname = '" + schemaName + "'"
+        : "";
+
+    String sql = "SELECT ci.relname AS indexName, d.description AS indexRemark"
+                + " FROM pg_catalog.pg_index i"
+                + " JOIN pg_catalog.pg_class ci ON ci.oid = i.indexrelid"
+                + schema
+                + " LEFT JOIN pg_description d ON d.objoid = ci.oid AND d.objsubid = 0"
+                + " WHERE i.indpred IS NOT NULL";
+
+    ImmutableMap.Builder<RealName, List<RealName>> indexDefinitionColumnNames = ImmutableMap.builder();
+    try (Statement createStatement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+      try (ResultSet indexResultSet = createStatement.executeQuery(sql)) {
+        while (indexResultSet.next()) {
+          String comment = indexResultSet.getString(2);
+          List<RealName> columnNames = indexDefinitionColumnNamesFromComment(comment);
+          if (!columnNames.isEmpty()) {
+            indexDefinitionColumnNames.put(readIndexNameFromDatabaseName(indexResultSet.getString(1)), columnNames);
+          }
+        }
+      }
+      return indexDefinitionColumnNames.build();
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading partial index column-definition comments", e);
+    }
+  }
+
+
+  private List<RealName> indexDefinitionColumnNamesFromComment(String comment) {
+    if (StringUtils.isBlank(comment)) {
+      return ImmutableList.of();
+    }
+
+    Matcher matcher = INDEX_COLUMNS_COMMENT_MATCHER.matcher(comment);
+    if (!matcher.matches()) {
+      return ImmutableList.of();
+    }
+
+    String[] columnNames = StringUtils.split(matcher.group(1), ",");
+    if (columnNames == null) {
+      return ImmutableList.of();
+    }
+
+    ImmutableList.Builder<RealName> indexDefinitionColumnNames = ImmutableList.builder();
+    for (String columnName : columnNames) {
+      String trimmedColumnName = columnName.trim();
+      if (StringUtils.isNotBlank(trimmedColumnName)) {
+        indexDefinitionColumnNames.add(createRealName(trimmedColumnName, trimmedColumnName));
+      }
+    }
+    return indexDefinitionColumnNames.build();
   }
 
 

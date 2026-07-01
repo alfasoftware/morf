@@ -319,6 +319,12 @@ public class XmlDataSetConsumer implements DataSetConsumer {
     indexAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.COLUMNS_ATTRIBUTE, XmlDataSetNode.COLUMNS_ATTRIBUTE,
       XmlDataSetNode.STRING_TYPE, columnNames);
 
+    if (index.isPartial()) {
+      String partialIndexColumnNames = StringUtils.join(index.partialIndexColumnNames(), ",");
+      indexAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.PARTIAL_INDEX_COLUMNS_ATTRIBUTE,
+        XmlDataSetNode.PARTIAL_INDEX_COLUMNS_ATTRIBUTE, XmlDataSetNode.STRING_TYPE, partialIndexColumnNames);
+    }
+
     return indexAttributes;
   }
 

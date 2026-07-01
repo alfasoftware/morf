@@ -41,6 +41,11 @@ class IndexBean implements Index {
    */
   private final boolean unique;
 
+  /**
+   * Holds the column names used to form the partial index predicate.
+   */
+  private final ImmutableList<String> partialIndexColumnNames;
+
 
   /**
    * Creates an index bean.
@@ -70,10 +75,27 @@ class IndexBean implements Index {
    * Internal constructor.
    */
   private IndexBean(String name, boolean unique, ImmutableList<String> columnNames) {
+    this(name, unique, columnNames, ImmutableList.of());
+  }
+
+
+  /**
+   * Internal constructor.
+   */
+  IndexBean(String name, boolean unique, Iterable<String> columnNames, Iterable<String> partialIndexColumnNames) {
+    this(name, unique, ImmutableList.copyOf(columnNames), ImmutableList.copyOf(partialIndexColumnNames));
+  }
+
+
+  /**
+   * Internal constructor.
+   */
+  private IndexBean(String name, boolean unique, ImmutableList<String> columnNames, ImmutableList<String> partialIndexColumnNames) {
     super();
     this.name = name;
     this.unique = unique;
     this.columnNames = columnNames;
+    this.partialIndexColumnNames = partialIndexColumnNames;
   }
 
 
@@ -81,7 +103,7 @@ class IndexBean implements Index {
    * @param toCopy Index to copy.
    */
   IndexBean(Index toCopy) {
-    this(toCopy.getName(), toCopy.isUnique(), toCopy.columnNames());
+    this(toCopy.getName(), toCopy.isUnique(), toCopy.columnNames(), toCopy.partialIndexColumnNames());
   }
 
 
@@ -107,6 +129,15 @@ class IndexBean implements Index {
   @Override
   public boolean isUnique() {
     return unique;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Index#partialIndexColumnNames()
+   */
+  @Override
+  public List<String> partialIndexColumnNames() {
+    return partialIndexColumnNames;
   }
 
 
