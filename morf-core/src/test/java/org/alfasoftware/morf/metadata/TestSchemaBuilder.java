@@ -73,7 +73,7 @@ public class TestSchemaBuilder {
       .indexes(
         index("myIndex").columns("foo", "bar").unique(),
         index("myIndex").unique().columns("foo"),
-        index("myOtherIndex").columns("bar")
+        index("myOtherIndex").columns("bar", "foo", "baz").whereColumnsAreNull("foo", "baz")
       );
 
     assertEquals("Test", test.getName());
@@ -84,7 +84,8 @@ public class TestSchemaBuilder {
     assertEquals(Arrays.asList("foo", "bar"), test.indexes().get(0).columnNames());
     assertTrue(test.indexes().get(0).isUnique());
 
-    assertEquals(Arrays.asList("bar"), test.indexes().get(2).columnNames());
+    assertEquals(Arrays.asList("bar", "foo", "baz"), test.indexes().get(2).columnNames());
+    assertEquals(Arrays.asList("foo", "baz"), test.indexes().get(2).partialIndexColumnNames());
     assertFalse(test.indexes().get(2).isUnique());
   }
 

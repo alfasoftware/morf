@@ -784,6 +784,16 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddPartialIndexStatementsOnNullColumns()
+   */
+  @Override
+  protected List<String> expectedAddPartialIndexStatementsOnNullColumns() {
+    return Arrays.asList("CREATE INDEX indexName ON TESTSCHEMA.Test ([id], [version], [stringField], [intField], [floatField])");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUnique()
    */

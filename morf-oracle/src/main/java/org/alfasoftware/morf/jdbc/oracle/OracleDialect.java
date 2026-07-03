@@ -935,8 +935,9 @@ class OracleDialect extends SqlDialect {
 
       // Specify the fields that are used in the index
       .append(" (")
-      .append(Joiner.on(", ").join(index.columnNames()))
-      .append(")");
+      .append(Joiner.on(", ").join(indexColumnNamesForDeployment(index)))
+      .append(")")
+      .append(partialIndexPredicateClause(index));
 
     return Collections.singletonList(createIndexStatement.toString());
   }

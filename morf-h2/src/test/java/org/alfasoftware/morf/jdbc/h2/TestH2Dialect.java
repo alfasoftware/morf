@@ -671,6 +671,16 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   }
 
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddPartialIndexStatementsOnNullColumns()
+   */
+  @Override
+  protected List<String> expectedAddPartialIndexStatementsOnNullColumns() {
+    return Arrays.asList("CREATE INDEX indexName ON "+TEST_SCHEMA+".Test (id,version,stringField,intField,floatField)");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUnique()
    */

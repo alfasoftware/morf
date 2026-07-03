@@ -27,10 +27,10 @@ import static org.junit.Assert.fail;
 
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
@@ -117,7 +117,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
     appleTableDuplicate = table("Apple").columns(
@@ -125,7 +126,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -134,7 +136,8 @@ public class TestSchemaHomology {
         column("COLOUR", DataType.STRING).nullable(),
         column("FLAVOUR", DataType.DECIMAL).nullable(),
         column("SWEET", DataType.BOOLEAN).nullable()
-      ).indexes(        index("SWEETNESS").unique().columns("COLOUR")
+      ).indexes(
+        index("SWEETNESS").unique().columns("COLOUR")
       );
 
 
@@ -143,7 +146,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -153,7 +157,8 @@ public class TestSchemaHomology {
         column("name", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -161,7 +166,8 @@ public class TestSchemaHomology {
         autonumber("autonum", 3),
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -170,7 +176,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavor", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -179,7 +186,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetneess").unique().columns("colour")
+      ).indexes(
+        index("sweetneess").unique().columns("colour")
       );
 
 
@@ -188,7 +196,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweety").unique().columns("colour")
+      ).indexes(
+        index("sweety").unique().columns("colour")
       );
 
     appleTableNotAutonumbered = table("Apple").columns(
@@ -411,7 +420,9 @@ public class TestSchemaHomology {
   @Test
   public void testIndexesMatch() {
     assertTrue("indexes should match", schemaHomology.indexesMatch(index("ABC").unique().columns("a", "b", "c"), index("ABC").unique().columns("a", "b", "c")));
-    assertFalse("indexes should match", schemaHomology.indexesMatch(index("ABC").unique().columns("a", "b", "c"), index("ABC").unique().columns("a", "c", "b")));
+    assertTrue("partial indexes should match", schemaHomology.indexesMatch(index("ABC").columns("a", "b", "c").whereColumnsAreNull("b", "c"), index("ABC").columns("a", "b", "c").whereColumnsAreNull("b", "c")));
+    assertFalse("indexes should not match", schemaHomology.indexesMatch(index("ABC").unique().columns("a", "b", "c"), index("ABC").unique().columns("a", "c", "b")));
+    assertFalse("partial index columns should not match", schemaHomology.indexesMatch(index("ABC").columns("a", "b", "c").whereColumnsAreNull("b", "c"), index("ABC").columns("a", "b", "c").whereColumnsAreNull("c", "b")));
   }
 
 

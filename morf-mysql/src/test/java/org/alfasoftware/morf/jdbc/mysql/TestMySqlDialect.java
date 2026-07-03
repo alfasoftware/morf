@@ -773,6 +773,16 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddPartialIndexStatementsOnNullColumns()
+   */
+  @Override
+  protected List<String> expectedAddPartialIndexStatementsOnNullColumns() {
+    return Arrays.asList("ALTER TABLE `Test` ADD INDEX `indexName` (`id`, `version`, `stringField`, `intField`, `floatField`)");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUnique()
    */

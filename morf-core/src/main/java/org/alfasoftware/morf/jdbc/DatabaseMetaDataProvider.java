@@ -796,6 +796,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
     final Map<RealName, ImmutableList.Builder<RealName>> ignoredIndexColumns = new HashMap<>();
     final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
+    final Map<RealName, List<RealName>> partialIndexColumnNames = loadPartialIndexColumnNames(tableName);
 
     if (log.isTraceEnabled()) log.trace("Reading table indexes for " + tableName);
     long start = System.currentTimeMillis();
@@ -854,11 +855,19 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
         if (returnIgnored) {
           return ignoredIndexColumns.entrySet().stream()
-            .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
+            .map(e -> createIndexFrom(
+              e.getKey(),
+              indexUniqueness.get(e.getKey()),
+              columnNamesForIndexDefinition(e.getKey(), e.getValue().build(), partialIndexColumnNames.getOrDefault(e.getKey(), ImmutableList.of())),
+              partialIndexColumnNames.getOrDefault(e.getKey(), ImmutableList.of())))
             .collect(Collectors.toList());
         } else {
           return indexColumns.entrySet().stream()
-            .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
+            .map(e -> createIndexFrom(
+              e.getKey(),
+              indexUniqueness.get(e.getKey()),
+              columnNamesForIndexDefinition(e.getKey(), e.getValue().build(), partialIndexColumnNames.getOrDefault(e.getKey(), ImmutableList.of())),
+              partialIndexColumnNames.getOrDefault(e.getKey(), ImmutableList.of())))
             .collect(Collectors.toList());
         }
       }
@@ -866,6 +875,34 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     catch (SQLException e) {
       throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", e);
     }
+  }
+
+
+  /**
+   * Loads partial-index null-predicate column names for the table.
+   *
+   * @param tableName Name of the table.
+   * @return Partial-index predicate column names by index name.
+   */
+  protected Map<RealName, List<RealName>> loadPartialIndexColumnNames(RealName tableName) {
+    return ImmutableMap.of();
+  }
+
+
+  /**
+   * Gets the Morf column definition for an index read from database metadata.
+   *
+   * <p>The default implementation uses the physical index columns. Dialects
+   * which support partial indexes may override this to restore a portable
+   * composite fallback definition.</p>
+   *
+   * @param indexName Name of the index.
+   * @param physicalColumnNames The physical columns in the database index.
+   * @param partialIndexColumnNames The partial-index null-predicate column names.
+   * @return Column names to use in the Morf {@link Index} definition.
+   */
+  protected List<RealName> columnNamesForIndexDefinition(RealName indexName, List<RealName> physicalColumnNames, List<RealName> partialIndexColumnNames) {
+    return physicalColumnNames;
   }
 
 
@@ -902,8 +939,26 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * @return An {@link IndexBuilder} for the index.
    */
   protected static Index createIndexFrom(RealName indexName, boolean isUnique, List<RealName> columnNames) {
+    return createIndexFrom(indexName, isUnique, columnNames, ImmutableList.of());
+  }
+
+
+  /**
+   * Creates an index from given info.
+   *
+   * @param indexName The name of the index.
+   * @param isUnique Whether to mark this index as unique.
+   * @param columnNames The column names for the index.
+   * @param partialIndexColumnNames The column names used to form the partial index predicate.
+   * @return An {@link IndexBuilder} for the index.
+   */
+  protected static Index createIndexFrom(RealName indexName, boolean isUnique, List<RealName> columnNames, List<RealName> partialIndexColumnNames) {
     List<String> realColumnNames = columnNames.stream().map(RealName::getRealName).collect(Collectors.toList());
+    List<String> realPartialIndexColumnNames = partialIndexColumnNames.stream().map(RealName::getRealName).collect(Collectors.toList());
     IndexBuilder index = SchemaUtils.index(indexName.getRealName()).columns(realColumnNames);
+    if (!realPartialIndexColumnNames.isEmpty()) {
+      index = index.whereColumnsAreNull(realPartialIndexColumnNames);
+    }
     return isUnique ? index.unique() : index;
   }
 

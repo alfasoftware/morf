@@ -807,6 +807,19 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddPartialIndexStatementsOnNullColumns()
+   */
+  @Override
+  protected List<String> expectedAddPartialIndexStatementsOnNullColumns() {
+    return Arrays.asList(
+      "CREATE INDEX indexName ON testschema.Test (id, floatField) WHERE version IS NULL AND stringField IS NULL AND intField IS NULL",
+      "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]/"
+        +PostgreSQLDialect.INDEX_COLUMNS_COMMENT_LABEL+":[id,version,stringField,intField,floatField]'");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUnique()
    */

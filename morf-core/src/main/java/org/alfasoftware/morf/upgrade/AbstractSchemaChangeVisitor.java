@@ -105,7 +105,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Index foundIndex = null;
     List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(changeIndex.getTableName());
     for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(changeIndex.getToIndex().columnNames()) && index.isUnique() == changeIndex.getToIndex().isUnique()) {
+      if (indexesHaveSameDefinition(index, changeIndex.getToIndex())) {
         foundIndex = index;
         break;
       }
@@ -145,6 +145,19 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     writeStatements(sqlDialect.changePrimaryKeyColumns(currentSchema.getTable(changePrimaryKeyColumns.getTableName()), changePrimaryKeyColumns.getOldPrimaryKeyColumns(), changePrimaryKeyColumns.getNewPrimaryKeyColumns()));
   }
 
+
+  /**
+   * Checks whether two indexes have the same definition, ignoring the index name.
+   *
+   * @param left Index to compare.
+   * @param right Index to compare.
+   * @return true if the indexes have the same definition.
+   */
+  private boolean indexesHaveSameDefinition(Index left, Index right) {
+    return left.columnNames().equals(right.columnNames())
+      && left.partialIndexColumnNames().equals(right.partialIndexColumnNames())
+      && left.isUnique() == right.isUnique();
+  }
 
   /**
    * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddTableFrom)
@@ -220,7 +233,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Index foundIndex = null;
     List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
     for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
+      if (indexesHaveSameDefinition(index, addIndex.getNewIndex())) {
         foundIndex = index;
         break;
       }

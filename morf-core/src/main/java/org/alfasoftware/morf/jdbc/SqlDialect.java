@@ -4083,10 +4083,58 @@ public abstract class SqlDialect {
       .append(schemaNamePrefix(table))
       .append(table.getName())
       .append(" (")
-      .append(Joiner.on(", ").join(index.columnNames()))
-      .append(')');
+      .append(Joiner.on(", ").join(indexColumnNamesForDeployment(index)))
+      .append(')')
+      .append(partialIndexPredicateClause(index));
 
     return ImmutableList.of(statement.toString());
+  }
+
+
+  /**
+   * @return true if this dialect can render a partial index predicate.
+   */
+  protected boolean supportsPartialIndexPredicates() {
+    return false;
+  }
+
+
+  /**
+   * Gets the index columns to use when deploying the index.
+   *
+   * <p>{@link Index#columnNames()} is the portable composite definition. Dialects
+   * which can render partial index predicates deploy the physical index over the
+   * non-predicate columns only. Dialects which cannot render partial predicates
+   * deploy the portable composite definition unchanged.</p>
+   *
+   * @param index The index to deploy.
+   * @return Column names to use in the deployed index.
+   */
+  protected List<String> indexColumnNamesForDeployment(Index index) {
+    if (!supportsPartialIndexPredicates() || !index.isPartial()) {
+      return index.columnNames();
+    }
+
+    return index.columnNames().stream()
+      .filter(columnName -> !index.partialIndexColumnNames().contains(columnName))
+      .collect(toList());
+  }
+
+
+  /**
+   * Gets the partial index predicate clause.
+   *
+   * @param index The index to deploy.
+   * @return The partial index predicate clause, or an empty string.
+   */
+  protected String partialIndexPredicateClause(Index index) {
+    if (!supportsPartialIndexPredicates() || !index.isPartial()) {
+      return "";
+    }
+
+    return " WHERE " + index.partialIndexColumnNames().stream()
+      .map(columnName -> columnName + " IS NULL")
+      .collect(joining(" AND "));
   }
 
 

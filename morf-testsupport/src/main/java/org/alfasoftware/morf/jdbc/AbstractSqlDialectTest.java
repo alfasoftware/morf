@@ -28,7 +28,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
-import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
@@ -37,6 +36,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.merge;
+import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.selectDistinct;
@@ -4333,6 +4333,22 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test adding a partial index over rows where selected columns are null.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testAddPartialIndexStatementsOnNullColumns() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName")
+      .columns("id", "version", STRING_FIELD, INT_FIELD, FLOAT_FIELD)
+      .whereColumnsAreNull("version", STRING_FIELD, INT_FIELD);
+    compareStatements(
+      expectedAddPartialIndexStatementsOnNullColumns(),
+      testDialect.addIndexStatements(table, index));
+  }
+
+
+  /**
    * Test adding a unique index.
    */
   @SuppressWarnings("unchecked")
@@ -4970,6 +4986,12 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testAddIndexStatementsOnMultipleColumns()}
    */
   protected abstract List<String> expectedAddIndexStatementsOnMultipleColumns();
+
+
+  /**
+   * Expected statements to add a partial index over rows where selected columns are null.
+   */
+  protected abstract List<String> expectedAddPartialIndexStatementsOnNullColumns();
 
 
   /**
