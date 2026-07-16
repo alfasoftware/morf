@@ -55,6 +55,15 @@ import org.mockito.stubbing.Answer;
 public class TestPostgreSqlMetaDataProvider {
   private static final String TABLE_NAME = "AREALTABLE";
   private static final String TEST_SCHEMA = "TestSchema";
+  private static final String EXTENSION_RELATIONS_SQL = "SELECT c.relname"
+    + " FROM pg_catalog.pg_class c"
+    + " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+    + " JOIN pg_catalog.pg_depend d ON d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass"
+    + " AND d.objid = c.oid AND d.objsubid = 0"
+    + " JOIN pg_catalog.pg_extension e ON d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass"
+    + " AND d.refobjid = e.oid"
+    + " WHERE d.deptype = 'e'";
+  private static final String SCHEMA_EXTENSION_RELATIONS_SQL = EXTENSION_RELATIONS_SQL + " AND n.nspname = ?";
 
   private final DataSource dataSource = mock(DataSource.class, RETURNS_SMART_NULLS);
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
@@ -69,6 +78,12 @@ public class TestPostgreSqlMetaDataProvider {
   @Before
   public void before() throws SQLException {
     when(dataSource.getConnection()).thenReturn(connection);
+
+    PreparedStatement extensionStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    ResultSet extensionRelations = mock(ResultSet.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(SCHEMA_EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
+    when(extensionStatement.executeQuery()).thenReturn(extensionRelations);
+    when(extensionRelations.next()).thenReturn(false);
   }
 
 
@@ -93,6 +108,70 @@ public class TestPostgreSqlMetaDataProvider {
     assertEquals("Sequence name", "Sequence1", sequence.getName());
 
     verify(statement).setString(1, TEST_SCHEMA);
+  }
+
+
+  /**
+   * Checks that tables and views belonging to extensions are excluded from application metadata.
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testExtensionRelationsAreSystemRelations() throws SQLException {
+    // Given
+    PreparedStatement extensionStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    ResultSet extensionRelations = mock(ResultSet.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(SCHEMA_EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
+    when(extensionStatement.executeQuery()).thenReturn(extensionRelations);
+    when(extensionRelations.next()).thenReturn(true, true, false);
+    when(extensionRelations.getString(1)).thenReturn("extension_table", "extension_view");
+
+    DatabaseMetaData databaseMetaData = mock(DatabaseMetaData.class, RETURNS_SMART_NULLS);
+    ResultSet tables = mockRelations("extension_table", "application_table");
+    ResultSet views = mockRelations("extension_view", "application_view");
+    when(connection.getMetaData()).thenReturn(databaseMetaData);
+    when(databaseMetaData.getTables(null, TEST_SCHEMA, null, new String[] { "TABLE" }))
+      .thenReturn(tables);
+    when(databaseMetaData.getTables(null, TEST_SCHEMA, null, new String[] { "VIEW" }))
+      .thenReturn(views);
+
+    // When
+    Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", TEST_SCHEMA);
+
+    // Then
+    assertThat("Extension tables should be excluded", postgresMetaDataProvider.tableNames(), contains("application_table"));
+    assertThat("Extension views should be excluded", postgresMetaDataProvider.viewNames(), contains("application_view"));
+    verify(extensionStatement).setString(1, TEST_SCHEMA);
+    verify(extensionStatement).executeQuery();
+  }
+
+
+  /**
+   * Checks that extension relations can be loaded when no schema filter is supplied.
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testExtensionRelationsWithoutSchemaFilter() throws SQLException {
+    // Given
+    PreparedStatement extensionStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    ResultSet extensionRelations = mock(ResultSet.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
+    when(extensionStatement.executeQuery()).thenReturn(extensionRelations);
+    when(extensionRelations.next()).thenReturn(false);
+
+    DatabaseMetaData databaseMetaData = mock(DatabaseMetaData.class, RETURNS_SMART_NULLS);
+    ResultSet tables = mockRelations("application_table_one", "application_table_two");
+    when(connection.getMetaData()).thenReturn(databaseMetaData);
+    when(databaseMetaData.getTables(null, null, null, new String[] { "TABLE" })).thenReturn(tables);
+
+    // When
+    Schema postgresMetaDataProvider = new PostgreSQLMetaDataProvider(connection, null);
+
+    // Then
+    assertThat("Application tables should be retained", postgresMetaDataProvider.tableNames(),
+      contains("application_table_one", "application_table_two"));
+    verify(extensionStatement).executeQuery();
   }
 
   /**
@@ -178,6 +257,15 @@ public class TestPostgreSqlMetaDataProvider {
     assertThat("index prf1 columns", indexPrf1.columnNames(), contains("column1"));
     assertEquals("index prf2 name", "AREALTABLE_PRF2", indexPrf2.getName());
     assertThat("index prf2 columns", indexPrf2.columnNames(), contains("column1"));
+  }
+
+
+  private ResultSet mockRelations(String firstRelation, String secondRelation) throws SQLException {
+    ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+    when(resultSet.next()).thenReturn(true, true, false);
+    when(resultSet.getString(2)).thenReturn(TEST_SCHEMA);
+    when(resultSet.getString(3)).thenReturn(firstRelation, firstRelation, secondRelation, secondRelation);
+    return resultSet;
   }
 
 
