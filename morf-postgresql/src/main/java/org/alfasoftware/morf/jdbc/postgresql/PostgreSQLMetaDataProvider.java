@@ -42,6 +42,15 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private static final Log log = LogFactory.getLog(PostgreSQLMetaDataProvider.class);
 
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+  private static final String EXTENSION_RELATIONS_SQL = "SELECT c.relname"
+    + " FROM pg_catalog.pg_class c"
+    + " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+    + " JOIN pg_catalog.pg_depend d ON d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass"
+    + " AND d.objid = c.oid AND d.objsubid = 0"
+    + " JOIN pg_catalog.pg_extension e ON d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass"
+    + " AND d.refobjid = e.oid"
+    + " WHERE d.deptype = 'e'";
+  private static final String SCHEMA_EXTENSION_RELATIONS_SQL = EXTENSION_RELATIONS_SQL + " AND n.nspname = ?";
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
   private final Supplier<Map<String, List<Index>>> allIgnoredIndexes = Suppliers.memoize(this::loadIgnoredIndexes);
@@ -72,33 +81,31 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
 
   private Set<AName> loadExtensionRelationNames() {
-    Set<AName> relationNames = new HashSet<>();
-    String schemaFilter = StringUtils.isNotBlank(schemaName) ? " AND n.nspname = ?" : "";
-    String sql = "SELECT c.relname"
-            + " FROM pg_catalog.pg_class c"
-            + " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
-            + " JOIN pg_catalog.pg_depend d ON d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass"
-            + " AND d.objid = c.oid AND d.objsubid = 0"
-            + " JOIN pg_catalog.pg_extension e ON d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass"
-            + " AND d.refobjid = e.oid"
-            + " WHERE d.deptype = 'e'"
-            + schemaFilter;
-
-    try (PreparedStatement statement = connection.prepareStatement(sql)) {
-      if (StringUtils.isNotBlank(schemaName)) {
-        statement.setString(1, schemaName);
+    try {
+      if (StringUtils.isBlank(schemaName)) {
+        try (PreparedStatement statement = connection.prepareStatement(EXTENSION_RELATIONS_SQL)) {
+          return readExtensionRelationNames(statement);
+        }
       }
 
-      try (ResultSet resultSet = statement.executeQuery()) {
-        while (resultSet.next()) {
-          relationNames.add(named(resultSet.getString(1)));
-        }
+      try (PreparedStatement statement = connection.prepareStatement(SCHEMA_EXTENSION_RELATIONS_SQL)) {
+        statement.setString(1, schemaName);
+        return readExtensionRelationNames(statement);
       }
     }
     catch (SQLException e) {
       throw new RuntimeSqlException(e);
     }
+  }
 
+
+  private Set<AName> readExtensionRelationNames(PreparedStatement statement) throws SQLException {
+    Set<AName> relationNames = new HashSet<>();
+    try (ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        relationNames.add(named(resultSet.getString(1)));
+      }
+    }
     return relationNames;
   }
 
@@ -143,8 +150,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     String comment = columnResultSet.getString(COLUMN_REMARKS);
     String realName = matchComment(comment);
     return StringUtils.isNotBlank(realName)
-            ? createRealName(columnName, realName)
-            : super.readColumnName(columnResultSet);
+        ? createRealName(columnName, realName)
+        : super.readColumnName(columnResultSet);
   }
 
 
@@ -154,8 +161,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     String comment = tableResultSet.getString(TABLE_REMARKS);
     String realName = matchComment(comment);
     return StringUtils.isNotBlank(realName)
-            ? createRealName(tableName, realName)
-            : super.readTableName(tableResultSet);
+        ? createRealName(tableName, realName)
+        : super.readTableName(tableResultSet);
   }
 
 
@@ -165,8 +172,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     String comment = viewResultSet.getString(TABLE_REMARKS);
     String realName = matchComment(comment);
     return StringUtils.isNotBlank(realName)
-            ? createRealName(viewName, realName)
-            : super.readViewName(viewResultSet);
+        ? createRealName(viewName, realName)
+        : super.readViewName(viewResultSet);
   }
 
   @Override
@@ -199,16 +206,16 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     final ImmutableMap.Builder<AName, RealName> indexNames = ImmutableMap.builder();
 
     String schema = StringUtils.isNotBlank(schemaName)
-            ? " JOIN pg_catalog.pg_namespace n ON n.oid = ci.relnamespace AND n.nspname = '" + schemaName + "'"
-            : "";
+        ? " JOIN pg_catalog.pg_namespace n ON n.oid = ci.relnamespace AND n.nspname = '" + schemaName + "'"
+        : "";
 
     String sql = "SELECT ci.relname AS indexName, d.description AS indexRemark, t.relname as tableName, td.description as tableRemark"
-            + " FROM pg_catalog.pg_index i"
-            + " JOIN pg_catalog.pg_class ci ON ci.oid = i.indexrelid"
-            + " JOIN pg_catalog.pg_class t ON t.oid = i.indrelid"
-            + schema
-            + " JOIN pg_description d ON d.objoid = ci.oid"
-            + " JOIN pg_description td ON td.objoid = t.oid and td.objsubid=0";
+                + " FROM pg_catalog.pg_index i"
+                + " JOIN pg_catalog.pg_class ci ON ci.oid = i.indexrelid"
+                + " JOIN pg_catalog.pg_class t ON t.oid = i.indrelid"
+                + schema
+                + " JOIN pg_description d ON d.objoid = ci.oid"
+                + " JOIN pg_description td ON td.objoid = t.oid and td.objsubid=0";
 
     allIgnoredIndexesTables.clear();
 
@@ -270,8 +277,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   @Override
   protected String buildSequenceSql(String schemaName) {
     StringBuilder sequenceSqlBuilder = new StringBuilder("SELECT S.relname FROM pg_class S LEFT JOIN pg_depend D ON " +
-            "(S.oid = D.objid AND D.deptype = 'a') LEFT JOIN pg_namespace N on (N.oid = S.relnamespace) WHERE S.relkind = " +
-            "'S' AND D.objid IS NULL");
+      "(S.oid = D.objid AND D.deptype = 'a') LEFT JOIN pg_namespace N on (N.oid = S.relnamespace) WHERE S.relkind = " +
+      "'S' AND D.objid IS NULL");
 
     if (schemaName != null && !schemaName.isBlank()) {
       sequenceSqlBuilder.append(" AND N.nspname=?");

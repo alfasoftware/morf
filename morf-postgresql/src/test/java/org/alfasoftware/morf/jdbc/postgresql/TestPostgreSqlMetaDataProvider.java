@@ -62,7 +62,8 @@ public class TestPostgreSqlMetaDataProvider {
     + " AND d.objid = c.oid AND d.objsubid = 0"
     + " JOIN pg_catalog.pg_extension e ON d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass"
     + " AND d.refobjid = e.oid"
-    + " WHERE d.deptype = 'e' AND n.nspname = ?";
+    + " WHERE d.deptype = 'e'";
+  private static final String SCHEMA_EXTENSION_RELATIONS_SQL = EXTENSION_RELATIONS_SQL + " AND n.nspname = ?";
 
   private final DataSource dataSource = mock(DataSource.class, RETURNS_SMART_NULLS);
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
@@ -80,7 +81,7 @@ public class TestPostgreSqlMetaDataProvider {
 
     PreparedStatement extensionStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     ResultSet extensionRelations = mock(ResultSet.class, RETURNS_SMART_NULLS);
-    when(connection.prepareStatement(EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
+    when(connection.prepareStatement(SCHEMA_EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
     when(extensionStatement.executeQuery()).thenReturn(extensionRelations);
     when(extensionRelations.next()).thenReturn(false);
   }
@@ -120,7 +121,7 @@ public class TestPostgreSqlMetaDataProvider {
     // Given
     PreparedStatement extensionStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     ResultSet extensionRelations = mock(ResultSet.class, RETURNS_SMART_NULLS);
-    when(connection.prepareStatement(EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
+    when(connection.prepareStatement(SCHEMA_EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
     when(extensionStatement.executeQuery()).thenReturn(extensionRelations);
     when(extensionRelations.next()).thenReturn(true, true, false);
     when(extensionRelations.getString(1)).thenReturn("extension_table", "extension_view");
@@ -141,6 +142,35 @@ public class TestPostgreSqlMetaDataProvider {
     assertThat("Extension tables should be excluded", postgresMetaDataProvider.tableNames(), contains("application_table"));
     assertThat("Extension views should be excluded", postgresMetaDataProvider.viewNames(), contains("application_view"));
     verify(extensionStatement).setString(1, TEST_SCHEMA);
+    verify(extensionStatement).executeQuery();
+  }
+
+
+  /**
+   * Checks that extension relations can be loaded when no schema filter is supplied.
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testExtensionRelationsWithoutSchemaFilter() throws SQLException {
+    // Given
+    PreparedStatement extensionStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    ResultSet extensionRelations = mock(ResultSet.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(EXTENSION_RELATIONS_SQL)).thenReturn(extensionStatement);
+    when(extensionStatement.executeQuery()).thenReturn(extensionRelations);
+    when(extensionRelations.next()).thenReturn(false);
+
+    DatabaseMetaData databaseMetaData = mock(DatabaseMetaData.class, RETURNS_SMART_NULLS);
+    ResultSet tables = mockRelations("application_table_one", "application_table_two");
+    when(connection.getMetaData()).thenReturn(databaseMetaData);
+    when(databaseMetaData.getTables(null, null, null, new String[] { "TABLE" })).thenReturn(tables);
+
+    // When
+    Schema postgresMetaDataProvider = new PostgreSQLMetaDataProvider(connection, null);
+
+    // Then
+    assertThat("Application tables should be retained", postgresMetaDataProvider.tableNames(),
+      contains("application_table_one", "application_table_two"));
     verify(extensionStatement).executeQuery();
   }
 
