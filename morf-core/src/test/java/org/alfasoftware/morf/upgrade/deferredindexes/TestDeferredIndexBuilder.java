@@ -156,6 +156,29 @@ public class TestDeferredIndexBuilder {
   }
 
 
+  /**
+   * PENDING variant of {@link #testValidMarksCompleted}: the row status is
+   * PENDING (not IN_PROGRESS) but the physical index is already VALID -- the
+   * self-heal path that Path C's PRF-rename produces. Must reach COMPLETED
+   * without markStarted (no attemptsCount bump).
+   */
+  @Test
+  public void testPendingWithValidPhysicalMarksCompleted() throws SQLException {
+    // given
+    when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeferredIndexStatus.PENDING, 0)));
+    when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.TRUE));
+
+    // when
+    builder.build(snapshot);
+
+    // then
+    verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
+    verify(dao, never()).markStarted(any(), any(), anyLong(), anyInt());
+    verify(dao, never()).markFailed(any(), any(), any());
+    verify(statement, never()).execute(any());
+  }
+
+
   // ---- ABSENT branch ------------------------------------------------------
 
   /** Physical index absent — markStarted (attempts++), CREATE, markCompleted. */

@@ -66,7 +66,9 @@ import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddTableWith
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddTwoDeferredIndexes;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.AddSecondDeferredIndex;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.ChangeDeferredToNonDeferred;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.ChangeImmediateNameIndexToDeferredIdName;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveColumnWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveDeferredProductNameIndex;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveProductTable;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameTableWithDeferredIndex;
@@ -1258,6 +1260,166 @@ public class TestDeferredIndexesIntegration {
 
 
   // =========================================================================
+  // PRF-rename x deferred-index intersection
+  // =========================================================================
+
+  /**
+   * Path C for {@code visit(AddIndex)}: when a {@code .deferred()} addIndex
+   * has a matching PRF (same columns + unique flag) declared in
+   * {@link UpgradeConfigAndContext#getIgnoredIndexesForTable}, the PRF is
+   * renamed at upgrade time and the registration row is written as PENDING;
+   * the adopter's next build pass sees {@code isIndexValid=true} and
+   * self-heals to COMPLETED without running CREATE INDEX. No duplicate
+   * physical is ever materialised.
+   */
+  @Test
+  public void testAddDeferredIndexWithMatchingPRFRenamesInsteadOfCreating() {
+    // given -- physical PRF index whose shape matches the soon-to-be-declared deferred index
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+
+    // when -- upgrade with an ignoredIndexes config that lets the visitor consider the PRF
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+
+    // then -- PRF is gone (renamed), target physical exists, row registered as PENDING
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+
+    // when -- adopter runs build tasks
+    runBuildTasks();
+
+    // then -- self-heal to COMPLETED via isIndexValid; no duplicate CREATE
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    // attemptsCount stays 0 -- VALID branch skips markStarted
+    assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
+  }
+
+
+  /**
+   * Path C for {@code visit(ChangeIndex)}: when the to-index of a
+   * {@code changeIndex} is declared {@code .deferred()} and shares shape
+   * with a configured PRF, the PRF is renamed to the to-index name at
+   * upgrade time (in addition to the from-index physical DROP). The row is
+   * registered PENDING and self-heals to COMPLETED on the next build pass.
+   */
+  @Test
+  public void testChangeImmediateToDeferredWithMatchingPRFRenamesInsteadOfCreating() {
+    // given -- initial physical Product_Name_1 (from an earlier immediate-add step)
+    Schema afterAdd = schemaWithIndex();
+    performUpgrade(afterAdd, AddImmediateIndex.class);
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // and -- a physical PRF matching the future to-index shape (id + name, non-unique)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (id, name)"));
+
+    // when -- second upgrade changes Product_Name_1 (immediate on name) to Product_IdName_1
+    // (deferred on id, name), with the PRF registered as ignored so the visitor sees it
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+    performUpgradeStepsWithCustomConfig(target, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("id", "name"))));
+    },
+    AddImmediateIndex.class,
+    ChangeImmediateNameIndexToDeferredIdName.class);
+
+    // then -- Product_Name_1 dropped, PRF renamed to the target name, row registered
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+
+    // when -- adopter runs build tasks
+    runBuildTasks();
+
+    // then -- self-heal to COMPLETED; no duplicate CREATE
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_IdName_1", "attemptsCount"));
+  }
+
+
+  /**
+   * Cross-step: a deferred index materialised via PRF rename in one upgrade
+   * can be removed cleanly in a subsequent upgrade. Exercises the second-boot
+   * enricher on a PRF-rename-origin PENDING row + a following remove step.
+   */
+  @Test
+  public void testDeferredIndexBuiltViaPRFRenameCanBeRemovedInLaterUpgrade() {
+    // given -- upgrade 1 materialises Product_Name_1 via PRF rename + build task self-heal
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when -- upgrade 2 removes the same deferred index (no PRF match here — the PRF
+    // was consumed in the first upgrade, and Product_Name_1 is a normal physical now)
+    Schema targetAfterRemove = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        )
+    );
+    performUpgradeSteps(targetAfterRemove,
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then -- physical dropped and registration row deleted
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertNull("DeferredIndexes row should be deleted after removeIndex",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Config interaction: {@code forceImmediateIndexes} strips the
+   * {@code .deferred()} flag before the visitor sees the toIndex. If a PRF
+   * matches, the rename optimisation still fires (it's a physical-materialisation
+   * concern, orthogonal to the deferred flag). The resulting index is
+   * non-deferred and not registered in DeferredIndexes.
+   */
+  @Test
+  public void testForceImmediateWithMatchingPRFRenamesInsteadOfCreating() {
+    // given -- physical PRF matching the declared-deferred addIndex shape
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+
+    // when -- upgrade with force-immediate + ignoredIndexes; PRF matches the target shape
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setForceImmediateIndexes(Set.of("Product_Name_1"));
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+
+    // then -- PRF renamed to Product_Name_1; no CREATE, no registration row
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertNull("force-immediate ends up non-deferred → not registered",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  // =========================================================================
   // Config overrides (additional)
   // =========================================================================
 
@@ -1331,6 +1493,20 @@ public class TestDeferredIndexesIntegration {
     UpgradeConfigAndContext customConfig = new UpgradeConfigAndContext();
     customizer.accept(customConfig);
     Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
+        connectionResources, customConfig, viewDeploymentValidator);
+  }
+
+  /**
+   * Multi-step variant of {@link #performUpgradeWithCustomConfig}. Applies the same
+   * customised config to a list of upgrade steps run as one upgrade.
+   */
+  @SafeVarargs
+  private void performUpgradeStepsWithCustomConfig(Schema targetSchema,
+                                                   Consumer<UpgradeConfigAndContext> customizer,
+                                                   Class<? extends UpgradeStep>... steps) {
+    UpgradeConfigAndContext customConfig = new UpgradeConfigAndContext();
+    customizer.accept(customConfig);
+    Upgrade.performUpgrade(targetSchema, Arrays.asList(steps),
         connectionResources, customConfig, viewDeploymentValidator);
   }
 
@@ -1412,6 +1588,26 @@ public class TestDeferredIndexesIntegration {
     String sql = "SELECT " + fieldName + " FROM DeferredIndexes WHERE UPPER(indexName) = '"
         + indexName.toUpperCase() + "'";
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  }
+
+  /**
+   * Raw physical-index check that bypasses the schema reader's
+   * {@code shouldIgnoreIndex} filter (which hides PRF-named indexes).
+   * Needed to observe PRF creation/rename in the PRF-rename intersection tests.
+   */
+  private boolean physicalIndexExistsRaw(String indexName) {
+    String sql = "SELECT 1 FROM INFORMATION_SCHEMA.INDEXES WHERE UPPER(INDEX_NAME) = '"
+        + indexName.toUpperCase() + "'";
+    Boolean present = sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? Boolean.TRUE : Boolean.FALSE);
+    return Boolean.TRUE.equals(present);
+  }
+
+  private void assertPhysicalIndexExistsRaw(String indexName) {
+    assertTrue("Physical index " + indexName + " should exist (raw check)", physicalIndexExistsRaw(indexName));
+  }
+
+  private void assertPhysicalIndexDoesNotExistRaw(String indexName) {
+    assertFalse("Physical index " + indexName + " should NOT exist (raw check)", physicalIndexExistsRaw(indexName));
   }
 
 }
