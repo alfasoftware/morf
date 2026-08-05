@@ -212,9 +212,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (fromWillBePresent) {
       writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), fromIndex));
     }
-    if (registrationPolicy.requiresImmediateBuild(toIndex)) {
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
-    }
+    emitPhysicalIndexIfNeeded(tableName, toIndex);
     if (registrationPolicy.shouldRegister(toIndex)) {
       registerInDeferredIndexes(tableName, toIndex);
     }
@@ -347,9 +345,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = addIndex.getTableName();
     Index newIndex = registrationPolicy.normalize(addIndex.getNewIndex());
 
-    if (registrationPolicy.requiresImmediateBuild(newIndex)) {
-      emitAddIndexOrRename(tableName, newIndex);
-    }
+    emitPhysicalIndexIfNeeded(tableName, newIndex);
     if (registrationPolicy.shouldRegister(newIndex)) {
       registerInDeferredIndexes(tableName, newIndex);
     }
@@ -357,21 +353,31 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Emits CREATE INDEX for {@code newIndex}, unless the upgrade config lists
-   * an ignored index with matching shape (columns + unique flag) — in which
-   * case a RENAME INDEX reuses the existing physical index rather than
-   * creating a new one.
+   * Emits the physical DDL (if any) needed to bring {@code index} into
+   * existence. Two paths short-circuit CREATE INDEX:
+   * <ul>
+   *   <li><b>PRF-rename optimisation</b> — if the upgrade config lists an
+   *   ignored index whose shape (columns + unique flag) matches, RENAME the
+   *   PRF into {@code index.getName()} instead of running CREATE. This wins
+   *   regardless of the deferred flag: a metadata-only RENAME is always
+   *   cheaper than a full CREATE and the target physical is present
+   *   immediately, so the row (if registered separately) will self-heal to
+   *   COMPLETED on the next build pass via {@code isIndexValid}.</li>
+   *   <li><b>Deferred, no PRF match</b> — nothing is emitted here. The row
+   *   is registered separately and the adopter's background build task runs
+   *   CREATE INDEX later.</li>
+   * </ul>
    *
    * @param tableName the target table.
-   * @param newIndex the index being added.
+   * @param index the index that needs to end up physically present.
    */
-  private void emitAddIndexOrRename(String tableName, Index newIndex) {
+  private void emitPhysicalIndexIfNeeded(String tableName, Index index) {
     Table table = currentSchema.getTable(tableName);
-    Optional<Index> rename = findMatchingIgnoredIndex(tableName, newIndex);
-    if (rename.isPresent()) {
-      writeStatements(sqlDialect.renameIndexStatements(table, rename.get().getName(), newIndex.getName()));
-    } else {
-      writeStatements(sqlDialect.addIndexStatements(table, newIndex));
+    Optional<Index> prfMatch = findMatchingIgnoredIndex(tableName, index);
+    if (prfMatch.isPresent()) {
+      writeStatements(sqlDialect.renameIndexStatements(table, prfMatch.get().getName(), index.getName()));
+    } else if (registrationPolicy.requiresImmediateBuild(index)) {
+      writeStatements(sqlDialect.addIndexStatements(table, index));
     }
   }
 

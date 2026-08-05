@@ -421,6 +421,166 @@ public class TestInlineTableUpgrader {
 
 
   /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.ChangeIndex)}.
+   */
+  @Test
+  public void testVisitChangeIndexWithPRFIndex() {
+    // given
+    Index index1 = mock(Index.class);
+    when(index1.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(index1.columnNames()).thenReturn(Collections.singletonList("column_0"));
+    when(index1.isUnique()).thenReturn(false);
+    Index index2 = mock(Index.class);
+    when(index2.getName()).thenReturn(ID_TABLE_NAME + "_2");
+    when(index2.columnNames()).thenReturn(Collections.singletonList("column_2"));
+    when(index2.isUnique()).thenReturn(true);
+
+    Index indexTo1 = mock(Index.class);
+    when(indexTo1.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(indexTo1.columnNames()).thenReturn(Collections.singletonList("column_1"));
+    when(indexTo1.isUnique()).thenReturn(false);
+    Index indexTo2 = mock(Index.class);
+    when(indexTo2.getName()).thenReturn(ID_TABLE_NAME + "_2");
+    when(indexTo2.columnNames()).thenReturn(Collections.singletonList("column_2"));
+    when(indexTo2.isUnique()).thenReturn(true);
+
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(Collections.singletonList("column_1"));
+    when(indexPrf.isUnique()).thenReturn(false);
+    Index indexPrf1 = mock(Index.class);
+    when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
+    when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
+    when(indexPrf1.isUnique()).thenReturn(true);
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    when(changeIndex.getFromIndex()).thenReturn(index1);
+    when(changeIndex.getToIndex()).thenReturn(indexTo1);
+    when(changeIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    given(changeIndex.apply(schema)).willReturn(schema);
+
+    ChangeIndex changeIndex1 = mock(ChangeIndex.class);
+    when(changeIndex1.getFromIndex()).thenReturn(index2);
+    when(changeIndex1.getToIndex()).thenReturn(indexTo2);
+    when(changeIndex1.getTableName()).thenReturn(ID_TABLE_NAME);
+    given(changeIndex1.apply(schema)).willReturn(schema);
+
+    upgradeConfigAndContext.setIgnoredIndexes(Map.of(ID_TABLE_NAME, List.of(indexPrf, indexPrf1)));
+
+    // when
+    upgrader.visit(changeIndex);
+    upgrader.visit(changeIndex1);
+
+    // then
+    verify(changeIndex).apply(schema);
+    verify(changeIndex1).apply(schema);
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), eq(index1));
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), eq(index2));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"));
+    verify(sqlStatementWriter, times(4)).writeSql(anyCollection()); // index drop and index deployment
+  }
+
+
+  /**
+   * Path C: when a declared-deferred AddIndex has a matching PRF index, the
+   * PRF is renamed at upgrade time (physical present immediately) AND the
+   * DeferredIndexes row is still registered. The row starts as PENDING;
+   * the adopter's next build pass sees {@code isIndexValid=true} and
+   * self-heals it to COMPLETED without running CREATE INDEX. Never emits
+   * a CREATE for this index.
+   */
+  @Test
+  public void testVisitAddIndexDeferredWithMatchingPRFIndexRenamesAndRegisters() {
+    // given -- declared-deferred index matches a PRF's shape
+    Index declared = mock(Index.class);
+    when(declared.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(declared.columnNames()).thenReturn(List.of("column_1"));
+    when(declared.isUnique()).thenReturn(false);
+    when(declared.isDeferred()).thenReturn(true);
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(schema)).willReturn(schema);
+    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getNewIndex()).thenReturn(declared);
+
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+    when(indexPrf.isUnique()).thenReturn(false);
+    upgradeConfigAndContext.setIgnoredIndexes(
+        Map.of(ID_TABLE_NAME.toUpperCase(), List.of(indexPrf)));
+
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+
+    // when
+    upgrader.visit(addIndex);
+
+    // then -- RENAME emitted (PRF -> declared name), no CREATE
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class),
+        eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
+    verify(sqlDialect, never()).addIndexStatements(nullable(Table.class), nullable(Index.class));
+
+    // and -- registration INSERT emitted (self-healing PENDING)
+    verify(sqlDialect).convertStatementToSQL(any(InsertStatement.class));
+  }
+
+
+  /**
+   * Path C: when a declared-deferred ChangeIndex has a matching PRF for its
+   * to-index, the PRF is renamed at upgrade time and the DeferredIndexes row
+   * is still registered. Adopter's next build pass sees isIndexValid=true
+   * and self-heals to COMPLETED without a CREATE.
+   */
+  @Test
+  public void testVisitChangeIndexToDeferredWithMatchingPRFIndexRenamesAndRegisters() {
+    // given
+    Index fromIndex = mock(Index.class);
+    when(fromIndex.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(fromIndex.columnNames()).thenReturn(List.of("column_0"));
+    when(fromIndex.isUnique()).thenReturn(false);
+    when(fromIndex.isDeferred()).thenReturn(false);
+
+    Index toIndex = mock(Index.class);
+    when(toIndex.getName()).thenReturn(ID_TABLE_NAME + "_2");
+    when(toIndex.columnNames()).thenReturn(List.of("column_1"));
+    when(toIndex.isUnique()).thenReturn(false);
+    when(toIndex.isDeferred()).thenReturn(true);
+
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+    when(indexPrf.isUnique()).thenReturn(false);
+    upgradeConfigAndContext.setIgnoredIndexes(
+        Map.of(ID_TABLE_NAME.toUpperCase(), List.of(indexPrf)));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.indexes()).thenReturn(List.of(fromIndex));
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(mockTable);
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    given(changeIndex.apply(any())).willReturn(schema);
+    when(changeIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(changeIndex.getFromIndex()).thenReturn(fromIndex);
+    when(changeIndex.getToIndex()).thenReturn(toIndex);
+
+    // when
+    upgrader.visit(changeIndex);
+
+    // then -- DROP fromIndex (it was physically present), RENAME PRF -> to name, no CREATE
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), eq(fromIndex));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class),
+        eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_2"));
+    verify(sqlDialect, never()).addIndexStatements(nullable(Table.class), nullable(Index.class));
+
+    // and -- registration INSERT emitted for the deferred to-index
+    verify(sqlDialect).convertStatementToSQL(any(InsertStatement.class));
+  }
+
+
+  /**
    * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.ExecuteStatement)}.
    */
   @Test

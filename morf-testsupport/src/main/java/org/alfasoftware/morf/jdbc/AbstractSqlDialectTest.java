@@ -3563,6 +3563,15 @@ public abstract class AbstractSqlDialectTest {
        )
     );
     assertEquals(
+        expectedHints3b(),
+        testDialect.convertStatementToSQL(
+        update(tableRef("Foo"))
+        .set(field("b").as("a"))
+        .withDialectSpecificHint(provideDatabaseType(), "index(customer cust_primary_key_idx)")
+        .withDialectSpecificHint("SOMETHING_ELSE", "unused_hint()")
+      )
+    );
+    assertEquals(
       Lists.newArrayList(expectedHints4()),
       testDialect.convertStatementToSQL(
         insert()
@@ -6414,6 +6423,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link UpdateStatement#useParallelDml(int)} directive.
    */
   protected String expectedHints3a() {
+    return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link UpdateStatement#withDialectSpecificHint(String, String)} directive.
+   */
+  protected String expectedHints3b() {
     return "UPDATE " + tableName("Foo") + " SET a = b";
   }
 

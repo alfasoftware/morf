@@ -46,6 +46,7 @@ import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -814,8 +815,10 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             }
 
             String dbColumnName = indexResultSet.getString(INDEX_COLUMN_NAME);
-            String realColumnName = allColumns.get().get(tableName).get(named(dbColumnName)).getName();
+            ColumnBuilder columnFound = allColumns.get().get(tableName).getOrDefault(named(dbColumnName), null);
+            String realColumnName = columnFound == null ? "" : columnFound.getName();
             RealName columnName = createRealName(dbColumnName, realColumnName);
+
             boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
 
             if (log.isDebugEnabled()) {
@@ -825,9 +828,18 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             indexUniqueness.put(indexName, unique);
 
             if  (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
-              ignoredIndexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
-                .add(columnName);
+              if (StringUtils.isEmpty(realColumnName)) {
+                if (log.isDebugEnabled()) {
+                  log.debug("Found ignored index column expression [" + dbColumnName + "] for index [" + indexName  + ", unique: " + unique + "] on table [" + tableName + "]");
+                }
+              } else {
+                ignoredIndexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+                    .add(columnName);
+              }
             } else {
+              if (StringUtils.isEmpty(realColumnName)) {
+                throw new IllegalArgumentException("Found a column that is an expression in an index.");
+              }
               indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
                 .add(columnName);
             }

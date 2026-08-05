@@ -259,6 +259,25 @@ public class UpdateStatement implements Statement,
     }
   }
 
+
+  /**
+   * Supplies a specified custom hint to the database for the statement.
+   *
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
+   * @return this, for method chaining.
+   */
+  public UpdateStatement withDialectSpecificHint(String databaseType, String hintContents) {
+
+    if (AliasedField.immutableDslEnabled()) {
+      return shallowCopy().withDialectSpecificHint(databaseType, hintContents).build();
+    } else {
+      hints.add(new DialectSpecificHint(databaseType, hintContents));
+      return this;
+    }
+  }
+
+
   /**
    * Gets the where criteria.
    *
