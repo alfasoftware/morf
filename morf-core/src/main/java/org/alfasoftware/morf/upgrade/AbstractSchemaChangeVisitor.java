@@ -117,7 +117,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     for (Index index : original.indexes()) {
       Index normalized = registrationPolicy.normalize(index);
       if (registrationPolicy.shouldRegister(normalized)) {
-        registerInDeferredIndexes(original.getName(), normalized);
+        // Table is being created here, so no physical index can pre-exist.
+        registerInDeferredIndexes(original.getName(), normalized, false);
       }
     }
   }
@@ -212,9 +213,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (fromWillBePresent) {
       writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), fromIndex));
     }
-    emitPhysicalIndexIfNeeded(tableName, toIndex);
+    boolean toPhysicallyPresent = emitPhysicalIndexIfNeeded(tableName, toIndex);
     if (registrationPolicy.shouldRegister(toIndex)) {
-      registerInDeferredIndexes(tableName, toIndex);
+      registerInDeferredIndexes(tableName, toIndex, toPhysicallyPresent);
     }
   }
 
@@ -275,7 +276,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     for (Index index : original.indexes()) {
       Index normalized = registrationPolicy.normalize(index);
       if (registrationPolicy.shouldRegister(normalized)) {
-        registerInDeferredIndexes(original.getName(), normalized);
+        // Table is being created here, so no physical index can pre-exist.
+        registerInDeferredIndexes(original.getName(), normalized, false);
       }
     }
   }
@@ -345,9 +347,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = addIndex.getTableName();
     Index newIndex = registrationPolicy.normalize(addIndex.getNewIndex());
 
-    emitPhysicalIndexIfNeeded(tableName, newIndex);
+    boolean physicallyPresent = emitPhysicalIndexIfNeeded(tableName, newIndex);
     if (registrationPolicy.shouldRegister(newIndex)) {
-      registerInDeferredIndexes(tableName, newIndex);
+      registerInDeferredIndexes(tableName, newIndex, physicallyPresent);
     }
   }
 
@@ -370,15 +372,23 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    *
    * @param tableName the target table.
    * @param index the index that needs to end up physically present.
+   * @return {@code true} if the index is physically present once the emitted
+   *     DDL has run, {@code false} if it was left for the adopter's build task.
+   *     Callers use this to register the row as COMPLETED rather than PENDING,
+   *     keeping {@code isAwaitingBuild} consistent with physical reality.
    */
-  private void emitPhysicalIndexIfNeeded(String tableName, Index index) {
+  private boolean emitPhysicalIndexIfNeeded(String tableName, Index index) {
     Table table = currentSchema.getTable(tableName);
     Optional<Index> prfMatch = findMatchingIgnoredIndex(tableName, index);
     if (prfMatch.isPresent()) {
       writeStatements(sqlDialect.renameIndexStatements(table, prfMatch.get().getName(), index.getName()));
-    } else if (registrationPolicy.requiresImmediateBuild(index)) {
-      writeStatements(sqlDialect.addIndexStatements(table, index));
+      return true;
     }
+    if (registrationPolicy.requiresImmediateBuild(index)) {
+      writeStatements(sqlDialect.addIndexStatements(table, index));
+      return true;
+    }
+    return false;
   }
 
 
@@ -400,12 +410,23 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   /**
    * Records the index in DeferredIndexes and emits the INSERT DML.
    *
+   * <p>When the index is already physically present at the end of this upgrade
+   * — the PRF-rename case — the row is registered as COMPLETED rather than
+   * PENDING. That keeps {@code DeferredIndexSession.isAwaitingBuild} aligned
+   * with physical reality, so a later RemoveIndex / ChangeIndex / RenameIndex
+   * in the same session (or a later upgrade run before the adopter drains the
+   * build queue) still emits its DROP / RENAME DDL.</p>
+   *
    * @param tableName the table the index belongs to.
    * @param index the index being registered.
+   * @param alreadyPhysicallyPresent whether the emitted DDL has already
+   *     materialised the index.
    */
-  private void registerInDeferredIndexes(String tableName, Index index) {
-    deferredIndexSession.registerIndex(tableName, index)
-        .forEach(this::writeDeferredIndexesDml);
+  private void registerInDeferredIndexes(String tableName, Index index, boolean alreadyPhysicallyPresent) {
+    List<InsertStatement> inserts = alreadyPhysicallyPresent
+        ? deferredIndexSession.registerCompletedIndex(tableName, index)
+        : deferredIndexSession.registerIndex(tableName, index);
+    inserts.forEach(this::writeDeferredIndexesDml);
   }
 
 

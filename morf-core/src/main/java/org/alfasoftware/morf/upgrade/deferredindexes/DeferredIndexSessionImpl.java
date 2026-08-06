@@ -97,6 +97,21 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
 
   @Override
+  public List<InsertStatement> registerCompletedIndex(String tableName, Index idx) {
+    if (log.isDebugEnabled()) {
+      log.debug("Registering already-built index: table=" + tableName + ", index=" + idx.getName());
+    }
+    // Physical already exists (PRF rename) → COMPLETED, never queued for build.
+    registeredIndexes
+        .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
+        .put(idx.getName().toUpperCase(),
+             new IndexRecord(tableName, idx, DeferredIndexStatus.COMPLETED));
+
+    return List.of(statements.registerCompletedIndex(tableName, idx));
+  }
+
+
+  @Override
   public boolean isRegistered(String tableName, String indexName) {
     Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     return tableMap != null && tableMap.containsKey(indexName.toUpperCase());

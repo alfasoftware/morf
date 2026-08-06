@@ -98,6 +98,44 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
+  /**
+   * A PRF-materialised index is registered COMPLETED, so isAwaitingBuild
+   * reports false immediately. This is the invariant the visitor relies on to
+   * decide whether later DROP / RENAME DDL is needed: registering such an index
+   * as PENDING would claim it is not yet physically present and suppress that
+   * DDL.
+   */
+  @Test
+  public void testRegisterCompletedIndexIsNotAwaitingBuild() {
+    // given
+    Index idx = index("Idx1").deferred().columns("col1");
+
+    // when
+    List<? extends Statement> stmts = session.registerCompletedIndex("Table1", idx);
+
+    // then
+    assertEquals(1, stmts.size());
+    assertTrue("Should be registered", session.isRegistered("Table1", "Idx1"));
+    assertFalse("Already-built index must NOT be awaiting build",
+        session.isAwaitingBuild("Table1", "Idx1"));
+  }
+
+
+  /** Contrast: the ordinary registerIndex path IS awaiting build. */
+  @Test
+  public void testRegisterIndexIsAwaitingBuild() {
+    // given
+    Index idx = index("Idx1").deferred().columns("col1");
+
+    // when
+    session.registerIndex("Table1", idx);
+
+    // then
+    assertTrue("Newly declared deferred index is awaiting build",
+        session.isAwaitingBuild("Table1", "Idx1"));
+  }
+
+
   /** isRegistered should be case-insensitive. */
   @Test
   public void testIsRegisteredCaseInsensitive() {

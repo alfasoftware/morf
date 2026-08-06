@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -200,20 +201,61 @@ class DeferredIndexesStatements {
    * @return INSERT adding a new registration row with status PENDING.
    */
   InsertStatement registerIndex(String tableName, Index index) {
+    return registerIndex(tableName, index, DeferredIndexStatus.PENDING, null);
+  }
+
+
+  /**
+   * Registers an index that is <em>already physically present</em> at the end of
+   * the upgrade — the PRF-rename case, where an ignored {@code _PRF} index of
+   * matching shape was renamed into the declared index rather than a new one
+   * being created.
+   *
+   * <p>The row is written straight to {@code COMPLETED} with {@code completedTime}
+   * set, so it never enters the build queue and, critically, so
+   * {@link DeferredIndexSession#isAwaitingBuild} reports {@code false} for it.
+   * Registering such a row as {@code PENDING} would tell the rest of the visitor
+   * that the index is not yet physically present, suppressing the DROP / RENAME
+   * DDL of any later change to it.</p>
+   *
+   * @param tableName the table.
+   * @param index the index, already materialised in the database.
+   * @return INSERT writing a COMPLETED registration row.
+   */
+  InsertStatement registerCompletedIndex(String tableName, Index index) {
+    return registerIndex(tableName, index, DeferredIndexStatus.COMPLETED, System.currentTimeMillis());
+  }
+
+
+  /**
+   * @param tableName the table.
+   * @param index the index.
+   * @param status the lifecycle status to write.
+   * @param completedTime epoch ms to write into {@code completedTime}, or
+   *     {@code null} to leave the column unset.
+   * @return INSERT registering the index with the supplied status.
+   */
+  private InsertStatement registerIndex(String tableName, Index index,
+                                        DeferredIndexStatus status, Long completedTime) {
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = System.currentTimeMillis();
 
+    List<AliasedFieldBuilder> values = new ArrayList<>(Arrays.asList(
+        literal(operationId).as(COL_ID),
+        literal(tableName).as(COL_TABLE_NAME),
+        literal(index.getName()).as(COL_INDEX_NAME),
+        literal(index.isUnique()).as(COL_INDEX_UNIQUE),
+        literal(String.join(",", index.columnNames())).as(COL_INDEX_COLUMNS),
+        literal(status.name()).as(COL_STATUS),
+        literal(0).as(COL_ATTEMPTS_COUNT),
+        literal(createdTime).as(COL_CREATED_TIME)));
+
+    if (completedTime != null) {
+      values.add(literal(completedTime).as(COL_COMPLETED_TIME));
+    }
+
     return insert().into(tableRef(TABLE))
-        .values(
-            literal(operationId).as(COL_ID),
-            literal(tableName).as(COL_TABLE_NAME),
-            literal(index.getName()).as(COL_INDEX_NAME),
-            literal(index.isUnique()).as(COL_INDEX_UNIQUE),
-            literal(String.join(",", index.columnNames())).as(COL_INDEX_COLUMNS),
-            literal(DeferredIndexStatus.PENDING.name()).as(COL_STATUS),
-            literal(0).as(COL_ATTEMPTS_COUNT),
-            literal(createdTime).as(COL_CREATED_TIME)
-        );
+        .values(values.toArray(new AliasedFieldBuilder[0]));
   }
 
 

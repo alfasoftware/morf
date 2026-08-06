@@ -69,6 +69,7 @@ import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.ChangeDeferr
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.ChangeImmediateNameIndexToDeferredIdName;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveColumnWithDeferredIndex;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveDeferredProductNameIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameDeferredProductNameIndex;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveProductTable;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex;
 import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameTableWithDeferredIndex;
@@ -1264,13 +1265,13 @@ public class TestDeferredIndexesIntegration {
   // =========================================================================
 
   /**
-   * Path C for {@code visit(AddIndex)}: when a {@code .deferred()} addIndex
-   * has a matching PRF (same columns + unique flag) declared in
+   * When a {@code .deferred()} addIndex has a matching PRF (same columns +
+   * unique flag) declared in
    * {@link UpgradeConfigAndContext#getIgnoredIndexesForTable}, the PRF is
-   * renamed at upgrade time and the registration row is written as PENDING;
-   * the adopter's next build pass sees {@code isIndexValid=true} and
-   * self-heals to COMPLETED without running CREATE INDEX. No duplicate
-   * physical is ever materialised.
+   * renamed into the declared index at upgrade time. Because the index is
+   * physically present the moment the script runs, the registration row is
+   * written straight to COMPLETED -- it never enters the build queue, and no
+   * duplicate physical is ever materialised.
    */
   @Test
   public void testAddDeferredIndexWithMatchingPRFRenamesInsteadOfCreating() {
@@ -1286,19 +1287,22 @@ public class TestDeferredIndexesIntegration {
           List.of(index("Product_PRF1").columns("name"))));
     });
 
-    // then -- PRF is gone (renamed), target physical exists, row registered as PENDING
+    // then -- PRF is gone (renamed), target physical exists, row already COMPLETED
     assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
 
-    // when -- adopter runs build tasks
+    // and -- nothing queued: the adopter has no work to do for this index
+    assertTrue("PRF-materialised index must not enter the build queue",
+        newDao().findNonTerminal().isEmpty());
+
+    // when -- adopter runs build tasks anyway
     runBuildTasks();
 
-    // then -- self-heal to COMPLETED via isIndexValid; no duplicate CREATE
+    // then -- unchanged; no duplicate CREATE
     assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
-    // attemptsCount stays 0 -- VALID branch skips markStarted
     assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
   }
 
@@ -1337,25 +1341,29 @@ public class TestDeferredIndexesIntegration {
     AddImmediateIndex.class,
     ChangeImmediateNameIndexToDeferredIdName.class);
 
-    // then -- Product_Name_1 dropped, PRF renamed to the target name, row registered
+    // then -- Product_Name_1 dropped, PRF renamed to the target name, row COMPLETED
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
     assertPhysicalIndexExists("Product", "Product_IdName_1");
-    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
 
-    // when -- adopter runs build tasks
+    // and -- nothing queued
+    assertTrue("PRF-materialised index must not enter the build queue",
+        newDao().findNonTerminal().isEmpty());
+
+    // when -- adopter runs build tasks anyway
     runBuildTasks();
 
-    // then -- self-heal to COMPLETED; no duplicate CREATE
+    // then -- unchanged; no duplicate CREATE
     assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
     assertEquals("0", queryDeferredIndexField("Product_IdName_1", "attemptsCount"));
   }
 
 
   /**
-   * Cross-step: a deferred index materialised via PRF rename in one upgrade
+   * Cross-upgrade: a deferred index materialised via PRF rename in one upgrade
    * can be removed cleanly in a subsequent upgrade. Exercises the second-boot
-   * enricher on a PRF-rename-origin PENDING row + a following remove step.
+   * enricher on a PRF-rename-origin COMPLETED row + a following remove step.
    */
   @Test
   public void testDeferredIndexBuiltViaPRFRenameCanBeRemovedInLaterUpgrade() {
@@ -1416,6 +1424,111 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
     assertNull("force-immediate ends up non-deferred → not registered",
         queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * A deferred index materialised by a PRF rename is physically present even
+   * though its row has never been through the build task. A later upgrade that
+   * removes it must still emit the physical DROP -- the adopter is explicitly
+   * allowed to run a new upgrade before draining the build queue.
+   */
+  @Test
+  public void testRemoveOfPRFMaterialisedDeferredIndexDropsPhysicalWhenQueueNotDrained() {
+    // given -- upgrade 1 materialises Product_Name_1 via PRF rename; build tasks NOT run
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- upgrade 2 removes it, with the row still un-built
+    performUpgradeSteps(schemaWithoutIndex(),
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then -- registration row gone AND physical dropped (no orphan)
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Same setup as the remove case, but the later upgrade renames the index.
+   * The physical must be renamed alongside the registration row, otherwise the
+   * row records a name the database doesn't have.
+   */
+  @Test
+  public void testRenameOfPRFMaterialisedDeferredIndexRenamesPhysicalWhenQueueNotDrained() {
+    // given
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- upgrade 2 renames Product_Name_1 -> Product_Name_Renamed
+    Schema renamed = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_Renamed").columns("name"))
+    );
+    performUpgradeSteps(renamed,
+        AddDeferredIndex.class,
+        RenameDeferredProductNameIndex.class);
+
+    // then -- row renamed AND physical renamed to match
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_Renamed", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_Renamed");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Same setup again, but the later upgrade changes the index to non-deferred
+   * under the same name. The from-index physical must be dropped before the
+   * replacement is created.
+   */
+  @Test
+  public void testChangeOfPRFMaterialisedDeferredIndexDropsFromPhysicalWhenQueueNotDrained() {
+    // given
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- upgrade 2 changes it from deferred to non-deferred (same name)
+    performUpgradeSteps(schemaWithIndex(),
+        AddDeferredIndex.class,
+        ChangeDeferredToNonDeferred.class);
+
+    // then -- row deleted (no longer declared deferred), single physical present
+    assertNull("Registration row should be deleted once non-deferred",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Shared setup for the three tests above: pre-create a PRF whose shape matches
+   * the deferred index, run the upgrade that declares it (so the visitor renames
+   * the PRF), and deliberately leave the build queue undrained.
+   */
+  private void givenDeferredIndexMaterialisedByPRFRename() {
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    // The PRF rename materialised the index during the upgrade, so the row is
+    // registered COMPLETED -- it never enters the build queue.
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /** Helper: Product with no indexes. */
+  private static Schema schemaWithoutIndex() {
+    return schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        )
+    );
   }
 
 

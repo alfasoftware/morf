@@ -67,6 +67,23 @@ public interface DeferredIndexSession {
 
 
   /**
+   * Records a deferred index whose physical form <em>already exists</em> and
+   * returns the INSERT DML. Used when the visitor satisfies a declared-deferred
+   * index by renaming a shape-matching ignored {@code _PRF} index instead of
+   * creating a new one: the index is physically present the moment the upgrade
+   * script runs, so it must never enter the build queue.
+   *
+   * <p>The row is written as {@code COMPLETED}, which also keeps
+   * {@link #isAwaitingBuild} honest — see that method's contract.</p>
+   *
+   * @param tableName the table.
+   * @param index the index (must be {@code isDeferred()=true}).
+   * @return INSERT statements for the visitor to emit.
+   */
+  List<InsertStatement> registerCompletedIndex(String tableName, Index index);
+
+
+  /**
    * @param tableName the table.
    * @param indexName the index.
    * @return {@code true} if the index is currently registered as deferred
