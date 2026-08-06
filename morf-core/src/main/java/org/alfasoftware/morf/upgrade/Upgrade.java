@@ -521,8 +521,8 @@ public class Upgrade {
    * Enriches the source schema with DeferredIndexes metadata: rebuilds
    * built-deferred indexes with the {@code .deferred()} flag, virtualizes
    * unbuilt-deferred rows as declared indexes, and primes the per-upgrade
-   * session so the visitor can answer presence queries via
-   * {@link DeferredIndexSession#isAwaitingBuild}.
+   * session -- with the physical presence it observed for each row -- so the
+   * visitor can answer {@link DeferredIndexSession#willBePhysicallyPresent}.
    *
    * @param sourceSchema the source schema read from JDBC metadata.
    * @param session the per-upgrade session to prime.

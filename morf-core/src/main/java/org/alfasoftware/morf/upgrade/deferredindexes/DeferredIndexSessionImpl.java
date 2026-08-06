@@ -62,10 +62,11 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
 
   @Override
-  public void prime(DeferredIndex entry) {
+  public void prime(DeferredIndex entry, boolean physicallyPresent) {
     if (log.isDebugEnabled()) {
       log.debug("Priming (persisted row): table=" + entry.getTableName()
-          + ", index=" + entry.getIndexName() + ", status=" + entry.getStatus());
+          + ", index=" + entry.getIndexName() + ", status=" + entry.getStatus()
+          + ", physicallyPresent=" + physicallyPresent);
     }
     // Every persisted row is a deferred index.
     IndexBuilder builder = index(entry.getIndexName()).columns(entry.getIndexColumns());
@@ -76,7 +77,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     registeredIndexes
         .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
         .put(entry.getIndexName().toUpperCase(),
-             new IndexRecord(entry.getTableName(), builder, entry.getStatus()));
+             new IndexRecord(entry.getTableName(), builder, physicallyPresent));
   }
 
 
@@ -86,11 +87,11 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       log.debug("Registering index: table=" + tableName + ", index=" + idx.getName()
           + ", deferred=" + idx.isDeferred());
     }
-    // New declaration → status PENDING (adopter hasn't built it yet).
+    // New declaration → row PENDING, nothing physical until the adopter builds it.
     registeredIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
         .put(idx.getName().toUpperCase(),
-             new IndexRecord(tableName, idx, DeferredIndexStatus.PENDING));
+             new IndexRecord(tableName, idx, false));
 
     return List.of(statements.registerIndex(tableName, idx));
   }
@@ -105,7 +106,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     registeredIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
         .put(idx.getName().toUpperCase(),
-             new IndexRecord(tableName, idx, DeferredIndexStatus.COMPLETED));
+             new IndexRecord(tableName, idx, true));
 
     return List.of(statements.registerCompletedIndex(tableName, idx));
   }
@@ -130,12 +131,12 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
 
   @Override
-  public boolean isAwaitingBuild(String tableName, String indexName) {
+  public boolean willBePhysicallyPresent(String tableName, String indexName) {
     Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
-    if (tableMap == null) return false;
+    if (tableMap == null) return true;
     IndexRecord record = tableMap.get(indexName.toUpperCase());
-    if (record == null) return false;
-    return record.status != DeferredIndexStatus.COMPLETED;
+    if (record == null) return true;
+    return record.physicallyPresent;
   }
 
 
@@ -195,7 +196,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     Map<String, IndexRecord> updatedMap = new LinkedHashMap<>();
     for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
       IndexRecord r = entry.getValue();
-      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index, r.status));
+      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index, r.physicallyPresent));
     }
     registeredIndexes.put(newTableName.toUpperCase(), updatedMap);
 
@@ -221,7 +222,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
         IndexBuilder builder = index(r.index.getName()).columns(updatedColumns);
         if (r.index.isUnique()) builder = builder.unique();
         if (r.index.isDeferred()) builder = builder.deferred();
-        entry.setValue(new IndexRecord(r.tableName, builder, r.status));
+        entry.setValue(new IndexRecord(r.tableName, builder, r.physicallyPresent));
 
         updates.add(statements.updateIndexColumns(
             r.tableName, r.index.getName(), String.join(",", updatedColumns)));
@@ -243,7 +244,10 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     IndexBuilder builder = index(newIndexName).columns(existing.index.columnNames());
     if (existing.index.isUnique()) builder = builder.unique();
     if (existing.index.isDeferred()) builder = builder.deferred();
-    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, builder, existing.status));
+    // The visitor emits the physical RENAME under exactly the condition that made
+    // this record present, so presence carries across the name change unchanged.
+    tableMap.put(newIndexName.toUpperCase(),
+        new IndexRecord(existing.tableName, builder, existing.physicallyPresent));
 
     return List.of(statements.updateIndexName(
         existing.tableName, existing.index.getName(), newIndexName));
@@ -257,12 +261,19 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
   private static final class IndexRecord {
     final String tableName;
     final Index index;
-    final DeferredIndexStatus status;
 
-    IndexRecord(String tableName, Index index, DeferredIndexStatus status) {
+    /**
+     * Whether an index of this name exists in the database at this point in the
+     * generated script. Observed by the enricher for primed rows and set by
+     * construction for rows this upgrade registers -- never derived from the row's
+     * status, which records build progress rather than physical reality.
+     */
+    final boolean physicallyPresent;
+
+    IndexRecord(String tableName, Index index, boolean physicallyPresent) {
       this.tableName = tableName;
       this.index = index;
-      this.status = status;
+      this.physicallyPresent = physicallyPresent;
     }
   }
 }

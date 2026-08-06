@@ -163,8 +163,8 @@ public class TestDeferredIndexesModelEnricherImpl {
     Index virtual = result.getTable("MyTable").indexes().get(0);
     assertEquals("MyIdx", virtual.getName());
     assertTrue("Should be deferred", virtual.isDeferred());
-    // and — session sees it as awaiting build
-    assertTrue(session.isAwaitingBuild("MyTable", "MyIdx"));
+    // and — nothing physical behind it, so the visitor must not emit DROP/RENAME DDL
+    assertFalse(session.willBePhysicallyPresent("MyTable", "MyIdx"));
   }
 
 
@@ -195,10 +195,12 @@ public class TestDeferredIndexesModelEnricherImpl {
     assertEquals("MyIdx", enriched.getName());
     assertTrue("Non-COMPLETED + physical present should be marked deferred for the build task",
         enriched.isDeferred());
-    // and — session knows it's registered AND awaiting build (status=PENDING)
+    // and — the session reports it PRESENT despite the non-terminal row. The status
+    // says the build never finished; the schema says the index is there. Only the
+    // latter governs whether a later DROP / RENAME needs emitting.
     assertTrue(session.isRegistered("MyTable", "MyIdx"));
-    assertTrue("Non-COMPLETED row should still be awaiting build",
-        session.isAwaitingBuild("MyTable", "MyIdx"));
+    assertTrue("A non-terminal row over a real physical index is still present",
+        session.willBePhysicallyPresent("MyTable", "MyIdx"));
   }
 
 
@@ -250,8 +252,8 @@ public class TestDeferredIndexesModelEnricherImpl {
     Index enriched = result.getTable("MyTable").indexes().get(0);
     assertTrue(enriched.isDeferred());
     assertTrue(session.isRegistered("MyTable", "MyIdx"));
-    assertFalse("Built deferred should NOT be awaiting build",
-        session.isAwaitingBuild("MyTable", "MyIdx"));
+    assertTrue("Built deferred index is physically present",
+        session.willBePhysicallyPresent("MyTable", "MyIdx"));
   }
 
 
@@ -435,7 +437,11 @@ public class TestDeferredIndexesModelEnricherImpl {
   }
 
 
-  /** Enricher primes the session with every persisted row regardless of status. */
+  /**
+   * Enricher primes the session with every persisted row regardless of status, and
+   * tells it what it actually saw: TableA.A_Idx exists physically, TableB.B_Idx does
+   * not. That observation -- not the row's status -- is what the visitor consults.
+   */
   @Test
   public void testEnrichPrimesSessionWithEveryPersistedRow() {
     // given — two persisted rows, one COMPLETED one PENDING
@@ -457,8 +463,8 @@ public class TestDeferredIndexesModelEnricherImpl {
     enricher.enrich(input, mockSession);
 
     // then — both rows primed
-    verify(mockSession).prime(entryA);
-    verify(mockSession).prime(entryB);
+    verify(mockSession).prime(entryA, true);
+    verify(mockSession).prime(entryB, false);
   }
 
 

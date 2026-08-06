@@ -212,11 +212,9 @@ class DeferredIndexesStatements {
    * being created.
    *
    * <p>The row is written straight to {@code COMPLETED} with {@code completedTime}
-   * set, so it never enters the build queue and, critically, so
-   * {@link DeferredIndexSession#isAwaitingBuild} reports {@code false} for it.
-   * Registering such a row as {@code PENDING} would tell the rest of the visitor
-   * that the index is not yet physically present, suppressing the DROP / RENAME
-   * DDL of any later change to it.</p>
+   * set, so it never enters the build queue. The visitor separately records the
+   * index as physically present for the remainder of the upgrade, so the DROP /
+   * RENAME DDL of any later change to it is still emitted.</p>
    *
    * @param tableName the table.
    * @param index the index, already materialised in the database.

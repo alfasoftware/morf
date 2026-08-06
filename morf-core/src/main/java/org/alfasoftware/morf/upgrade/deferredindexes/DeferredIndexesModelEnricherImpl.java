@@ -136,7 +136,7 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
     // Seed the per-upgrade session with every persisted row before the visitor mutates anything,
     // so subsequent remove/rename/column operations cascade correctly to prior-upgrade rows.
-    primeSession(entries, session);
+    primeSession(entries, session, physicallyPresentIndexNames(physicalSchema));
 
     // (table -> (index -> row)) bucketed by upper-cased name for fast per-table lookup
     // while we walk the physical schema. We'll remove() as we consume each table's bucket;
@@ -186,10 +186,45 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
   /** Side-effect: every persisted row primes the session so visitor mutations
    *  cascade to all currently-declared deferred indexes. */
-  private void primeSession(List<DeferredIndex> entries, DeferredIndexSession session) {
+  private void primeSession(List<DeferredIndex> entries, DeferredIndexSession session,
+                            Set<String> physicallyPresent) {
     for (DeferredIndex entry : entries) {
-      session.prime(entry);
+      session.prime(entry, physicallyPresent.contains(
+          presenceKey(entry.getTableName(), entry.getIndexName())));
     }
+  }
+
+
+  /**
+   * Every (table, index) pair the database actually has, as upper-cased keys.
+   *
+   * <p>This is deliberately a name-existence check and not a validity check. The
+   * session's only consumer is the visitor deciding whether to emit a DROP or RENAME,
+   * and both of those are correct — indeed necessary — against an index that exists
+   * but is INVALID. Validity matters to the build task, which handles it separately
+   * via {@code dialect.isIndexValid}.</p>
+   *
+   * @param physicalSchema the schema as read from the database.
+   * @return keys for every physical index in the schema.
+   */
+  private Set<String> physicallyPresentIndexNames(Schema physicalSchema) {
+    Set<String> present = new HashSet<>();
+    for (Table table : physicalSchema.tables()) {
+      for (Index idx : table.indexes()) {
+        present.add(presenceKey(table.getName(), idx.getName()));
+      }
+    }
+    return present;
+  }
+
+
+  /**
+   * @param tableName the table.
+   * @param indexName the index.
+   * @return case-insensitive lookup key, matching the session's own casing rules.
+   */
+  private static String presenceKey(String tableName, String indexName) {
+    return tableName.toUpperCase() + "." + indexName.toUpperCase();
   }
 
 

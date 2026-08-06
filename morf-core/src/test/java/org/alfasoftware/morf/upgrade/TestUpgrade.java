@@ -1094,11 +1094,11 @@ public class TestUpgrade {
     verify(graphBasedUpgradeScriptGeneratorFactory)
         .create(any(), any(), any(), any(), any(), any(), captor.capture());
 
-    assertTrue("The graph-based builder was given a DeferredIndexSession that the inline "
-        + "upgrader had already mutated: it now reports Foo_Idx as built, so the graph script "
-        + "would emit DROP INDEX for an index that was never created and would omit the "
-        + "DELETE that removes its registration row.",
-        captor.getValue().isAwaitingBuild("Foo", "Foo_Idx"));
+    assertFalse("The graph-based builder was given a DeferredIndexSession that the inline "
+        + "upgrader had already mutated: it now reports Foo_Idx as physically present, so the "
+        + "graph script would emit DROP INDEX for an index that was never created and would "
+        + "omit the DELETE that removes its registration row.",
+        captor.getValue().willBePhysicallyPresent("Foo", "Foo_Idx"));
   }
 
 
@@ -1112,7 +1112,7 @@ public class TestUpgrade {
       row.setIndexUnique(false);
       row.setIndexColumns(ImmutableList.of("bar"));
       row.setStatus(DeferredIndexStatus.PENDING);
-      ((DeferredIndexSession) inv.getArgument(1)).prime(row);
+      ((DeferredIndexSession) inv.getArgument(1)).prime(row, false);
       return inv.getArgument(0);
     });
     return enricher;

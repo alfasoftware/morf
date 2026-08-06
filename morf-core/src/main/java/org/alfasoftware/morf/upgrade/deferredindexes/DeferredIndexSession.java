@@ -33,8 +33,8 @@ import org.alfasoftware.morf.sql.UpdateStatement;
  * effective {@code isDeferred()} after dialect-support normalization.</p>
  *
  * <p><b>Lifecycle</b>: instances are per-upgrade. At session start the
- * enricher calls {@link #prime(DeferredIndex)} for every persisted row so
- * that subsequent {@code unregisterIndex / updateIndexName / updateColumnName}
+ * enricher calls {@link #prime(DeferredIndex, boolean)} for every persisted row
+ * so that subsequent {@code unregisterIndex / updateIndexName / updateColumnName}
  * etc. produce correct DML against rows persisted by earlier upgrades.</p>
  *
  * <p>Separate from {@link DeferredIndexService} because the two have
@@ -50,9 +50,19 @@ public interface DeferredIndexSession {
    * Seeds the in-session cache with a persisted registration row WITHOUT
    * emitting any DML. Called by the enricher at session start.
    *
+   * <p>The enricher supplies {@code physicallyPresent} from its own read of the
+   * physical schema. It must not be inferred from {@link DeferredIndex#getStatus()}:
+   * a build that creates the index and then dies before writing {@code COMPLETED}
+   * leaves a non-terminal row over an index that genuinely exists, and a
+   * {@code CREATE INDEX CONCURRENTLY} that fails on PostgreSQL leaves one behind
+   * too. Status records how far the build got; only the schema says what is
+   * actually there.</p>
+   *
    * @param entry the persisted row.
+   * @param physicallyPresent whether an index of this name exists on the table in
+   *     the physical schema, valid or otherwise.
    */
-  void prime(DeferredIndex entry);
+  void prime(DeferredIndex entry, boolean physicallyPresent);
 
 
   /**
@@ -89,8 +99,8 @@ public interface DeferredIndexSession {
    * creating a new one: the index is physically present the moment the upgrade
    * script runs, so it must never enter the build queue.
    *
-   * <p>The row is written as {@code COMPLETED}, which also keeps
-   * {@link #isAwaitingBuild} honest — see that method's contract.</p>
+   * <p>The row is written as {@code COMPLETED}, and the index counts as present
+   * for {@link #willBePhysicallyPresent} from this point in the script onwards.</p>
    *
    * @param tableName the table.
    * @param index the index (must be {@code isDeferred()=true}).
@@ -109,15 +119,33 @@ public interface DeferredIndexSession {
 
 
   /**
+   * Projects forward: will an index of this name exist in the database by the time
+   * the generated upgrade script reaches the current emission point? The visitor
+   * uses this to decide whether to emit physical DDL — a DROP or RENAME against an
+   * index that isn't there would fail the script.
+   *
+   * <p>Answers for the three cases:</p>
+   * <ul>
+   *   <li><b>Not registered</b> — {@code true}. Either an ordinary non-deferred
+   *   index, or not an index at all; both are the caller's business, not this
+   *   session's, and the visitor's existing DDL is correct.</li>
+   *   <li><b>Registered by this upgrade</b> — {@code true} only when the emitted DDL
+   *   has already materialised it (the PRF-rename case, via
+   *   {@link #registerCompletedIndex}). A freshly declared deferred index is absent
+   *   until the adopter builds it.</li>
+   *   <li><b>Primed from a persisted row</b> — whatever the enricher observed in the
+   *   physical schema. Note this is deliberately independent of the row's status;
+   *   see {@link #prime(DeferredIndex, boolean)}.</li>
+   * </ul>
+   *
+   * <p>Callers must read this <em>before</em> the mutation methods below, which
+   * evict or rewrite the record it consults.</p>
+   *
    * @param tableName the table.
    * @param indexName the index.
-   * @return {@code true} if the index is currently registered AND its status is
-   *     non-terminal (PENDING / IN_PROGRESS / FAILED) — i.e. it has been
-   *     declared deferred and the adopter has not yet built it. The visitor
-   *     uses this to decide whether to emit physical DDL: an awaiting-build
-   *     index is not yet physically present.
+   * @return {@code true} if the index will exist at this point in the script.
    */
-  boolean isAwaitingBuild(String tableName, String indexName);
+  boolean willBePhysicallyPresent(String tableName, String indexName);
 
 
   /**

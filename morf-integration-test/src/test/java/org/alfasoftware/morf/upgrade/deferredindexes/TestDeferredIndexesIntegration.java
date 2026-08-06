@@ -930,6 +930,122 @@ public class TestDeferredIndexesIntegration {
 
 
   /**
+   * A build that created the physical index but died before recording the outcome
+   * leaves a non-terminal row sitting over a real index. A later upgrade that removes
+   * the index must still emit the physical DROP: skipping it strands an index that no
+   * registration row tracks and no schema declares, which the next enrichment pass
+   * reports as an unexplained difference.
+   */
+  @Test
+  public void testRemoveOfCrashedBuildDeferredIndexDropsPhysical() {
+    // given — physical index built, row never promoted past IN_PROGRESS
+    givenPhysicalIndexBuiltButRowStrandedAt("IN_PROGRESS");
+
+    // when — a later upgrade removes the index
+    performUpgradeSteps(schemaWithoutIndex(),
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then — registration row gone AND physical dropped (no orphan)
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * FAILED reaches the same state by a different route — on PostgreSQL a failed
+   * {@code CREATE INDEX CONCURRENTLY} leaves the index behind. The removal must
+   * drop it for the same reason as the IN_PROGRESS case.
+   */
+  @Test
+  public void testRemoveOfFailedDeferredIndexWithPhysicalPresentDropsPhysical() {
+    // given
+    givenPhysicalIndexBuiltButRowStrandedAt("FAILED");
+
+    // when
+    performUpgradeSteps(schemaWithoutIndex(),
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Rename variant of the crashed-build case. Without the physical RENAME the row
+   * records a name the database does not have, and the next build pass creates a
+   * second index under the new name alongside the stranded original.
+   */
+  @Test
+  public void testRenameOfCrashedBuildDeferredIndexRenamesPhysical() {
+    // given
+    givenPhysicalIndexBuiltButRowStrandedAt("IN_PROGRESS");
+
+    // when — a later upgrade renames Product_Name_1 -> Product_Name_Renamed
+    Schema renamed = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_Renamed").columns("name"))
+    );
+    performUpgradeSteps(renamed,
+        AddDeferredIndex.class,
+        RenameDeferredProductNameIndex.class);
+
+    // then — physical renamed to match the row, with nothing left under the old name
+    assertPhysicalIndexExists("Product", "Product_Name_Renamed");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * ChangeIndex over a crashed build. This path fails harder than remove and rename:
+   * the replacement index is created unconditionally, so suppressing the DROP leaves
+   * the script issuing CREATE INDEX against a name that already exists.
+   */
+  @Test
+  public void testChangeIndexOverCrashedBuildDropsBeforeRecreating() {
+    // given
+    givenPhysicalIndexBuiltButRowStrandedAt("IN_PROGRESS");
+
+    // when — a later upgrade changes the index from deferred to non-deferred
+    performUpgradeSteps(schemaWithIndex(),
+        AddDeferredIndex.class,
+        ChangeDeferredToNonDeferred.class);
+
+    // then — no longer deferred, so no registration row, and the physical index stands
+    assertNull("Registration row should be deleted once the index is no longer deferred",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Strands a registration row at a non-terminal status while its physical index
+   * genuinely exists — the state a build leaves behind when the JVM dies between
+   * {@code CREATE INDEX} completing and the status write.
+   *
+   * <p>The direct UPDATE bypasses the DAO deliberately: no public API drives a row
+   * to a non-terminal status without also mutating attempts bookkeeping, and these
+   * tests are about the physical/row divergence rather than the attempts count.</p>
+   *
+   * @param status the status to strand the row at.
+   */
+  private void givenPhysicalIndexBuiltButRowStrandedAt(String status) {
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_Name_1 ON Product(name)",
+        "UPDATE DeferredIndexes SET status = '" + status + "' WHERE indexName = 'Product_Name_1'"));
+    assertEquals(status, queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
    * attemptsCount + errorMessage lifecycle: a row that fails-then-succeeds
    * shows non-zero attempts mid-flight and gets reset to 0 once COMPLETED;
    * errorMessage is populated on FAILED and cleared on COMPLETED.
@@ -1534,7 +1650,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * RemoveColumn against a PRF-materialised deferred index. This path never
-   * consults {@code isAwaitingBuild} -- it deletes the registration row via
+   * consults {@code willBePhysicallyPresent} -- it deletes the registration row via
    * unregisterByColumn and lets the column drop cascade to the physical index --
    * so it is verified here rather than assumed.
    */

@@ -315,26 +315,66 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
   /**
    * Regression test: GraphBasedUpgradeSchemaChangeVisitor must consult its
-   * session's {@code isAwaitingBuild} when deciding whether to emit physical
-   * DDL. When the index is registered as awaiting build (PENDING / IN_PROGRESS /
-   * FAILED row), a RemoveIndex visit must NOT emit DROP INDEX DDL — the
-   * physical index isn't there yet.
+   * session's {@code willBePhysicallyPresent} when deciding whether to emit
+   * physical DDL. With no index behind the registration row, a RemoveIndex visit
+   * must NOT emit DROP INDEX DDL — there is nothing to drop and the script would
+   * fail.
+   *
+   * <p>Repeated across all three non-terminal statuses to pin down that the row's
+   * status does not enter into the decision. Presence does.</p>
    */
   @Test
-  public void testRemoveIndexVisitRespectsAwaitingBuildSession_pending() {
-    assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus.PENDING);
+  public void testRemoveIndexVisitEmitsNoDropWhenPhysicallyAbsent_pending() {
+    assertNoDropIndexEmittedForAbsentIndex(DeferredIndexStatus.PENDING);
   }
 
-  /** IN_PROGRESS row — same self-heal contract as PENDING. */
+  /** IN_PROGRESS row, still nothing physical — same contract as PENDING. */
   @Test
-  public void testRemoveIndexVisitRespectsAwaitingBuildSession_inProgress() {
-    assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus.IN_PROGRESS);
+  public void testRemoveIndexVisitEmitsNoDropWhenPhysicallyAbsent_inProgress() {
+    assertNoDropIndexEmittedForAbsentIndex(DeferredIndexStatus.IN_PROGRESS);
   }
 
-  /** FAILED row — same self-heal contract as PENDING. */
+  /** FAILED row, still nothing physical — same contract as PENDING. */
   @Test
-  public void testRemoveIndexVisitRespectsAwaitingBuildSession_failed() {
-    assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus.FAILED);
+  public void testRemoveIndexVisitEmitsNoDropWhenPhysicallyAbsent_failed() {
+    assertNoDropIndexEmittedForAbsentIndex(DeferredIndexStatus.FAILED);
+  }
+
+
+  /**
+   * The converse, and the case that regressed: a build that created the index and
+   * then died leaves a non-terminal row over an index that genuinely exists. The
+   * DROP must be emitted, or the index outlives every record of itself.
+   */
+  @Test
+  public void testRemoveIndexVisitEmitsDropWhenNonTerminalRowHasPhysicalIndex() {
+    DeferredIndexSession primedSession =
+        primedSession("SomeTable", "SomeIdx", DeferredIndexStatus.IN_PROGRESS, true);
+    GraphBasedUpgradeSchemaChangeVisitor visitor =
+        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
+            primedSession,
+            nodes);
+    visitor.startStep(U1.class);
+
+    Index mockIdx = mock(Index.class);
+    when(mockIdx.getName()).thenReturn("SomeIdx");
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.indexes()).thenReturn(List.of(mockIdx));
+    when(sourceSchema.getTable("SomeTable")).thenReturn(mockTable);
+    when(sourceSchema.tableExists("SomeTable")).thenReturn(true);
+
+    RemoveIndex removeIndex = mock(RemoveIndex.class);
+    when(removeIndex.apply(ArgumentMatchers.any())).thenReturn(sourceSchema);
+    when(removeIndex.getTableName()).thenReturn("SomeTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIdx);
+    when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
+
+    // when
+    visitor.visit(removeIndex);
+
+    // then
+    verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
   }
 
 
@@ -347,7 +387,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
    */
   @Test
   public void testChangeIndexVisitRespectsAwaitingBuildSession() {
-    DeferredIndexSession primedSession = primedSessionWithStatus("SomeTable", "SomeIdx", DeferredIndexStatus.PENDING);
+    DeferredIndexSession primedSession = primedSession("SomeTable", "SomeIdx", DeferredIndexStatus.PENDING, false);
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
         new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
             primedSession,
@@ -392,7 +432,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
    */
   @Test
   public void testRenameIndexVisitRespectsAwaitingBuildSession() {
-    DeferredIndexSession primedSession = primedSessionWithStatus("SomeTable", "OldIdx", DeferredIndexStatus.PENDING);
+    DeferredIndexSession primedSession = primedSession("SomeTable", "OldIdx", DeferredIndexStatus.PENDING, false);
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
         new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
             primedSession,
@@ -424,8 +464,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
 
   /** Drives the RemoveIndex awaiting-build assertion for any non-terminal status. */
-  private void assertNoDropIndexEmittedForAwaitingBuildRow(DeferredIndexStatus status) {
-    DeferredIndexSession primedSession = primedSessionWithStatus("SomeTable", "SomeIdx", status);
+  private void assertNoDropIndexEmittedForAbsentIndex(DeferredIndexStatus status) {
+    DeferredIndexSession primedSession = primedSession("SomeTable", "SomeIdx", status, false);
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
         new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
             primedSession,
@@ -452,9 +492,18 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   }
 
 
-  /** Helper: build a fresh session primed with one row of the given status. */
-  private static DeferredIndexSession primedSessionWithStatus(String tableName, String indexName,
-                                                              DeferredIndexStatus status) {
+  /**
+   * Helper: a fresh session primed with one row, as the enricher would leave it.
+   *
+   * @param tableName the table.
+   * @param indexName the index.
+   * @param status the persisted row status.
+   * @param physicallyPresent what the enricher observed in the physical schema.
+   * @return the primed session.
+   */
+  private static DeferredIndexSession primedSession(String tableName, String indexName,
+                                                    DeferredIndexStatus status,
+                                                    boolean physicallyPresent) {
     DeferredIndexSession primedSession = DeferredIndexSession.create();
     DeferredIndex row = new DeferredIndex();
     row.setTableName(tableName);
@@ -462,7 +511,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     row.setIndexUnique(false);
     row.setIndexColumns(List.of("col1"));
     row.setStatus(status);
-    primedSession.prime(row);
+    primedSession.prime(row, physicallyPresent);
     return primedSession;
   }
 

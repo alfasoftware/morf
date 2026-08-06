@@ -65,7 +65,7 @@ public class TestDeferredIndexSessionImpl {
     entry.setStatus(DeferredIndexStatus.PENDING);
 
     // when
-    session.prime(entry);
+    session.prime(entry, false);
 
     // then — state is seeded
     assertTrue("Primed entry should be registered as deferred", session.isRegistered("Product", "Product_Name_1"));
@@ -99,14 +99,13 @@ public class TestDeferredIndexSessionImpl {
 
 
   /**
-   * A PRF-materialised index is registered COMPLETED, so isAwaitingBuild
-   * reports false immediately. This is the invariant the visitor relies on to
-   * decide whether later DROP / RENAME DDL is needed: registering such an index
-   * as PENDING would claim it is not yet physically present and suppress that
-   * DDL.
+   * A PRF-materialised index is physically present the moment the upgrade script
+   * runs. This is the invariant the visitor relies on to decide whether later
+   * DROP / RENAME DDL is needed: treating such an index as absent would suppress
+   * that DDL and strand the physical index.
    */
   @Test
-  public void testRegisterCompletedIndexIsNotAwaitingBuild() {
+  public void testRegisterCompletedIndexIsPhysicallyPresent() {
     // given
     Index idx = index("Idx1").deferred().columns("col1");
 
@@ -116,14 +115,14 @@ public class TestDeferredIndexSessionImpl {
     // then
     assertEquals(1, stmts.size());
     assertTrue("Should be registered", session.isRegistered("Table1", "Idx1"));
-    assertFalse("Already-built index must NOT be awaiting build",
-        session.isAwaitingBuild("Table1", "Idx1"));
+    assertTrue("Already-built index must count as physically present",
+        session.willBePhysicallyPresent("Table1", "Idx1"));
   }
 
 
-  /** Contrast: the ordinary registerIndex path IS awaiting build. */
+  /** Contrast: the ordinary registerIndex path leaves nothing physical behind. */
   @Test
-  public void testRegisterIndexIsAwaitingBuild() {
+  public void testRegisterIndexIsNotPhysicallyPresent() {
     // given
     Index idx = index("Idx1").deferred().columns("col1");
 
@@ -131,8 +130,8 @@ public class TestDeferredIndexSessionImpl {
     session.registerIndex("Table1", idx);
 
     // then
-    assertTrue("Newly declared deferred index is awaiting build",
-        session.isAwaitingBuild("Table1", "Idx1"));
+    assertFalse("Newly declared deferred index is not physically present yet",
+        session.willBePhysicallyPresent("Table1", "Idx1"));
   }
 
 
@@ -149,14 +148,14 @@ public class TestDeferredIndexSessionImpl {
     entry.setIndexUnique(false);
     entry.setIndexColumns(List.of("name"));
     entry.setStatus(DeferredIndexStatus.PENDING);
-    session.prime(entry);
+    session.prime(entry, false);
 
     // when
     DeferredIndexSession copy = session.copy();
 
     // then
     assertTrue(copy.isRegistered("Product", "Product_Name_1"));
-    assertTrue(copy.isAwaitingBuild("Product", "Product_Name_1"));
+    assertFalse(copy.willBePhysicallyPresent("Product", "Product_Name_1"));
   }
 
 

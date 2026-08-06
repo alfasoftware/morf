@@ -178,10 +178,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Index indexToRemove = removeIndex.getIndexToBeRemoved();
 
     // Capture BEFORE the session-cache and currentSchema mutations below:
-    // willBePhysicallyPresentAtThisEmission consults isAwaitingBuild on the
-    // session, and unregisterIndex below clears that row -- reading after
+    // unregisterIndex clears the record the session consults, and reading after
     // would flip the decision.
-    boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, indexToRemove.getName());
+    boolean willBePresent = deferredIndexSession.willBePhysicallyPresent(tableName, indexToRemove.getName());
 
     deferredIndexSession.unregisterIndex(tableName, indexToRemove.getName())
         .forEach(this::writeDeferredIndexesDml);
@@ -201,7 +200,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Index toIndex = registrationPolicy.normalize(changeIndex.getToIndex());
 
     // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
-    boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
+    boolean fromWillBePresent = deferredIndexSession.willBePhysicallyPresent(tableName, fromIndex.getName());
 
     // Always call removeIndex: the DELETE WHERE (table, index) clause is a
     // no-op if the row doesn't exist, and we want to purge any prior deferred
@@ -225,7 +224,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = renameIndex.getTableName();
 
     // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
-    boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, renameIndex.getFromIndexName());
+    boolean willBePresent = deferredIndexSession.willBePhysicallyPresent(tableName, renameIndex.getFromIndexName());
 
     deferredIndexSession.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
         .forEach(this::writeDeferredIndexesDml);
@@ -375,7 +374,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * @return {@code true} if the index is physically present once the emitted
    *     DDL has run, {@code false} if it was left for the adopter's build task.
    *     Callers use this to register the row as COMPLETED rather than PENDING,
-   *     keeping {@code isAwaitingBuild} consistent with physical reality.
+   *     keeping the session's view of physical presence honest.
    */
   private boolean emitPhysicalIndexIfNeeded(String tableName, Index index) {
     Table table = currentSchema.getTable(tableName);
@@ -412,8 +411,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    *
    * <p>When the index is already physically present at the end of this upgrade
    * — the PRF-rename case — the row is registered as COMPLETED rather than
-   * PENDING. That keeps {@code DeferredIndexSession.isAwaitingBuild} aligned
-   * with physical reality, so a later RemoveIndex / ChangeIndex / RenameIndex
+   * PENDING, and the session records it as present. So a later
+   * RemoveIndex / ChangeIndex / RenameIndex
    * in the same session (or a later upgrade run before the adopter drains the
    * build queue) still emits its DROP / RENAME DDL.</p>
    *
@@ -472,20 +471,4 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   // Model helpers
   // -------------------------------------------------------------------------
 
-  /**
-   * Projects forward: will this index exist in the DB by the time the
-   * generated script reaches the current emission point?
-   *
-   * <p>The session is the source of truth: an index is physically absent iff it
-   * is registered AND its status is non-terminal (declared deferred but not yet
-   * built by the adopter). Every other case — unregistered (non-deferred
-   * physical) and registered-COMPLETED (built deferred) — counts as present.</p>
-   *
-   * @param tableName the table name.
-   * @param indexName the index name.
-   * @return true if the index will exist at script-emission time.
-   */
-  private boolean willBePhysicallyPresentAtThisEmission(String tableName, String indexName) {
-    return !deferredIndexSession.isAwaitingBuild(tableName, indexName);
-  }
 }
