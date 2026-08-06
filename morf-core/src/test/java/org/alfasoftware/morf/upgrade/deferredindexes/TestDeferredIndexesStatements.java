@@ -185,6 +185,41 @@ public class TestDeferredIndexesStatements {
   }
 
 
+  /**
+   * registerCompletedIndex produces an INSERT with status=COMPLETED plus the
+   * completedTime column -- 9 values rather than the 8 the PENDING variant
+   * writes. Used for PRF-materialised indexes, which are physically present
+   * the moment the upgrade script runs and so must never enter the build queue.
+   */
+  @Test
+  public void testRegisterCompletedIndexWritesCompletedStatusAndTime() {
+    // given
+    Index idx = index("DeferIdx").deferred().columns("col1", "col2");
+
+    // when
+    InsertStatement stmt = statements.registerCompletedIndex("Product", idx);
+
+    // then -- same table, one extra value (completedTime) over the PENDING form
+    assertEquals(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME,
+        stmt.getTable().getName());
+    assertEquals(9, stmt.getValues().size());
+
+    // and -- status literal is COMPLETED, never PENDING
+    List<String> literals = stmt.getValues().stream()
+        .filter(f -> f instanceof FieldLiteral)
+        .map(f -> ((FieldLiteral) f).getValue())
+        .collect(Collectors.toList());
+    assertTrue("should emit status=COMPLETED",
+        literals.contains(DeferredIndexStatus.COMPLETED.name()));
+    assertFalse("must not emit status=PENDING",
+        literals.contains(DeferredIndexStatus.PENDING.name()));
+
+    // and -- completedTime is populated
+    assertTrue("completedTime column should be set",
+        aliases(stmt.getValues()).contains("completedTime"));
+  }
+
+
   /** Multi-column indexes produce a comma-joined indexColumns value. */
   @Test
   public void testMultiColumnRegisterIndexJoinsCommaSeparated() {
