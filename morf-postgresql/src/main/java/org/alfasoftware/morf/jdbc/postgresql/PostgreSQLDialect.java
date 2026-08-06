@@ -8,11 +8,17 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.StringJoiner;
 
@@ -895,30 +901,124 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder statement = new StringBuilder();
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, false), addIndexComment(index.getName()));
+  }
 
+
+  private String addIndexComment(String indexName) {
+    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, true), addIndexComment(index.getName()));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexBuildRequiresAutoCommit()
+   */
+  @Override
+  public boolean deferredIndexBuildRequiresAutoCommit() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#setLockTimeoutSql(java.time.Duration)
+   */
+  @Override
+  public Optional<String> setLockTimeoutSql(Duration timeout) {
+    return Optional.of("SET lock_timeout = " + timeout.toMillis());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#resetLockTimeoutSql()
+   */
+  @Override
+  public Optional<String> resetLockTimeoutSql() {
+    return Optional.of("RESET lock_timeout");
+  }
+
+
+  /**
+   * Reads {@code pg_index.indisvalid} for the given index. The catalog is world-readable;
+   * no special grants are required. When the dialect is configured with a schema name
+   * the query is restricted via {@code pg_namespace} so that an identical index name in
+   * another schema (multi-tenant or leftover dev schema) is not matched accidentally.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#isIndexValid(java.sql.Connection, String, String)
+   */
+  @Override
+  public Optional<Boolean> isIndexValid(Connection connection, String tableName, String indexName) {
+    String schemaName = getSchemaName();
+    boolean filterBySchema = StringUtils.isNotBlank(schemaName);
+    StringBuilder sql = new StringBuilder("SELECT i.indisvalid FROM pg_index i")
+        .append(" JOIN pg_class c ON c.oid = i.indexrelid");
+    if (filterBySchema) {
+      sql.append(" JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = ?");
+    }
+    sql.append(" WHERE lower(c.relname) = lower(?)");
+    try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+      int param = 1;
+      if (filterBySchema) {
+        ps.setString(param++, schemaName);
+      }
+      ps.setString(param, indexName);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of(rs.getBoolean(1));
+        }
+        return Optional.empty();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading pg_index.indisvalid for [" + indexName + "]", e);
+    }
+  }
+
+
+  /**
+   * Builds a PostgreSQL CREATE INDEX statement. PostgreSQL does not schema-qualify
+   * the index name (only the table name), so this cannot use the base class
+   * {@link SqlDialect#buildCreateIndexStatement(Table, Index)} which prefixes both.
+   *
+   * @param table the table to index.
+   * @param index the index to create.
+   * @param concurrent whether to emit {@code CREATE INDEX CONCURRENTLY} (non-blocking build).
+   * @return the CREATE INDEX SQL string.
+   */
+  private String buildPostgreSqlCreateIndex(Table table, Index index, boolean concurrent) {
+    StringBuilder statement = new StringBuilder();
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ")
-             .append(index.getName())
+    statement.append("INDEX ");
+    if (concurrent) {
+      statement.append("CONCURRENTLY ");
+    }
+    statement.append(index.getName())
              .append(" ON ")
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
              .append(Joiner.on(", ").join(index.columnNames()))
              .append(")");
-
-    return ImmutableList.<String>builder()
-      .add(statement.toString())
-      .add(addIndexComment(index.getName()))
-      .build();
-  }
-
-
-  private String addIndexComment(String indexName) {
-    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+    return statement.toString();
   }
 
 

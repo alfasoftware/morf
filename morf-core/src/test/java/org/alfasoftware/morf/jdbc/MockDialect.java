@@ -422,4 +422,16 @@ public class MockDialect extends SqlDialect {
   public boolean useForcedSerialImport() {
     return false;
   }
+
+
+  /**
+   * Returns {@code true} to allow deferred index tests to exercise the
+   * full pipeline.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
 }

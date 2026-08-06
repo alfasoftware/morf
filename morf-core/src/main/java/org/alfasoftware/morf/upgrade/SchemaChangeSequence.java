@@ -26,6 +26,7 @@ import java.util.Set;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
@@ -36,6 +37,8 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -45,6 +48,8 @@ import com.google.common.collect.Lists;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class SchemaChangeSequence {
+
+  private static final Log log = LogFactory.getLog(SchemaChangeSequence.class);
 
   private final UpgradeConfigAndContext upgradeConfigAndContext;
 
@@ -56,6 +61,18 @@ public class SchemaChangeSequence {
   private final List<UpgradeStepWithChanges> allChanges;
 
 
+  /**
+   * @deprecated Use {@link #SchemaChangeSequence(UpgradeConfigAndContext, List)} instead.
+   *     This overload constructs a default {@link UpgradeConfigAndContext}, which means
+   *     the caller gets only the default upgrade settings (deferred-index creation
+   *     disabled, no force-immediate / force-deferred overrides, default schema-change
+   *     adaptor, etc.) and has no way to customise them. Retained for backwards
+   *     compatibility with pre-existing adopter code; new code should always pass an
+   *     explicit {@link UpgradeConfigAndContext}.
+   *
+   * @param steps the upgrade steps making up this sequence.
+   */
+  @Deprecated
   public SchemaChangeSequence(List<UpgradeStep> steps) {
     this(new UpgradeConfigAndContext(), steps);
   }
@@ -75,7 +92,7 @@ public class SchemaChangeSequence {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
       Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
-      // For historical reasons, we need to pass the editor in twice
+      // For historical reasons, we need to pass the editor in twice.
       step.execute(editor, editor);
 
       allChangesBuilder.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
@@ -221,7 +238,7 @@ public class SchemaChangeSequence {
 
 
   /**
-   * The editor implementation which is used by upgrade steps
+   * The editor implementation which is used by upgrade steps.
    */
   private class Editor implements SchemaEditor, DataEditor {
 
@@ -361,9 +378,55 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
-      AddIndex addIndex = new AddIndex(tableName, index);
+      Index effectiveIndex = resolveDeferred(index);
+      AddIndex addIndex = new AddIndex(tableName, effectiveIndex);
       visitor.visit(addIndex);
-      schemaAndDataChangeVisitor.visit(addIndex);
+      // Deferred indexes don't generate DDL on the table data, so no dependency
+      if (!effectiveIndex.isDeferred()) {
+        schemaAndDataChangeVisitor.visit(addIndex);
+      }
+    }
+
+
+    /**
+     * Returns {@code index} unchanged if its declared {@code .deferred()}
+     * matches the resolved target (per kill-switch and force lists), or
+     * a copy with the flag flipped otherwise.
+     */
+    private Index resolveDeferred(Index index) {
+      boolean targetDeferred = resolveTargetDeferred(index);
+      return index.isDeferred() == targetDeferred ? index : rebuildIndex(index, targetDeferred);
+    }
+
+
+    /**
+     * Decides whether {@code index} should end up deferred, considering the
+     * kill-switch and per-index force-immediate / force-deferred overrides.
+     *
+     * @param index the declarative index.
+     * @return true if the target should be deferred.
+     */
+    private boolean resolveTargetDeferred(Index index) {
+      if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) return false;
+      String name = index.getName().toLowerCase();
+      return !upgradeConfigAndContext.getForceImmediateIndexes().contains(name)
+          && (upgradeConfigAndContext.getForceDeferredIndexes().contains(name) || index.isDeferred());
+    }
+
+
+    /**
+     * Reconstructs an Index with the supplied deferred flag, preserving name,
+     * columns, and uniqueness from the original.
+     */
+    private Index rebuildIndex(Index index, boolean deferred) {
+      SchemaUtils.IndexBuilder builder = SchemaUtils.index(index.getName()).columns(index.columnNames());
+      if (index.isUnique()) {
+        builder = builder.unique();
+      }
+      if (deferred) {
+        builder = builder.deferred();
+      }
+      return builder;
     }
 
 

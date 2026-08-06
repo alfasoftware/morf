@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -4048,6 +4049,134 @@ public abstract class SqlDialect {
 
 
   /**
+   * Whether this dialect supports deferred index creation. When {@code true},
+   * indexes marked with {@code .deferred()} are queued for background creation
+   * via the DeferredIndexes table. When {@code false}, deferred requests
+   * are silently converted to immediate index creation, because the platform's
+   * {@code CREATE INDEX} blocks DML and deferring would move the lock from the
+   * upgrade window (when no traffic is flowing) to post-startup (when it is).
+   *
+   * <p>The default returns {@code false}. Dialects that support non-blocking
+   * DDL (e.g. PostgreSQL {@code CONCURRENTLY}, Oracle {@code ONLINE}) should
+   * override this to return {@code true}.</p>
+   *
+   * @return {@code true} if deferred index creation is beneficial on this platform.
+   */
+  public boolean supportsDeferredIndexCreation() {
+    return false;
+  }
+
+
+  /**
+   * Generates the SQL to build a deferred index on an existing table. By default this
+   * delegates to {@link #addIndexStatements(Table, Index)}, which issues a standard
+   * {@code CREATE INDEX} statement. Platform-specific dialects may override this method
+   * to emit non-blocking variants (e.g. {@code CREATE INDEX CONCURRENTLY} on PostgreSQL).
+   *
+   * @param table The existing table.
+   * @param index The new index to build in the background.
+   * @return A collection of SQL statements.
+   */
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return addIndexStatements(table, index);
+  }
+
+
+  /**
+   * Returns whether the deferred-index build path on this dialect requires the JDBC
+   * connection to be in autocommit mode for the duration of the
+   * {@link #deferredIndexDeploymentStatements} (and any matching DROP) execution.
+   *
+   * <p>The motivating case is PostgreSQL {@code CREATE INDEX CONCURRENTLY}, which refuses
+   * to run inside a transaction block. Other dialects treat DDL as implicitly committed
+   * regardless of autocommit setting, so they don't need the build task to disturb the
+   * borrowed connection's autocommit state. Default {@code false}.</p>
+   *
+   * @return {@code true} if the build task must flip autocommit on for this dialect.
+   */
+  public boolean deferredIndexBuildRequiresAutoCommit() {
+    return false;
+  }
+
+
+  /**
+   * Returns a session-scoped statement that bounds how long a subsequent DDL/DML will
+   * wait for a lock on this dialect, or {@link Optional#empty()} if the dialect doesn't
+   * benefit from the gate (e.g. its default is already fail-fast).
+   *
+   * <p>The deferred-index reconciliation path uses this before issuing {@code DROP INDEX}
+   * to avoid hanging the adopter's executor when a previous backend is still holding a
+   * lock (e.g. PostgreSQL {@code CREATE INDEX CONCURRENTLY} from a since-disconnected
+   * client whose backend hasn't yet been reaped via TCP keepalive).</p>
+   *
+   * <p>Default returns {@link Optional#empty()}. PostgreSQL overrides to emit
+   * {@code SET lock_timeout = X}. Oracle's {@code DDL_LOCK_TIMEOUT} default of {@code 0}
+   * already fail-fasts; H2's default 1 s is short enough; both accept the default.</p>
+   *
+   * @param timeout The maximum time to wait for a lock.
+   * @return The dialect-specific SQL to set the timeout, or {@link Optional#empty()} to keep defaults.
+   */
+  public Optional<String> setLockTimeoutSql(Duration timeout) {
+    return Optional.empty();
+  }
+
+
+  /**
+   * Returns a session-scoped statement that restores the lock-timeout default after a
+   * matching {@link #setLockTimeoutSql} call, or {@link Optional#empty()} if the dialect
+   * doesn't need a reset (default empty matches default empty {@code setLockTimeoutSql}).
+   *
+   * <p>The deferred-index reconciliation path uses this in a {@code finally} block after
+   * issuing {@code DROP INDEX} so the session-scoped {@code SET lock_timeout} doesn't
+   * bleed back into pooled connections. Without this reset, the next caller borrowing the
+   * connection would inherit the 10-second timeout — silent breakage of unrelated DDL.</p>
+   *
+   * <p>Default returns {@link Optional#empty()}. PostgreSQL overrides to emit
+   * {@code RESET lock_timeout}.</p>
+   *
+   * @return The dialect-specific SQL to clear the timeout, or {@link Optional#empty()}.
+   */
+  public Optional<String> resetLockTimeoutSql() {
+    return Optional.empty();
+  }
+
+
+  /**
+   * Returns whether the named physical index is valid (built and usable).
+   *
+   * <p>Used by the deferred-index reconciliation path to decide whether a registration row
+   * should be promoted to {@code COMPLETED} (a valid index already exists), driven through
+   * the {@code CREATE INDEX} branch (no index in the catalog), or driven through
+   * {@code DROP + CREATE} (a previous build left an invalid leftover behind).</p>
+   *
+   * <p>Returns:</p>
+   * <ul>
+   *   <li>{@link Optional#empty()} if the index is not present, or if the dialect cannot
+   *       determine validity. Callers should treat empty as "not present" in the
+   *       reconciliation path.</li>
+   *   <li>{@code Optional.of(true)} if the index exists and is fully usable.</li>
+   *   <li>{@code Optional.of(false)} if the index exists in the catalog but is not usable
+   *       (PostgreSQL {@code indisvalid=false}, Oracle {@code STATUS='UNUSABLE'}). H2 has
+   *       no in-catalog INVALID state.</li>
+   * </ul>
+   *
+   * <p>Default returns {@link Optional#empty()}. Dialects that can answer the question
+   * (PostgreSQL, Oracle, H2) override this. No special grants are required for the
+   * per-dialect implementations.</p>
+   *
+   * @param connection JDBC connection used to query the catalog.
+   * @param tableName The table the index is defined on.
+   * @param indexName The index name.
+   * @return The validity tri-state.
+   */
+  public Optional<Boolean> isIndexValid(@SuppressWarnings("unused") Connection connection,
+                                         @SuppressWarnings("unused") String tableName,
+                                         @SuppressWarnings("unused") String indexName) {
+    return Optional.empty();
+  }
+
+
+  /**
    * Helper method to create all index statements defined for a table
    *
    * @param table the table to create indexes for
@@ -4070,6 +4199,18 @@ public abstract class SqlDialect {
    * @return The SQL to deploy the index on the table.
    */
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildCreateIndexStatement(table, index));
+  }
+
+
+  /**
+   * Builds a {@code CREATE [UNIQUE] INDEX} statement.
+   *
+   * @param table The table to create the index on.
+   * @param index The index to create.
+   * @return the complete CREATE INDEX SQL string.
+   */
+  protected String buildCreateIndexStatement(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
@@ -4086,7 +4227,7 @@ public abstract class SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return ImmutableList.of(statement.toString());
+    return statement.toString();
   }
 
 

@@ -43,15 +43,29 @@ public interface Index {
 
 
   /**
+   * Returns whether this index is deferred, meaning it may be built
+   * asynchronously after an upgrade rather than inline during the upgrade.
+   *
+   * @return True if the index is deferred.
+   */
+  public default boolean isDeferred() {
+    return false;
+  }
+
+
+  /**
    * Helper for {@link Object#toString()} implementations.
    *
    * @return String representation of the index.
    */
   public default String toStringHelper() {
-    return new StringBuilder()
+    StringBuilder sb = new StringBuilder()
         .append("Index-").append(getName())
         .append("-").append(isUnique() ? "unique" : "")
-        .append("-").append(Joiner.on(',').join(columnNames()))
-        .toString();
+        .append("-").append(Joiner.on(',').join(columnNames()));
+    if (isDeferred()) {
+      sb.append("-deferred");
+    }
+    return sb.toString();
   }
 }

@@ -24,6 +24,8 @@ import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +39,7 @@ import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
@@ -903,7 +906,7 @@ class OracleDialect extends SqlDialect {
   public Collection<String> addIndexStatements(Table table, Index index) {
     return ImmutableList.of(
       // when adding indexes to existing tables, use PARALLEL NOLOGGING to efficiently build the index
-      Iterables.getOnlyElement(indexDeploymentStatements(table, index)) + " PARALLEL NOLOGGING",
+      buildCreateIndexStatement(table, index) + " PARALLEL NOLOGGING",
       indexPostDeploymentStatements(index)
     );
   }
@@ -914,31 +917,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder createIndexStatement = new StringBuilder();
-
-    // Specify the preamble
-    createIndexStatement.append("CREATE ");
-    if (index.isUnique()) {
-      createIndexStatement.append("UNIQUE ");
-    }
-
-    // Name the index
-    createIndexStatement
-      .append("INDEX ")
-      .append(schemaNamePrefix())
-      .append(index.getName())
-
-      // Specify which table the index is over
-      .append(" ON ")
-      .append(schemaNamePrefix())
-      .append(table.getName())
-
-      // Specify the fields that are used in the index
-      .append(" (")
-      .append(Joiner.on(", ").join(index.columnNames()))
-      .append(")");
-
-    return Collections.singletonList(createIndexStatement.toString());
+    return Collections.singletonList(buildCreateIndexStatement(table, index));
   }
 
 
@@ -955,6 +934,50 @@ class OracleDialect extends SqlDialect {
       .append(index.getName())
       .append(" NOPARALLEL LOGGING")
       .toString();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(
+      buildCreateIndexStatement(table, index) + " ONLINE PARALLEL NOLOGGING",
+      indexPostDeploymentStatements(index)
+    );
+  }
+
+
+  /**
+   * Reads {@code USER_INDEXES.STATUS} for the given index. {@code USER_INDEXES} is the
+   * current user's own indexes view; no special grants are required.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#isIndexValid(java.sql.Connection, String, String)
+   */
+  @Override
+  public Optional<Boolean> isIndexValid(Connection connection, String tableName, String indexName) {
+    String sql = "SELECT STATUS FROM USER_INDEXES WHERE INDEX_NAME = ?";
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.setString(1, indexName.toUpperCase());
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of("VALID".equals(rs.getString(1)));
+        }
+        return Optional.empty();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading USER_INDEXES.STATUS for [" + indexName + "]", e);
+    }
   }
 
 
