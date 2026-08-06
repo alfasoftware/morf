@@ -1532,6 +1532,128 @@ public class TestDeferredIndexesIntegration {
   }
 
 
+  /**
+   * RemoveColumn against a PRF-materialised deferred index. This path never
+   * consults {@code isAwaitingBuild} -- it deletes the registration row via
+   * unregisterByColumn and lets the column drop cascade to the physical index --
+   * so it is verified here rather than assumed.
+   */
+  @Test
+  public void testRemoveColumnAfterPRFMaterialisedDeferredIndexLeavesNoResidue() {
+    // given -- Product_Name_1 materialised by PRF rename, build queue not drained
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- a later upgrade removes the index and the column it covered
+    Schema noNameColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey()
+        )
+    );
+    performUpgradeSteps(noNameColSchema,
+        AddDeferredIndex.class,
+        RemoveColumnWithDeferredIndex.class);
+
+    // then -- registration row gone and physical index gone with the column
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * The PRF matcher compares the unique flag as well as the columns. A
+   * non-unique PRF must not be consumed by a declared UNIQUE deferred index --
+   * renaming it would silently produce an index without the uniqueness
+   * constraint the schema asks for.
+   */
+  @Test
+  public void testUniqueDeferredIndexDoesNotConsumeNonUniquePRF() {
+    // given -- a NON-unique PRF on (name)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+
+    // when -- a UNIQUE deferred index on the same column is declared
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+    performUpgradeWithCustomConfig(target, AddDeferredUniqueIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+
+    // then -- PRF untouched, nothing materialised, row queued as normal
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_UQ", "status"));
+
+    // and -- the adopter's build task creates it properly
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_UQ");
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+  }
+
+
+  /** A multi-column PRF matching a multi-column deferred index is consumed. */
+  @Test
+  public void testMultiColumnDeferredIndexConsumesMatchingMultiColumnPRF() {
+    // given -- PRF on (id, name)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (id, name)"));
+
+    // when -- a deferred index on the same two columns, same order
+    performUpgradeWithCustomConfig(schemaWithIdNameIndex(), AddSecondDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("id", "name"))));
+    });
+
+    // then -- PRF renamed into the declared index, registered COMPLETED
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+  }
+
+
+  /**
+   * Column order is part of an index's identity, so a PRF on (name, id) must
+   * not be consumed by a declared index on (id, name).
+   */
+  @Test
+  public void testDeferredIndexDoesNotConsumePRFWithDifferentColumnOrder() {
+    // given -- PRF with the columns the other way round
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name, id)"));
+
+    // when -- a deferred index on (id, name)
+    performUpgradeWithCustomConfig(schemaWithIdNameIndex(), AddSecondDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name", "id"))));
+    });
+
+    // then -- PRF untouched, index queued for the build task as normal
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+  }
+
+
+  /** Helper: Product with a two-column index on (id, name). */
+  private static Schema schemaWithIdNameIndex() {
+    return schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+  }
+
+
   // =========================================================================
   // Config overrides (additional)
   // =========================================================================
