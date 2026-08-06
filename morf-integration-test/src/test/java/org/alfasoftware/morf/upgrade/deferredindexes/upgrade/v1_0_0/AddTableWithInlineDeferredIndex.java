@@ -31,8 +31,8 @@ import org.alfasoftware.morf.upgrade.UUID;
  * path: the visitor should filter the deferred index out of the CREATE TABLE
  * statement and queue it for the adopter via the deferred pipeline.
  */
-@Sequence(90008)
-@UUID("d1f00001-0001-0001-0001-000000000008")
+@Sequence(90011)
+@UUID("d1f00001-0001-0001-0001-000000000011")
 public class AddTableWithInlineDeferredIndex extends AbstractDeferredIndexTestStep {
 
   @Override

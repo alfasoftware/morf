@@ -25,8 +25,8 @@ import org.alfasoftware.morf.upgrade.UUID;
 /**
  * Adds a deferred index then immediately removes it in the same step.
  */
-@Sequence(90002)
-@UUID("d1f00001-0001-0001-0001-000000000002")
+@Sequence(90003)
+@UUID("d1f00001-0001-0001-0001-000000000003")
 public class AddDeferredIndexThenRemove extends AbstractDeferredIndexTestStep {
 
   @Override
