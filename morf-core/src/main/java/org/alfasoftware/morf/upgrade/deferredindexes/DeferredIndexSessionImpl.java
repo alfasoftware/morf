@@ -112,6 +112,17 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
 
   @Override
+  public DeferredIndexSession copy() {
+    DeferredIndexSessionImpl copy = new DeferredIndexSessionImpl(statements);
+    for (Map.Entry<String, Map<String, IndexRecord>> table : registeredIndexes.entrySet()) {
+      // IndexRecord is immutable, so copying the two map levels is sufficient.
+      copy.registeredIndexes.put(table.getKey(), new LinkedHashMap<>(table.getValue()));
+    }
+    return copy;
+  }
+
+
+  @Override
   public boolean isRegistered(String tableName, String indexName) {
     Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
     return tableMap != null && tableMap.containsKey(indexName.toUpperCase());

@@ -56,6 +56,22 @@ public interface DeferredIndexSession {
 
 
   /**
+   * Returns an independent session holding the same state as this one.
+   *
+   * <p>An upgrade is walked more than once — the {@code InlineTableUpgrader} and the
+   * graph-based visitor each produce a script from the same steps, and only one of
+   * those scripts is executed. Sessions are mutable: visiting {@code removeIndex}
+   * evicts the index, visiting {@code addIndex} registers one. A walk that observed
+   * an earlier walk's mutations would draw different conclusions about which indexes
+   * are physically present, and emit different DDL. Each walk therefore takes its own
+   * copy of the primed session.</p>
+   *
+   * @return a copy that can be mutated without affecting this session.
+   */
+  DeferredIndexSession copy();
+
+
+  /**
    * Records a deferred index and returns the INSERT DML. Callers only
    * invoke this for effective-deferred indexes.
    *

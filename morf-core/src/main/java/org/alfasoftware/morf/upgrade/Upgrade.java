@@ -282,6 +282,14 @@ public class Upgrade {
 
     sourceSchema = enrichSourceSchema(sourceSchema, deferredIndexSession);
 
+    // The inline upgrader below and the graph-based builder further down are two
+    // independent walks over the same steps, producing two alternative scripts of
+    // which only one runs. Sessions are mutable, so they cannot share one: the
+    // second walk would see the first walk's mutations and, for example, emit a
+    // DROP INDEX for an index the first walk had already established was never
+    // built. Both start from the same primed state, separately.
+    DeferredIndexSession graphBasedDeferredIndexSession = deferredIndexSession.copy();
+
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
     ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect), viewDeploymentValidator);
@@ -361,7 +369,7 @@ public class Upgrade {
         upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges,
-        deferredIndexSession);
+        graphBasedDeferredIndexSession);
     }
 
     // Build the actual upgrade path

@@ -136,6 +136,55 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
+  /**
+   * copy() carries the primed state across. The graph-based walk starts from exactly
+   * what the enricher established, not from a blank session.
+   */
+  @Test
+  public void testCopyCarriesPrimedState() {
+    // given
+    DeferredIndex entry = new DeferredIndex();
+    entry.setTableName("Product");
+    entry.setIndexName("Product_Name_1");
+    entry.setIndexUnique(false);
+    entry.setIndexColumns(List.of("name"));
+    entry.setStatus(DeferredIndexStatus.PENDING);
+    session.prime(entry);
+
+    // when
+    DeferredIndexSession copy = session.copy();
+
+    // then
+    assertTrue(copy.isRegistered("Product", "Product_Name_1"));
+    assertTrue(copy.isAwaitingBuild("Product", "Product_Name_1"));
+  }
+
+
+  /**
+   * The two walks must not see each other's mutations. Removing an index in one
+   * session leaves the other untouched -- this is the isolation the fix relies on.
+   */
+  @Test
+  public void testCopyIsIsolatedFromTheOriginalInBothDirections() {
+    // given
+    session.registerIndex("Table1", index("Idx1").deferred().columns("col1"));
+    DeferredIndexSession copy = session.copy();
+
+    // when -- the original evicts the index, as a removeIndex visit would
+    session.unregisterIndex("Table1", "Idx1");
+
+    // then -- the copy still has it
+    assertTrue("copy must not observe the original's mutation",
+        copy.isRegistered("Table1", "Idx1"));
+    assertFalse(session.isRegistered("Table1", "Idx1"));
+
+    // and -- the reverse direction: registering in the copy does not leak back
+    copy.registerIndex("Table1", index("Idx2").deferred().columns("col2"));
+    assertFalse("original must not observe the copy's mutation",
+        session.isRegistered("Table1", "Idx2"));
+  }
+
+
   /** isRegistered should be case-insensitive. */
   @Test
   public void testIsRegisteredCaseInsensitive() {
