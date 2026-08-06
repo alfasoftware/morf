@@ -106,7 +106,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   public Collection<Table> tables() {
     return ImmutableList.of(
       deployedViewsTable(),
-      upgradeAuditTable()
+      upgradeAuditTable(),
+      deferredIndexesTable()
     );
   }
 
