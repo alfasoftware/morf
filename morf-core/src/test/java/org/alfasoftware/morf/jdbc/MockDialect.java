@@ -308,6 +308,12 @@ public class MockDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlForHash(AliasedField field, AliasedField salt, AliasedField length) {
+    return "HASH(" + getSqlFrom(field) + "' " + getSqlFrom(salt) +")";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */

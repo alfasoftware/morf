@@ -231,5 +231,10 @@ public enum FunctionType {
   /**
    * Calculates the row number on a partition. Generally used as a Window function
    */
-  ROW_NUMBER
+  ROW_NUMBER,
+
+  /**
+   * Hash function. Returns a hash of the input field using a provided salt.
+   */
+  HASH
 }

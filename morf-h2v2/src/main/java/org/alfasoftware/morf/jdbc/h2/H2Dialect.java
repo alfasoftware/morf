@@ -465,6 +465,13 @@ class H2Dialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlForHash(AliasedField field, AliasedField salt, AliasedField length) {
+    return String.format("LEFT(RAWTOHEX(HASH('SHA-256', CONCAT(%s, %s))), %s)",
+        getSqlFrom(field), getSqlFrom(salt), getSqlFrom(length));
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField,
    *      org.alfasoftware.morf.sql.element.AliasedField)

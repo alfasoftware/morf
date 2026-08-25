@@ -39,7 +39,6 @@ import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -59,15 +58,12 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.PortableSqlExpression;
-import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -353,15 +349,12 @@ class MySqlDialect extends SqlDialect {
     long maxId = executor
                 .executeQuery(checkMaxIdAutonumberStatement(table,autoIncrementColumn))
                 .withConnection(connection)
-                .processWith(new ResultSetProcessor<Long>() {
-                  @Override
-                  public Long process(ResultSet resultSet) throws SQLException {
-                    if (!resultSet.next()) {
-                      throw new UnsupportedOperationException("Nothing returned by results set");
-                    }
-
-                    return resultSet.getLong(1);
+                .processWith(resultSet -> {
+                  if (!resultSet.next()) {
+                    throw new UnsupportedOperationException("Nothing returned by results set");
                   }
+
+                  return resultSet.getLong(1);
                 });
 
     // We reset the auto increment seed to our start value every time we bulk insert data.  If the max value
@@ -694,6 +687,13 @@ class MySqlDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlForHash(AliasedField field, AliasedField salt, AliasedField length) {
+    return String.format("LEFT(SHA2(CONCAT(%s, %s), 256), %s)",
+        getSqlFrom(field), getSqlFrom(salt), getSqlFrom(length));
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
    */
@@ -863,11 +863,7 @@ class MySqlDialect extends SqlDialect {
     Index newIndex, existingIndex;
 
     try {
-      newIndex = Iterables.find(table.indexes(), new Predicate<Index>() {
-        @Override public boolean apply(Index input) {
-          return input.getName().equals(toIndexName);
-        }
-      });
+      newIndex = Iterables.find(table.indexes(), input -> input.getName().equals(toIndexName));
 
       existingIndex = newIndex.isUnique()
         ? index(fromIndexName).columns(newIndex.columnNames()).unique()
@@ -875,11 +871,7 @@ class MySqlDialect extends SqlDialect {
     } catch (NoSuchElementException nsee) {
       // If the index wasn't found, we must have the old schema instead of the
       // new one so try the other way round
-      existingIndex = Iterables.find(table.indexes(), new Predicate<Index>() {
-        @Override public boolean apply(Index input) {
-          return input.getName().equals(fromIndexName);
-        }
-      });
+      existingIndex = Iterables.find(table.indexes(), input -> input.getName().equals(fromIndexName));
 
       newIndex = existingIndex.isUnique()
         ? index(toIndexName).columns(existingIndex.columnNames()).unique()

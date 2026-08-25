@@ -1271,6 +1271,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedHash() {
+    return "LEFT(ENCODE(SHA256(CAST(10 || 2 as bytea)), 'hex'), 5)";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectLiteralWithWhereClauseString()
    */
