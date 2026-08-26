@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
@@ -40,7 +40,7 @@ public class TestDatabaseExceptionHelper {
   @Test
   public void testIsCausedByTimeoutForSQLTimeoutException() {
     // when then
-    assertEquals(true, databaseExceptionHelper.isCausedByTimeoutException(new ExtendsSQLTimeoutException()));
+    assertTrue(databaseExceptionHelper.isCausedByTimeoutException(new ExtendsSQLTimeoutException()));
   }
 
 
@@ -51,8 +51,29 @@ public class TestDatabaseExceptionHelper {
   @Test
   public void testIsCausedByTimeoutForMySQLTimeoutException() {
     // when then
-    assertEquals(true, databaseExceptionHelper.isCausedByTimeoutException(new MySQLTimeoutException()));
+    assertTrue(databaseExceptionHelper.isCausedByTimeoutException(new MySQLTimeoutException()));
   }
+
+
+  /**
+   * Test if detection works for postgres SQLState based exceptions
+   */
+  @Test
+  public void testIsCausedByTimeoutForPostgresTimeoutException() {
+    // when then
+    assertTrue(databaseExceptionHelper.isCausedByTimeoutException(new SQLException("Timeout", "57014")));
+  }
+
+
+  /**
+   * Test if detection works for postgres SQLState based exceptions
+   */
+  @Test
+  public void testIsNotCausedByTimeout() {
+    // when then
+    assertFalse(databaseExceptionHelper.isCausedByTimeoutException(new SQLException("Some other error", "0")));
+  }
+
 
   /**
    * Test only generic exception which extends {@link SQLTimeoutException}
