@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -37,10 +38,15 @@ public class DatabaseExceptionHelper {
    */
   static final String MYSQL_TIMEOUT_EXCEPTION_NAME = "MySQLTimeoutException";
 
+  /**
+   * The SQLState code used by postgres when a query has been cancelled. This code has some ambiguity, as queries can
+   * be cancelled due to a timeout, or a user request, but it's the best indication we have.
+   */
+  private static final String POSTGRES_QUERY_CANCELLED_SQL_STATE = "57014";
 
   /**
    * <p>Checks if the throwable was caused by timeout exception.</p>
-   * <b>This method has been tested for Oracle and MySQL only and might not work
+   * <b>This method has been tested for Oracle, MySQL & Postgres only and might not work
    * for other DB engines.</b>
    *
    * @param throwable to check
@@ -58,6 +64,14 @@ public class DatabaseExceptionHelper {
     for (Throwable causeThrowable : ExceptionUtils.getThrowables(throwable)) {
       if (MYSQL_TIMEOUT_EXCEPTION_NAME.equals(causeThrowable.getClass().getSimpleName())) {
         return true;
+      }
+      // Postgres doesn't have a distinct timeout exception class. Instead it throws
+      // a plain PSQLException with a particular SQLState that needs to be checked
+      if (causeThrowable instanceof SQLException) {
+        String sqlState = ((SQLException) causeThrowable).getSQLState();
+        if (POSTGRES_QUERY_CANCELLED_SQL_STATE.equals(sqlState)) {
+          return true;
+        }
       }
     }
     return false;
