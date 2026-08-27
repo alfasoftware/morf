@@ -1150,7 +1150,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedHash() {
-    return "LEFT(RAWTOHEX(HASH('SHA-256', CONCAT(10, 2))), 5)";
+    return "LEFT(RAWTOHEX(HASH('SHA256', CONCAT(10, 2))), 5)";
   }
 
 
