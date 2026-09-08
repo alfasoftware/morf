@@ -43,13 +43,13 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
@@ -66,7 +66,7 @@ import com.google.common.io.Closeables;
  */
 public class XmlDataSetProducer implements DataSetProducer {
 
-  private static final XMLInputFactory FACTORY = XMLInputFactory.newFactory();
+  private static final XMLInputFactory FACTORY = createXmlInputFactory();
 
   private static final Log log = LogFactory.getLog(XmlDataSetProducer.class);
 
@@ -80,6 +80,41 @@ public class XmlDataSetProducer implements DataSetProducer {
    * Provides a file given a URL, abstracting us from the specific protocol.
    */
   private final ViewURLAsFile urlHandler;
+
+
+  /**
+   * Create XMLInputFactory with Java 17 default properties explicitly set
+   * @return XMLInputFactory instance
+   */
+  private static XMLInputFactory createXmlInputFactory() {
+    XMLInputFactory factory = XMLInputFactory.newFactory();
+
+    setIfSupported(factory, "jdk.xml.entityExpansionLimit", 64_000);
+    setIfSupported(factory, "jdk.xml.elementAttributeLimit", 10_000);
+    setIfSupported(factory, "jdk.xml.totalEntitySizeLimit", 50_000_000);
+    setIfSupported(factory, "jdk.xml.maxGeneralEntitySizeLimit", 0);
+    setIfSupported(factory, "jdk.xml.maxParameterEntitySizeLimit", 1_000_000);
+    setIfSupported(factory, "jdk.xml.entityReplacementLimit", 3_000_000);
+    setIfSupported(factory, "jdk.xml.maxElementDepth", 0);
+
+    return factory;
+  }
+
+  /**
+   * Sets factory property if supported by this JDK version
+   * @param factory
+   * @param property
+   * @param value
+   */
+  private static void setIfSupported(
+          XMLInputFactory factory,
+          String property,
+          Object value) {
+
+    if (factory.isPropertySupported(property)) {
+      factory.setProperty(property, value);
+    }
+  }
 
 
   /**
