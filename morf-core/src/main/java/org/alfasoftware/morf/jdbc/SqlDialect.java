@@ -2239,6 +2239,12 @@ public abstract class SqlDialect {
         }
         return getSqlForRowNumber();
 
+      case HASH:
+        if (function.getArguments().size() != 2) {
+          throw new IllegalArgumentException("The HASH function should have two arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForHash(function.getArguments().get(0), function.getArguments().get(1));
+
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
     }
@@ -2775,6 +2781,17 @@ public abstract class SqlDialect {
   protected String getSqlForRightPad(AliasedField field, AliasedField length, AliasedField character) {
     return "RPAD(" + getSqlFrom(field) + ", " + getSqlFrom(length) + ", " + getSqlFrom(character) + ")";
   }
+
+
+  /**
+   * Converts the HASH function into SQL.
+   * The hash produced will all be in lowercase.
+   *
+   * @param field the value to hash.
+   * @param salt the salt to append before hashing. This field can be left as an empty string if no salt is required.
+   * @return string representation of the SQL.
+   */
+  protected abstract String getSqlForHash(AliasedField field, AliasedField salt);
 
 
   /**

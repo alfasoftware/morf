@@ -1208,6 +1208,12 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedHash() {
+    return "SHA2(CONCAT(10, 2), 256)";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectOrderByNullsLast()
    */

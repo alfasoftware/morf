@@ -1633,6 +1633,12 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedHash() {
+    return "LOWER(RAWTOHEX(STANDARD_HASH(10 || 2, 'SHA256')))";
+  }
+
+
   /**
    * @return Expected SQL for {@link #testSelectOrderByTwoFields()}
    */

@@ -308,6 +308,12 @@ public class MockDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+    return "ENCODE(SHA256(CAST(" + getSqlFrom(field) + " || " + getSqlFrom(salt) + " as bytea)), 'hex')" ;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */

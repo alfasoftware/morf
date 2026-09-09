@@ -595,6 +595,13 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+    return String.format("ENCODE(SHA256(CAST(%s || %s as bytea)), 'hex')",
+        getSqlFrom(field), getSqlFrom(salt));
+  }
+
+
+  @Override
   protected String getSqlForAddDays(Function function) {
     AliasedField date = function.getArguments().get(0);
     AliasedField days = function.getArguments().get(1);

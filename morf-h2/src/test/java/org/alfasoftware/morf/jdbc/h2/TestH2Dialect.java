@@ -1193,6 +1193,12 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedHash() {
+    return "RAWTOHEX(HASH('SHA256', CONCAT(10, 2)))";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectLiteralWithWhereClauseString()
    */

@@ -659,12 +659,27 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create a hashing function.
+   * The hash produced will all be in lowercase.
+   *
+   * @param field the value to hash.
+   * @param salt the salt to append before hashing. This field can be left as an empty string if no salt is required.
+   * @return an instance of the hash function.
+   */
+  public static Function hash(AliasedField field, AliasedField salt) {
+    return new Function(FunctionType.HASH, field, salt);
+  }
+
+
+  /**
    *
    * @return an instance or ROW_NUMBER function
    */
   public static Function rowNumber() {
     return new Function(FunctionType.ROW_NUMBER);
   }
+
+
   /**
    * Get the type of the function.
    *

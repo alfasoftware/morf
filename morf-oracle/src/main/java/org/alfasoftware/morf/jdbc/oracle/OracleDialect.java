@@ -1236,6 +1236,13 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+    return String.format("LOWER(RAWTOHEX(STANDARD_HASH(%s || %s, 'SHA256')))",
+        getSqlFrom(field), getSqlFrom(salt));
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
    */
@@ -1347,7 +1354,7 @@ class OracleDialect extends SqlDialect {
 
 
   private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
-    Builder<String> result = ImmutableList.<String>builder();
+    Builder<String> result = ImmutableList.builder();
     result.add(new StringBuilder()
             .append(createTableStatement(table, true))
             .append(" AS ")
