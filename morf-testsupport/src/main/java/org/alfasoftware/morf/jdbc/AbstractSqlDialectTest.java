@@ -3899,7 +3899,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testHash() {
-    SelectStatement statement = new SelectStatement(hash(new FieldLiteral(10), literal(2), literal(5))).from(new TableReference(TEST_TABLE));
+    SelectStatement statement = new SelectStatement(hash(new FieldLiteral(10), literal(2))).from(new TableReference(TEST_TABLE));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("Hash script should match expected", "SELECT " + expectedHash() + " FROM " + tableName(TEST_TABLE), actual);
   }

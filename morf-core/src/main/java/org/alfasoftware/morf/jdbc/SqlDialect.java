@@ -2785,7 +2785,7 @@ public abstract class SqlDialect {
 
   /**
    * Converts the HASH function into SQL.
-   * The hash produced will be all in lowercase.
+   * The hash produced will all be in lowercase.
    *
    * @param field the value to hash.
    * @param salt the salt to append before hashing. This field can be left as an empty string if no salt is required.

@@ -468,7 +468,7 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForHash(AliasedField field, AliasedField salt) {
     return String.format("RAWTOHEX(HASH('SHA256', CONCAT(%s, %s)))",
-        getSqlFrom(field), getSqlFrom(salt), getSqlFrom(length));
+        getSqlFrom(field), getSqlFrom(salt));
   }
 
 
