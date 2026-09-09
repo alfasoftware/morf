@@ -1210,7 +1210,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedHash() {
-    return "LEFT(SHA2(CONCAT(10, 2), 256), 5)";
+    return "SHA2(CONCAT(10, 2), 256)";
   }
 
 

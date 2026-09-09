@@ -1635,7 +1635,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedHash() {
-    return "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(10 || 2, 'SHA256'))), 1, 5)";
+    return "LOWER(RAWTOHEX(STANDARD_HASH(10 || 2, 'SHA256')))";
   }
 
 

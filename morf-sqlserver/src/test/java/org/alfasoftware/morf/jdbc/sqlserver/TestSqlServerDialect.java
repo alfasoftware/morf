@@ -1269,7 +1269,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedHash() {
-    return "LEFT(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT(10, 2)), 2), 5)";
+    return "LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT(10, 2)), 2))";
   }
 
 

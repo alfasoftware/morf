@@ -595,9 +595,9 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForHash(AliasedField field, AliasedField salt, AliasedField length) {
-    return String.format("LEFT(ENCODE(SHA256(CAST(%s || %s as bytea)), 'hex'), %s)",
-        getSqlFrom(field), getSqlFrom(salt), getSqlFrom(length));
+  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+    return String.format("ENCODE(SHA256(CAST(%s || %s as bytea)), 'hex')",
+        getSqlFrom(field), getSqlFrom(salt));
   }
 
 

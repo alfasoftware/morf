@@ -951,9 +951,9 @@ class SqlServerDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForHash(AliasedField field, AliasedField salt, AliasedField length) {
-    return String.format("LEFT(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT(%s, %s)), 2), %s)",
-        getSqlFrom(field), getSqlFrom(salt), getSqlFrom(length));
+  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+    return String.format("LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT(%s, %s)), 2))",
+        getSqlFrom(field), getSqlFrom(salt));
   }
 
 

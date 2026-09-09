@@ -234,7 +234,7 @@ public enum FunctionType {
   ROW_NUMBER,
 
   /**
-   * Hash function. Returns a hash of the input field using a provided salt.
+   * Hash function. Returns a lowercase SHA-256 hash of the input field using a provided salt.
    */
   HASH
 }

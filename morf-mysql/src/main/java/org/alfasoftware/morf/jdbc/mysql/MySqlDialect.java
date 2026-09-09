@@ -688,9 +688,9 @@ class MySqlDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForHash(AliasedField field, AliasedField salt, AliasedField length) {
-    return String.format("LEFT(SHA2(CONCAT(%s, %s), 256), %s)",
-        getSqlFrom(field), getSqlFrom(salt), getSqlFrom(length));
+  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+    return String.format("SHA2(CONCAT(%s, %s), 256)",
+        getSqlFrom(field), getSqlFrom(salt));
   }
 
 
