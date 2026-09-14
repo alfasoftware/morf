@@ -663,7 +663,7 @@ public final class Function extends AliasedField implements Driver {
    * The hash produced will all be in lowercase.
    *
    * @param field the value to hash.
-   * @param salt the salt to append before hashing. This field can be left as an empty string if no salt is required.
+   * @param salt the salt to append before hashing. This field can be provided as an empty FieldLiteral if no salt is required.
    * @return an instance of the hash function.
    */
   public static Function hash(AliasedField field, AliasedField salt) {
