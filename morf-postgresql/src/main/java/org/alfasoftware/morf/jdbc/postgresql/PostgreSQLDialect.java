@@ -52,6 +52,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.SequenceReference;
@@ -596,8 +597,13 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlForHash(AliasedField field, AliasedField salt) {
-    return String.format("ENCODE(SHA256(CAST(%s || %s as bytea)), 'hex')",
-        getSqlFrom(field), getSqlFrom(salt));
+    if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
+      return String.format("ENCODE(SHA256(CAST(%s as bytea)), 'hex')",
+          getSqlFrom(field));
+    } else {
+      return String.format("ENCODE(SHA256(CAST(%s || %s as bytea)), 'hex')",
+          getSqlFrom(field), getSqlFrom(salt));
+    }
   }
 
 

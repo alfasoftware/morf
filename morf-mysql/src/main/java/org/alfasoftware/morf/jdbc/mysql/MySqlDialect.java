@@ -56,6 +56,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SequenceReference;
@@ -689,8 +690,13 @@ class MySqlDialect extends SqlDialect {
 
   @Override
   protected String getSqlForHash(AliasedField field, AliasedField salt) {
-    return String.format("SHA2(CONCAT(%s, %s), 256)",
-        getSqlFrom(field), getSqlFrom(salt));
+    if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
+      return String.format("SHA2(%s, 256)",
+          getSqlFrom(field));
+    } else {
+      return String.format("SHA2(CONCAT(%s, %s), 256)",
+          getSqlFrom(field), getSqlFrom(salt));
+    }
   }
 
 
