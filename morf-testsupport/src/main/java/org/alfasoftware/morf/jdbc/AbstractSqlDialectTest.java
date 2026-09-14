@@ -3899,9 +3899,13 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testHash() {
-    SelectStatement statement = new SelectStatement(hash(new FieldLiteral(10), literal(2))).from(new TableReference(TEST_TABLE));
+    SelectStatement statement = new SelectStatement(hash(new FieldLiteral("field"), literal("salt"))).from(new TableReference(TEST_TABLE));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("Hash script should match expected", "SELECT " + expectedHash() + " FROM " + tableName(TEST_TABLE), actual);
+
+    SelectStatement statement2 = new SelectStatement(hash(new FieldLiteral("field"), literal(""))).from(new TableReference(TEST_TABLE));
+    String actual2 = testDialect.convertStatementToSQL(statement2);
+    assertEquals("Hash script should match expected", "SELECT " + expectedHashNoSalt() + " FROM " + tableName(TEST_TABLE), actual2);
   }
 
 
@@ -6147,6 +6151,12 @@ public abstract class AbstractSqlDialectTest {
    * @return the expected SQL for generating a hash
    */
   protected abstract String expectedHash();
+
+
+  /**
+   * @return the expected SQL for generating a hash with no salt
+   */
+  protected abstract String expectedHashNoSalt();
 
   /**
    * @return the expected SQL for generating a select statement of literal fields with a where clause
