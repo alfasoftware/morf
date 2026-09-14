@@ -71,6 +71,7 @@ import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
 import static org.alfasoftware.morf.sql.element.Function.greatest;
+import static org.alfasoftware.morf.sql.element.Function.hash;
 import static org.alfasoftware.morf.sql.element.Function.isnull;
 import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
@@ -3894,6 +3895,21 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that hash functionality builds the expected SQL string.
+   */
+  @Test
+  public void testHash() {
+    SelectStatement statement = new SelectStatement(hash(new FieldLiteral("field"), literal("salt"))).from(new TableReference(TEST_TABLE));
+    String actual = testDialect.convertStatementToSQL(statement);
+    assertEquals("Hash script should match expected", "SELECT " + expectedHash() + " FROM " + tableName(TEST_TABLE), actual);
+
+    SelectStatement statement2 = new SelectStatement(hash(new FieldLiteral("field"), literal(""))).from(new TableReference(TEST_TABLE));
+    String actual2 = testDialect.convertStatementToSQL(statement2);
+    assertEquals("Hash script should match expected", "SELECT " + expectedHashNoSalt() + " FROM " + tableName(TEST_TABLE), actual2);
+  }
+
+
+  /**
    * Tests that LOWER functionality works.
    */
   @Test
@@ -6130,6 +6146,17 @@ public abstract class AbstractSqlDialectTest {
    */
   protected abstract String expectedRandomString();
 
+
+  /**
+   * @return the expected SQL for generating a hash
+   */
+  protected abstract String expectedHash();
+
+
+  /**
+   * @return the expected SQL for generating a hash with no salt
+   */
+  protected abstract String expectedHashNoSalt();
 
   /**
    * @return the expected SQL for generating a select statement of literal fields with a where clause
