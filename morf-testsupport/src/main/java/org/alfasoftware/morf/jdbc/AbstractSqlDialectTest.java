@@ -71,7 +71,7 @@ import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
 import static org.alfasoftware.morf.sql.element.Function.greatest;
-import static org.alfasoftware.morf.sql.element.Function.hash;
+import static org.alfasoftware.morf.sql.element.Function.sha256Hex;
 import static org.alfasoftware.morf.sql.element.Function.isnull;
 import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
@@ -3899,11 +3899,11 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testHash() {
-    SelectStatement statement = new SelectStatement(hash(new FieldLiteral("field"), literal("salt"))).from(new TableReference(TEST_TABLE));
+    SelectStatement statement = new SelectStatement(sha256Hex(new FieldLiteral("field"), literal("salt"))).from(new TableReference(TEST_TABLE));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("Hash script should match expected", "SELECT " + expectedHash() + " FROM " + tableName(TEST_TABLE), actual);
 
-    SelectStatement statement2 = new SelectStatement(hash(new FieldLiteral("field"), literal(""))).from(new TableReference(TEST_TABLE));
+    SelectStatement statement2 = new SelectStatement(sha256Hex(new FieldLiteral("field"), literal(""))).from(new TableReference(TEST_TABLE));
     String actual2 = testDialect.convertStatementToSQL(statement2);
     assertEquals("Hash script should match expected", "SELECT " + expectedHashNoSalt() + " FROM " + tableName(TEST_TABLE), actual2);
   }

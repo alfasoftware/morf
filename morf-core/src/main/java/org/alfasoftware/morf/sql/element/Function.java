@@ -659,15 +659,15 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
-   * Helper method to create a hashing function.
-   * The hash produced will all be in lowercase.
+   * Helper method to create a SHA-256 hashing function.
+   * The hash produced will all be an all lowercase hex string.
    *
    * @param field the value to hash.
    * @param salt the salt to append before hashing. This field can be provided as an empty FieldLiteral if no salt is required.
    * @return an instance of the hash function.
    */
-  public static Function hash(AliasedField field, AliasedField salt) {
-    return new Function(FunctionType.HASH, field, salt);
+  public static Function sha256Hex(AliasedField field, AliasedField salt) {
+    return new Function(FunctionType.SHA256_HEX, field, salt);
   }
 
 

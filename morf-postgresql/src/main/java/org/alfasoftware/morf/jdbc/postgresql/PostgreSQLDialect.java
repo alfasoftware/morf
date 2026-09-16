@@ -596,7 +596,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+  protected String getSqlForSHA256Hex(AliasedField field, AliasedField salt) {
     if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
       return String.format("ENCODE(SHA256(CAST(%s as bytea)), 'hex')",
           getSqlFrom(field));

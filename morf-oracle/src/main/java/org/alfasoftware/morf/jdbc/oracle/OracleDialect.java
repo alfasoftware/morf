@@ -1238,7 +1238,7 @@ class OracleDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+  protected String getSqlForSHA256Hex(AliasedField field, AliasedField salt) {
     if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
       return String.format("LOWER(RAWTOHEX(STANDARD_HASH(%s, 'SHA256')))",
           getSqlFrom(field));

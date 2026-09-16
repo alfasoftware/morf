@@ -689,7 +689,7 @@ class MySqlDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForHash(AliasedField field, AliasedField salt) {
+  protected String getSqlForSHA256Hex(AliasedField field, AliasedField salt) {
     if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
       return String.format("SHA2(%s, 256)",
           getSqlFrom(field));
