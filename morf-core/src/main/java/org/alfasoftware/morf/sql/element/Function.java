@@ -672,6 +672,18 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create a SHA-256 hashing function.
+   * The hash produced will all be an all lowercase hex string.
+   *
+   * @param field the value to hash.
+   * @return an instance of the hash function.
+   */
+  public static Function sha256Hex(AliasedField field) {
+    return sha256Hex(field, literal(""));
+  }
+
+
+  /**
    *
    * @return an instance or ROW_NUMBER function
    */

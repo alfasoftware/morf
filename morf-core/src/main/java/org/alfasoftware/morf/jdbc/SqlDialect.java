@@ -2241,7 +2241,7 @@ public abstract class SqlDialect {
 
       case SHA256_HEX:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The HASH function should have two arguments. This function has " + function.getArguments().size());
+          throw new IllegalArgumentException("The SHA256_HEX function should have two arguments. This function has " + function.getArguments().size());
         }
         return getSqlForSHA256Hex(function.getArguments().get(0), function.getArguments().get(1));
 

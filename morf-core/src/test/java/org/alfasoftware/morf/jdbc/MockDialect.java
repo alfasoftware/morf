@@ -310,7 +310,7 @@ public class MockDialect extends SqlDialect {
 
   @Override
   protected String getSqlForSHA256Hex(AliasedField field, AliasedField salt) {
-    return "ENCODE(SHA256(CAST(" + getSqlFrom(field) + " || " + getSqlFrom(salt) + " as bytea)), 'hex')" ;
+    return "SHA256HEX(" + getSqlFrom(field) + " || " + getSqlFrom(salt) + ")";
   }
 
 
