@@ -1267,6 +1267,18 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedHash() {
+    return "LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT('field', 'salt')), 2))";
+  }
+
+
+  @Override
+  protected String expectedHashNoSalt() {
+    return "LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', 'field'), 2))";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedLeftPad()
    */

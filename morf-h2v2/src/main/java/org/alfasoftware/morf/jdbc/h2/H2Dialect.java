@@ -35,6 +35,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.SequenceReference;
@@ -462,6 +463,18 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForNow(Function function) {
     return "CURRENT_TIMESTAMP()";
+  }
+
+
+  @Override
+  protected String getSqlForSHA256Hex(AliasedField field, AliasedField salt) {
+    if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
+      return String.format("RAWTOHEX(HASH('SHA256', %s))",
+          getSqlFrom(field));
+    } else {
+      return String.format("RAWTOHEX(HASH('SHA256', CONCAT(%s, %s)))",
+          getSqlFrom(field), getSqlFrom(salt));
+    }
   }
 
 

@@ -34,6 +34,7 @@ import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.SequenceReference;
@@ -78,7 +79,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
+   * @see SqlDialect#tableDeploymentStatements(Table)
    */
   @Override
   public Collection<String> internalTableDeploymentStatements(Table table) {
@@ -161,7 +162,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
+   * @see SqlDialect#dropStatements(Table)
    */
   @Override
   public Collection<String> dropStatements(Table table) {
@@ -170,7 +171,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
+   * @see SqlDialect#getColumnRepresentation(DataType,
    *      int, int)
    */
   @Override
@@ -207,7 +208,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
+   * @see SqlDialect#getFromDummyTable()
    */
   @Override
   protected String getFromDummyTable() {
@@ -216,7 +217,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#connectionTestStatement()
+   * @see SqlDialect#connectionTestStatement()
    */
   @Override
   public String connectionTestStatement() {
@@ -225,7 +226,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDatabaseType()
+   * @see SqlDialect#getDatabaseType()
    */
   @Override
   public DatabaseType getDatabaseType() {
@@ -234,7 +235,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSelectLimitSuffix(int)
+   * @see SqlDialect#getSelectLimitSuffix(int)
    */
   @Override
   protected Optional<String> getSelectLimitSuffix(int limit) {
@@ -243,7 +244,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
+   * @see SqlDialect#alterTableAddColumnStatements(Table, Column)
    */
   @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
@@ -255,7 +256,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableChangeColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column, org.alfasoftware.morf.metadata.Column)
+   * @see SqlDialect#alterTableChangeColumnStatements(Table, Column, Column)
    */
   @Override
   public Collection<String> alterTableChangeColumnStatements(Table table, Column oldColumn, Column newColumn) {
@@ -302,7 +303,7 @@ class H2Dialect extends SqlDialect {
   }
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableDropColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
+   * @see SqlDialect#alterTableDropColumnStatements(Table, Column)
    */
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
@@ -314,7 +315,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(org.alfasoftware.morf.metadata.Table, java.util.List, java.util.List)
+   * @see SqlDialect#changePrimaryKeyColumns(Table, List, List)
    */
   @Override
   public Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
@@ -352,8 +353,8 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDeploymentStatements(org.alfasoftware.morf.metadata.Table,
-   *      org.alfasoftware.morf.metadata.Index)
+   * @see SqlDialect#indexDeploymentStatements(Table,
+   *      Index)
    */
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
@@ -371,8 +372,8 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDropStatements(org.alfasoftware.morf.metadata.Table,
-   *      org.alfasoftware.morf.metadata.Index)
+   * @see SqlDialect#indexDropStatements(Table,
+   *      Index)
    */
   @Override
   public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
@@ -387,7 +388,7 @@ class H2Dialect extends SqlDialect {
    * is given by the maximum string length of any of the values that can be
    * returned by the CASE statement.
    *
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#makeStringLiteral(java.lang.String)
+   * @see SqlDialect#makeStringLiteral(String)
    */
   @Override
   protected String makeStringLiteral(String literalValue) {
@@ -400,7 +401,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#decorateTemporaryTableName(java.lang.String)
+   * @see SqlDialect#decorateTemporaryTableName(String)
    */
   @Override
   public String decorateTemporaryTableName(String undecoratedName) {
@@ -409,7 +410,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForYYYYMMDDToDate(Function)
    */
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
@@ -420,7 +421,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDateToYyyymmdd(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForDateToYyyymmdd(Function)
    */
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
@@ -430,7 +431,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDateToYyyymmddHHmmss(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForDateToYyyymmddHHmmss(Function)
    */
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
@@ -441,7 +442,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForNow(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForNow(Function)
    */
   @Override
   protected String getSqlForNow(Function function) {
@@ -449,9 +450,21 @@ class H2Dialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlForSHA256Hex(AliasedField field, AliasedField salt) {
+    if (salt instanceof FieldLiteral && StringUtils.isBlank(((FieldLiteral) salt).getValue())) {
+      return String.format("RAWTOHEX(HASH('SHA256', %s))",
+          getSqlFrom(field));
+    } else {
+      return String.format("RAWTOHEX(HASH('SHA256', CONCAT(%s, %s)))",
+          getSqlFrom(field), getSqlFrom(salt));
+    }
+  }
+
+
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField,
-   *      org.alfasoftware.morf.sql.element.AliasedField)
+   * @see SqlDialect#getSqlForDaysBetween(AliasedField,
+   *      AliasedField)
    */
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
@@ -460,7 +473,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForMonthsBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
+   * @see SqlDialect#getSqlForMonthsBetween(AliasedField, AliasedField)
    */
   @Override
   protected String getSqlForMonthsBetween(AliasedField toDate, AliasedField fromDate) {
@@ -488,7 +501,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAddDays(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForAddDays(Function)
    */
   @Override
   protected String getSqlForAddDays(Function function) {
@@ -501,7 +514,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAddMonths(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForAddMonths(Function)
    */
   @Override
   protected String getSqlForAddMonths(Function function) {
@@ -514,7 +527,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Table)
+   * @see SqlDialect#renameTableStatements(Table, Table)
    */
   @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
@@ -628,7 +641,7 @@ class H2Dialect extends SqlDialect {
   }
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(org.alfasoftware.morf.sql.element.Function)
+   * @see SqlDialect#getSqlForRandomString(Function)
    */
   @Override
   protected String getSqlForRandomString(Function function) {
@@ -637,7 +650,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
+   * @see SqlDialect#getSqlForLastDayOfMonth
    */
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
@@ -646,7 +659,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber()
+   * @see SqlDialect#getSqlForRowNumber()
    */
   @Override
   protected String getSqlForRowNumber() {
@@ -655,7 +668,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function)
+   * @see SqlDialect#getSqlForWindowFunction(Function)
    */
   @Override
   protected String getSqlForWindowFunction(Function function) {
@@ -671,7 +684,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDeleteLimitSuffix(int)
+   * @see SqlDialect#getDeleteLimitSuffix(int)
    */
   @Override
   protected Optional<String> getDeleteLimitSuffix(int limit) {
@@ -680,7 +693,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   * @see SqlDialect#tableNameWithSchemaName(TableReference)
    */
   @Override
   protected String tableNameWithSchemaName(TableReference tableRef) {

@@ -1633,6 +1633,18 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedHash() {
+    return "LOWER(RAWTOHEX(STANDARD_HASH(N'field' || N'salt', 'SHA256')))";
+  }
+
+
+  @Override
+  protected String expectedHashNoSalt() {
+    return "LOWER(RAWTOHEX(STANDARD_HASH(N'field', 'SHA256')))";
+  }
+
+
   /**
    * @return Expected SQL for {@link #testSelectOrderByTwoFields()}
    */
