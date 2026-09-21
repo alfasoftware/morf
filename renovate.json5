@@ -1,0 +1,7 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["mergeConfidence:all-badges"],
+  "prConcurrentLimit": 5,
+  "schedule": [ "on Monday" ],
+  "minimumReleaseAge": "7 days"
+}
