@@ -1273,13 +1273,13 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedHash() {
-    return "ENCODE(SHA256(convert_to('field' || 'salt', 'UTF8')), 'hex')";
+    return "ENCODE(SHA256(CONVERT_TO('field' || 'salt', 'UTF8')), 'hex')";
   }
 
 
   @Override
   protected String expectedHashNoSalt() {
-    return "ENCODE(SHA256(convert_to('field', 'UTF8')), 'hex')";
+    return "ENCODE(SHA256(CONVERT_TO('field', 'UTF8')), 'hex')";
   }
 
 
