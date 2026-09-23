@@ -47,6 +47,7 @@ public class ConcurrentDataSetConnector {
   private static final Log log = LogFactory.getLog(ConcurrentDataSetConnector.class);
 
   private static final int PROGRESS_LOGGER_DEFAULT_INTERVAL_SEC =  10;
+  private static final int DEFAULT_TIMEOUT_MINUTES = 60;
   /**
    * Requested number of threads to use.
    */
@@ -56,6 +57,11 @@ public class ConcurrentDataSetConnector {
    * Progress logging interval
    */
   private final int progressLoggerIntervalSec;
+
+  /**
+   * Maximum time to wait for executor termination.
+   */
+  private final int timeoutMinutes;
 
   /**
    * Producer from which all data will be retrieved and pushed to the consumers.
@@ -78,7 +84,7 @@ public class ConcurrentDataSetConnector {
    * @param consumerSupplier The supplier for the target to which the data should be sent.
    */
   public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier) {
-    this(producer, consumerSupplier, calculateDefaultThreadCount(), PROGRESS_LOGGER_DEFAULT_INTERVAL_SEC);
+    this(producer, consumerSupplier, calculateDefaultThreadCount(), PROGRESS_LOGGER_DEFAULT_INTERVAL_SEC, DEFAULT_TIMEOUT_MINUTES);
   }
 
 
@@ -91,6 +97,20 @@ public class ConcurrentDataSetConnector {
    */
   public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier,
                                     int requestedThreadCount, int progressLoggerIntervalSec) {
+    this(producer, consumerSupplier, requestedThreadCount, progressLoggerIntervalSec, DEFAULT_TIMEOUT_MINUTES);
+  }
+
+
+  /**
+   * Creates a new instance of this class.
+   *
+   * @param producer Producer of data to transmit.
+   * @param consumerSupplier The supplier for the target to which the data should be sent.
+   * @param requestedThreadCount Uses provided number of threads instead of default
+   * @param timeoutMinutes Maximum number of minutes to wait for processing to complete before timing out.
+   */
+  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier,
+                                    int requestedThreadCount, int progressLoggerIntervalSec, int timeoutMinutes) {
     super();
     this.consumerPool = new Pool<>(() ->  {
       DataSetConsumer consumer = consumerSupplier.get();
@@ -102,6 +122,7 @@ public class ConcurrentDataSetConnector {
     this.producer = producer;
     this.requestedThreadCount = requestedThreadCount;
     this.progressLoggerIntervalSec = progressLoggerIntervalSec;
+    this.timeoutMinutes = timeoutMinutes;
   }
 
 
@@ -146,7 +167,14 @@ public class ConcurrentDataSetConnector {
 
       tableNames.forEach((String tableName) -> executeNewRunnable(executor, producer, consumerPool, tableName));
       executor.shutdown();
-      executor.awaitTermination(60, TimeUnit.MINUTES);
+
+      boolean completed = executor.awaitTermination(timeoutMinutes, TimeUnit.MINUTES);
+
+      if (!completed) {
+        log.error("Timed out after " + timeoutMinutes + " minutes. Only processed " + processedTableCount.get() + "/" + tableNames.size() + " tables.");
+        throw new RuntimeException("Dataset connector timed out");
+      }
+
       logger.shouldContinue = false;
 
       // once we've read all the tables without exception, we're complete and ready to release all resources

@@ -121,6 +121,39 @@ public class TestConcurrentDataSetConnector {
     verifyConcurrent(allResults);
   }
 
+
+  @Test(expected = RuntimeException.class)
+  public void testDatasetConnectorTimesOut() {
+    int zeroMinuteTimeout = 0;
+
+    // Force the execution to time out
+    MockDataSetProducer testProducer = new MockDataSetProducer() {
+      @Override
+      public Iterable<Record> records(String tableName) {
+        try {
+          Thread.sleep(5_000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+        return super.records(tableName);
+      }
+    };
+
+    testProducer.addTable(
+        table("foo").columns(
+            idColumn(),
+            versionColumn(),
+            column("bar", DataType.STRING, 10))
+    );
+
+    ConsumerTestSupplier consumerTestSupplier = new ConsumerTestSupplier();
+
+    // Should throw runtime exception
+    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier, 1, LOGGER_INTERVAL, zeroMinuteTimeout)
+        .connect();
+  }
+
+
   private void verifyConcurrent(String allResults) {
     assertTrue(allResults.contains("open"));
     assertTrue(allResults.contains("foo"));
