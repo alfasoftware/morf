@@ -171,8 +171,8 @@ public class ConcurrentDataSetConnector {
       boolean completed = executor.awaitTermination(timeoutMinutes, TimeUnit.MINUTES);
 
       if (!completed) {
-        log.error("Timed out after " + timeoutMinutes + " minutes. Only processed " + processedTableCount.get() + "/" + tableNames.size() + " tables.");
-        throw new RuntimeException("Dataset connector timed out");
+        throw new RuntimeException("Dataset connector timed out after " + timeoutMinutes + " minutes. " +
+            "Only processed " + processedTableCount.get() + "/" + tableNames.size() + " tables.");
       }
 
       logger.shouldContinue = false;
