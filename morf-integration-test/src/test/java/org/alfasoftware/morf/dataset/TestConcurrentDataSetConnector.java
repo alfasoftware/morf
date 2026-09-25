@@ -6,8 +6,10 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -122,16 +124,18 @@ public class TestConcurrentDataSetConnector {
   }
 
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testDatasetConnectorTimesOut() {
     int zeroMinuteTimeout = 0;
 
-    // Force the execution to time out
+    CountDownLatch latch = new CountDownLatch(1);
+
     MockDataSetProducer testProducer = new MockDataSetProducer() {
       @Override
       public Iterable<Record> records(String tableName) {
         try {
-          Thread.sleep(5_000);
+          // Never completes, forces the timeout
+          latch.await();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
@@ -148,9 +152,17 @@ public class TestConcurrentDataSetConnector {
 
     ConsumerTestSupplier consumerTestSupplier = new ConsumerTestSupplier();
 
-    // Should throw runtime exception
-    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier, 1, LOGGER_INTERVAL, zeroMinuteTimeout)
-        .connect();
+    RuntimeException exception = assertThrows(RuntimeException.class,
+        () -> new ConcurrentDataSetConnector(
+            testProducer,
+            consumerTestSupplier,
+            1,
+            LOGGER_INTERVAL,
+            zeroMinuteTimeout
+        ).connect()
+    );
+
+    assertEquals("Dataset connector timed out after 0 minutes. Only processed 0/1 tables.", exception.getMessage());
   }
 
 
