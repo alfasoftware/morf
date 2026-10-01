@@ -40,7 +40,9 @@ public class DatabaseExceptionHelper {
 
   /**
    * The SQLState code used by postgres when a query has been cancelled. This code has some ambiguity, as queries can
-   * be cancelled due to a timeout, or a user request, but it's the best indication we have.
+   * be cancelled due to a timeout (either driver-side or client-side), a manual cancellation, or connnection pool
+   * cancellation. Given that there is no means of differentiating between these errors, they will all be considered
+   * as timeout exceptions by this helper.
    */
   private static final String POSTGRES_QUERY_CANCELLED_SQL_STATE = "57014";
 
