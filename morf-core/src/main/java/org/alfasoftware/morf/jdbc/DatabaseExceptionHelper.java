@@ -40,7 +40,7 @@ public class DatabaseExceptionHelper {
 
   /**
    * The SQLState code used by postgres when a query has been cancelled. This code has some ambiguity, as queries can
-   * be cancelled due to a timeout (either driver-side or client-side), a manual cancellation, or connnection pool
+   * be cancelled due to a timeout (either driver-side or client-side), a manual cancellation, or connection pool
    * cancellation. Given that there is no means of differentiating between these errors, they will all be considered
    * as timeout exceptions by this helper.
    */
@@ -48,6 +48,7 @@ public class DatabaseExceptionHelper {
 
   /**
    * <p>Checks if the throwable was caused by timeout exception.</p>
+   * <p>For Postgres, all query cancelled errors are treated as timeout exceptions. </p>
    * <b>This method has been tested for Oracle, MySQL & Postgres only and might not work
    * for other DB engines.</b>
    *
