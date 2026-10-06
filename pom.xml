@@ -30,7 +30,6 @@
   </modules>
   
   <properties>
-    <maven.javadoc.skip>true</maven.javadoc.skip>
     <maven.compiler.release>11</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <aggregate.report.dir>morf-integration-test/target/site/jacoco-aggregate/jacoco.xml</aggregate.report.dir>
