@@ -49,7 +49,7 @@ public class DatabaseExceptionHelper {
   /**
    * <p>Checks if the throwable was caused by timeout exception.</p>
    * <p>For Postgres, all query cancelled errors are treated as timeout exceptions. </p>
-   * <b>This method has been tested for Oracle, MySQL & Postgres only and might not work
+   * <b>This method has been tested for Oracle, MySQL and Postgres only and might not work
    * for other DB engines.</b>
    *
    * @param throwable to check
