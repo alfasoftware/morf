@@ -1,0 +1,279 @@
+/* Copyright 2026 Alfa Financial Software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.alfasoftware.morf.upgrade.deferredindexes;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+/**
+ * Default implementation of {@link DeferredIndexSession}. Owns the
+ * in-memory per-upgrade cache; defers DSL construction to the injected
+ * {@link DeferredIndexesStatements}.
+ *
+ * <p>Not a Guice singleton — constructed per upgrade run. The
+ * {@link DeferredIndexesStatements} dependency is stateless and could be a
+ * fresh instance or a Guice-managed singleton.</p>
+ *
+ * @author Copyright (c) Alfa Financial Software Limited. 2026
+ */
+public class DeferredIndexSessionImpl implements DeferredIndexSession {
+
+  private static final Log log = LogFactory.getLog(DeferredIndexSessionImpl.class);
+
+  /** Cache: tableName (upper) -&gt; indexName (upper) -&gt; IndexRecord. */
+  private final Map<String, Map<String, IndexRecord>> registeredIndexes = new LinkedHashMap<>();
+
+  private final DeferredIndexesStatements statements;
+
+
+  /**
+   * @param statements DSL helper for the DeferredIndexes table.
+   */
+  public DeferredIndexSessionImpl(DeferredIndexesStatements statements) {
+    this.statements = statements;
+  }
+
+
+  @Override
+  public void prime(DeferredIndex entry, boolean physicallyPresent) {
+    if (log.isDebugEnabled()) {
+      log.debug("Priming (persisted row): table=" + entry.getTableName()
+          + ", index=" + entry.getIndexName() + ", status=" + entry.getStatus()
+          + ", physicallyPresent=" + physicallyPresent);
+    }
+    // Every persisted row is a deferred index.
+    IndexBuilder builder = index(entry.getIndexName()).columns(entry.getIndexColumns());
+    if (entry.isIndexUnique()) {
+      builder = builder.unique();
+    }
+    builder = builder.deferred();
+    registeredIndexes
+        .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
+        .put(entry.getIndexName().toUpperCase(),
+             new IndexRecord(entry.getTableName(), builder, physicallyPresent));
+  }
+
+
+  @Override
+  public List<InsertStatement> registerIndex(String tableName, Index idx) {
+    if (log.isDebugEnabled()) {
+      log.debug("Registering index: table=" + tableName + ", index=" + idx.getName()
+          + ", deferred=" + idx.isDeferred());
+    }
+    // New declaration → row PENDING, nothing physical until the adopter builds it.
+    registeredIndexes
+        .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
+        .put(idx.getName().toUpperCase(),
+             new IndexRecord(tableName, idx, false));
+
+    return List.of(statements.registerIndex(tableName, idx));
+  }
+
+
+  @Override
+  public List<InsertStatement> registerCompletedIndex(String tableName, Index idx) {
+    if (log.isDebugEnabled()) {
+      log.debug("Registering already-built index: table=" + tableName + ", index=" + idx.getName());
+    }
+    // Physical already exists (PRF rename) → COMPLETED, never queued for build.
+    registeredIndexes
+        .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
+        .put(idx.getName().toUpperCase(),
+             new IndexRecord(tableName, idx, true));
+
+    return List.of(statements.registerCompletedIndex(tableName, idx));
+  }
+
+
+  @Override
+  public DeferredIndexSession copy() {
+    DeferredIndexSessionImpl copy = new DeferredIndexSessionImpl(statements);
+    for (Map.Entry<String, Map<String, IndexRecord>> table : registeredIndexes.entrySet()) {
+      // IndexRecord is immutable, so copying the two map levels is sufficient.
+      copy.registeredIndexes.put(table.getKey(), new LinkedHashMap<>(table.getValue()));
+    }
+    return copy;
+  }
+
+
+  @Override
+  public boolean isRegistered(String tableName, String indexName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
+    return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
+  }
+
+
+  @Override
+  public boolean willBePhysicallyPresent(String tableName, String indexName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null) return true;
+    IndexRecord record = tableMap.get(indexName.toUpperCase());
+    if (record == null) return true;
+    return record.physicallyPresent;
+  }
+
+
+  @Override
+  public List<DeleteStatement> unregisterIndex(String tableName, String indexName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null || !tableMap.containsKey(indexName.toUpperCase())) {
+      return List.of();
+    }
+    IndexRecord removed = tableMap.remove(indexName.toUpperCase());
+    if (tableMap.isEmpty()) {
+      registeredIndexes.remove(tableName.toUpperCase());
+    }
+    return List.of(statements.unregisterIndex(removed.tableName, removed.index.getName()));
+  }
+
+
+  @Override
+  public List<DeleteStatement> unregisterAllFor(String tableName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.remove(tableName.toUpperCase());
+    if (tableMap == null || tableMap.isEmpty()) {
+      return List.of();
+    }
+    String storedTableName = tableMap.values().iterator().next().tableName;
+    return List.of(statements.unregisterAllFor(storedTableName));
+  }
+
+
+  @Override
+  public List<DeleteStatement> unregisterByColumn(String tableName, String columnName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null) {
+      return List.of();
+    }
+
+    List<String> toRemove = tableMap.values().stream()
+        .filter(r -> r.index.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(columnName)))
+        .map(r -> r.index.getName())
+        .collect(Collectors.toList());
+
+    List<DeleteStatement> deletes = new ArrayList<>();
+    for (String idxName : toRemove) {
+      deletes.addAll(unregisterIndex(tableName, idxName));
+    }
+    return deletes;
+  }
+
+
+  @Override
+  public List<UpdateStatement> updateTableName(String oldTableName, String newTableName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.remove(oldTableName.toUpperCase());
+    if (tableMap == null || tableMap.isEmpty()) {
+      return List.of();
+    }
+    String storedOldTableName = tableMap.values().iterator().next().tableName;
+
+    Map<String, IndexRecord> updatedMap = new LinkedHashMap<>();
+    for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
+      IndexRecord r = entry.getValue();
+      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index, r.physicallyPresent));
+    }
+    registeredIndexes.put(newTableName.toUpperCase(), updatedMap);
+
+    return List.of(statements.updateTableName(storedOldTableName, newTableName));
+  }
+
+
+  @Override
+  public List<UpdateStatement> updateColumnName(String tableName, String oldColumnName, String newColumnName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null) {
+      return List.of();
+    }
+
+    List<UpdateStatement> updates = new ArrayList<>();
+    for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
+      IndexRecord r = entry.getValue();
+      if (r.index.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
+        List<String> updatedColumns = r.index.columnNames().stream()
+            .map(c -> c.equalsIgnoreCase(oldColumnName) ? newColumnName : c)
+            .collect(Collectors.toList());
+
+        IndexBuilder builder = index(r.index.getName()).columns(updatedColumns);
+        if (r.index.isUnique()) builder = builder.unique();
+        if (r.index.isDeferred()) builder = builder.deferred();
+        entry.setValue(new IndexRecord(r.tableName, builder, r.physicallyPresent));
+
+        updates.add(statements.updateIndexColumns(
+            r.tableName, r.index.getName(), String.join(",", updatedColumns)));
+      }
+    }
+    return updates;
+  }
+
+
+  @Override
+  public List<UpdateStatement> updateIndexName(String tableName, String oldIndexName, String newIndexName) {
+    Map<String, IndexRecord> tableMap = registeredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
+      return List.of();
+    }
+
+    IndexRecord existing = tableMap.remove(oldIndexName.toUpperCase());
+
+    IndexBuilder builder = index(newIndexName).columns(existing.index.columnNames());
+    if (existing.index.isUnique()) builder = builder.unique();
+    if (existing.index.isDeferred()) builder = builder.deferred();
+    // The visitor emits the physical RENAME under exactly the condition that made
+    // this record present, so presence carries across the name change unchanged.
+    tableMap.put(newIndexName.toUpperCase(),
+        new IndexRecord(existing.tableName, builder, existing.physicallyPresent));
+
+    return List.of(statements.updateIndexName(
+        existing.tableName, existing.index.getName(), newIndexName));
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Inner record
+  // -------------------------------------------------------------------------
+
+  private static final class IndexRecord {
+    final String tableName;
+    final Index index;
+
+    /**
+     * Whether an index of this name exists in the database at this point in the
+     * generated script. Observed by the enricher for primed rows and set by
+     * construction for rows this upgrade registers -- never derived from the row's
+     * status, which records build progress rather than physical reality.
+     */
+    final boolean physicallyPresent;
+
+    IndexRecord(String tableName, Index index, boolean physicallyPresent) {
+      this.tableName = tableName;
+      this.index = index;
+      this.physicallyPresent = physicallyPresent;
+    }
+  }
+}

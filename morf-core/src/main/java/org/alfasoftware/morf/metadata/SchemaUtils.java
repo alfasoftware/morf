@@ -615,6 +615,14 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public IndexBuilder unique();
+
+
+    /**
+     * Mark this index as deferred (built asynchronously after upgrade).
+     *
+     * @return this, for method chaining.
+     */
+    public IndexBuilder deferred();
   }
 
 
@@ -776,12 +784,12 @@ public final class SchemaUtils {
   private static final class IndexBuilderImpl extends IndexBean implements IndexBuilder {
 
     private IndexBuilderImpl(String name) {
-      super(name, false, new String[0]);
+      super(name, false, false, ImmutableList.of());
     }
 
 
-    private IndexBuilderImpl(String name, boolean unique, Iterable<String> columnNames) {
-      super(name, unique, columnNames);
+    private IndexBuilderImpl(String name, boolean unique, boolean deferred, Iterable<String> columnNames) {
+      super(name, unique, deferred, ImmutableList.copyOf(columnNames));
     }
 
 
@@ -790,7 +798,7 @@ public final class SchemaUtils {
      */
     @Override
     public IndexBuilder columns(String... columnNames) {
-      return new IndexBuilderImpl(getName(), isUnique(), Arrays.asList(columnNames));
+      return new IndexBuilderImpl(getName(), isUnique(), isDeferred(), Arrays.asList(columnNames));
     }
 
 
@@ -799,7 +807,7 @@ public final class SchemaUtils {
      */
     @Override
     public IndexBuilder columns(Iterable<String> columnNames) {
-      return new IndexBuilderImpl(getName(), isUnique(), columnNames);
+      return new IndexBuilderImpl(getName(), isUnique(), isDeferred(), columnNames);
     }
 
 
@@ -808,7 +816,13 @@ public final class SchemaUtils {
      */
     @Override
     public IndexBuilder unique() {
-      return new IndexBuilderImpl(getName(), true, columnNames());
+      return new IndexBuilderImpl(getName(), true, isDeferred(), columnNames());
+    }
+
+
+    @Override
+    public IndexBuilder deferred() {
+      return new IndexBuilderImpl(getName(), isUnique(), true, columnNames());
     }
 
 

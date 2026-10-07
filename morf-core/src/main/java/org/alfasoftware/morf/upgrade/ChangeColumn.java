@@ -145,12 +145,14 @@ public class ChangeColumn implements SchemaChange {
         List<String> columnNames = index.columnNames().stream()
                 .map(col -> col.equalsIgnoreCase(columnStartPoint.getName())? columnEndPoint.getName(): col)
                 .collect(Collectors.toList());
-        if(index.isUnique()) {
-          newIndexDefinitions.add(SchemaUtils.index(index.getName()).unique().columns(columnNames));
+        SchemaUtils.IndexBuilder builder = SchemaUtils.index(index.getName());
+        if (index.isUnique()) {
+          builder = builder.unique();
         }
-        else {
-          newIndexDefinitions.add(SchemaUtils.index(index.getName()).columns(columnNames));
+        if (index.isDeferred()) {
+          builder = builder.deferred();
         }
+        newIndexDefinitions.add(builder.columns(columnNames));
       }
       return new TableOverrideSchema(schema, new AlteredTable(original, columns, List.of(columnEndPoint), indexNames, newIndexDefinitions));
     }

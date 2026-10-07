@@ -41,6 +41,11 @@ class IndexBean implements Index {
    */
   private final boolean unique;
 
+  /**
+   * Flags if the index is deferred (built asynchronously after upgrade).
+   */
+  private final boolean deferred;
+
 
   /**
    * Creates an index bean.
@@ -50,7 +55,7 @@ class IndexBean implements Index {
    * @param columnNames Column names to order the index.
    */
   IndexBean(String name, boolean unique, String... columnNames) {
-    this(name, unique, ImmutableList.copyOf(columnNames));
+    this(name, unique, false, ImmutableList.copyOf(columnNames));
   }
 
 
@@ -62,17 +67,18 @@ class IndexBean implements Index {
    * @param columnNames Column names to order the index.
    */
   IndexBean(String name, boolean unique, Iterable<String> columnNames) {
-    this(name, unique, ImmutableList.copyOf(columnNames));
+    this(name, unique, false, ImmutableList.copyOf(columnNames));
   }
 
 
   /**
    * Internal constructor.
    */
-  private IndexBean(String name, boolean unique, ImmutableList<String> columnNames) {
+  IndexBean(String name, boolean unique, boolean deferred, ImmutableList<String> columnNames) {
     super();
     this.name = name;
     this.unique = unique;
+    this.deferred = deferred;
     this.columnNames = columnNames;
   }
 
@@ -81,7 +87,7 @@ class IndexBean implements Index {
    * @param toCopy Index to copy.
    */
   IndexBean(Index toCopy) {
-    this(toCopy.getName(), toCopy.isUnique(), toCopy.columnNames());
+    this(toCopy.getName(), toCopy.isUnique(), toCopy.isDeferred(), ImmutableList.copyOf(toCopy.columnNames()));
   }
 
 
@@ -107,6 +113,12 @@ class IndexBean implements Index {
   @Override
   public boolean isUnique() {
     return unique;
+  }
+
+
+  @Override
+  public boolean isDeferred() {
+    return deferred;
   }
 
 

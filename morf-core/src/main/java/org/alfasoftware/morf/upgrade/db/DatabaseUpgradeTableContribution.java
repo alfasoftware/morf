@@ -15,6 +15,7 @@
 package org.alfasoftware.morf.upgrade.db;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.util.Collection;
@@ -40,6 +41,11 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
+
+  /** Name of the table registration all deferred indexes (deferred and non-deferred). */
+  public static final String DEFERRED_INDEXES_NAME = "DeferredIndexes";
+
+
 
 
   /**
@@ -69,13 +75,39 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
 
   /**
+   * @return The Table descriptor of DeferredIndexes.
+   */
+  public static Table deferredIndexesTable() {
+    return table(DEFERRED_INDEXES_NAME)
+        .columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("tableName", DataType.STRING, 60),
+          column("indexName", DataType.STRING, 60),
+          column("indexUnique", DataType.BOOLEAN),
+          column("indexColumns", DataType.STRING, 4000),
+          column("status", DataType.STRING, 20),
+          column("attemptsCount", DataType.INTEGER),
+          column("createdTime", DataType.DECIMAL, 14),
+          column("startedTime", DataType.DECIMAL, 14).nullable(),
+          column("completedTime", DataType.DECIMAL, 14).nullable(),
+          column("errorMessage", DataType.CLOB).nullable()
+        )
+        .indexes(
+          index("DeferredIdx_1").columns("tableName", "indexName").unique(),
+          index("DeferredIdx_2").columns("status")
+        );
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.upgrade.TableContribution#tables()
    */
   @Override
   public Collection<Table> tables() {
     return ImmutableList.of(
       deployedViewsTable(),
-      upgradeAuditTable()
+      upgradeAuditTable(),
+      deferredIndexesTable()
     );
   }
 
