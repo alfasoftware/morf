@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.Constructor;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,13 +172,38 @@ public class UpgradePathFinder {
 
 
   /**
+   * Reads the UUID referenced by {@link RevertsUpgradeStep}.
+   *
+   * @param upgradeStepClass The upgrade step class.
+   * @return The referenced UUID, or null if the annotation is absent.
+   * @throws IllegalArgumentException if the annotation does not contain a valid UUID.
+   */
+  public static java.util.UUID readRevertsUpgradeStepUUID(Class<? extends UpgradeStep> upgradeStepClass) {
+    RevertsUpgradeStep annotation = upgradeStepClass.getAnnotation(RevertsUpgradeStep.class);
+    if (annotation == null) {
+      return null;
+    }
+    return java.util.UUID.fromString(annotation.value());
+  }
+
+
+  /**
    * Returns a list of upgrade steps to be applied.
    */
   private List<CandidateStep> upgradeStepsToApply() {
     final Map<java.util.UUID, CandidateStep> candidateSteps = candidateStepsByUUID();
+    final Set<java.util.UUID> cancelledSteps = new HashSet<>();
+    for (CandidateStep step : candidateSteps.values()) {
+      java.util.UUID originalUuid = step.revertsUpgradeStepUuid;
+      if (originalUuid != null && candidateSteps.containsKey(originalUuid)
+          && !stepsAlreadyApplied.contains(originalUuid) && !stepsAlreadyApplied.contains(step.getUuid())) {
+        cancelledSteps.add(originalUuid);
+        cancelledSteps.add(step.getUuid());
+      }
+    }
 
     return candidateSteps.values().stream()
-            .filter(step -> step.isApplicable(stepsAlreadyApplied, candidateSteps))
+            .filter(step -> step.isApplicable(stepsAlreadyApplied, candidateSteps, cancelledSteps))
             .collect(Collectors.toList());
   }
 
@@ -284,11 +310,13 @@ public class UpgradePathFinder {
     private final Class<? extends UpgradeStep> clazz;
     private final java.util.UUID uuid;
     private final java.util.UUID onlyWithUuid;
+    private final java.util.UUID revertsUpgradeStepUuid;
 
     private CandidateStep(Class<? extends UpgradeStep> clazz) {
       this.clazz = clazz;
       uuid = readUUID(clazz);
       onlyWithUuid = readOnlyWithUUID(clazz);
+      revertsUpgradeStepUuid = readRevertsUpgradeStepUUID(clazz);
     }
 
 
@@ -321,15 +349,27 @@ public class UpgradePathFinder {
      *
      * @param stepsAlreadyApplied List of already applied steps.
      * @param candidateSteps List of all potential candidates.
+     * @param cancelledSteps Pending original and reversal steps which cancel each other.
      * @return true if the candidate is to be applied, false otherwise.
      * @throws IllegalStateException if the {@link OnlyWith} annotation references a non-existing class.
      */
 
-    public boolean isApplicable(Set<java.util.UUID> stepsAlreadyApplied, Map<java.util.UUID, CandidateStep> candidateSteps) {
+    public boolean isApplicable(Set<java.util.UUID> stepsAlreadyApplied, Map<java.util.UUID, CandidateStep> candidateSteps, Set<java.util.UUID> cancelledSteps) {
 
       // If it has already been applied, then it is not applicable
       if (stepsAlreadyApplied.contains(getUuid())) {
         if (log.isDebugEnabled()) log.debug(String.format("Step already applied: %s", this));
+        return false;
+      }
+
+      if (cancelledSteps.contains(getUuid())) {
+        if (log.isDebugEnabled()) log.debug(String.format("Skipping step %s. The original and its reversal cancel each other.", this));
+        return false;
+      }
+
+      // A reversal is applicable only when the original step was applied before this upgrade.
+      if (revertsUpgradeStepUuid != null && !stepsAlreadyApplied.contains(revertsUpgradeStepUuid)) {
+        if (log.isDebugEnabled()) log.debug(String.format("Skipping step %s. The step it reverts with UUID [%s] has not been applied.", this, revertsUpgradeStepUuid));
         return false;
       }
 
@@ -339,7 +379,7 @@ public class UpgradePathFinder {
           throw new IllegalStateException(String.format("Upgrade step %s references non-existing upgrade step with UUID [%s].", this, getOnlyWithUuid()));
         }
 
-        if (!candidateSteps.get(getOnlyWithUuid()).isApplicable(stepsAlreadyApplied, candidateSteps)) {
+        if (!candidateSteps.get(getOnlyWithUuid()).isApplicable(stepsAlreadyApplied, candidateSteps, cancelledSteps)) {
           if (log.isDebugEnabled()) log.debug(String.format("Skipping step %s. It is marked to be executed only with step with UUID [%s].", this, getOnlyWithUuid()));
           return false;
         }
