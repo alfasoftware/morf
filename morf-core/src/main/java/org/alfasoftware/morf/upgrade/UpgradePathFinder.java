@@ -97,7 +97,8 @@ public class UpgradePathFinder {
 
   /**
    * Returns a {@link SchemaChangeSequence} from all steps to apply.
-   * @return All the steps to apply
+   *
+   * @return the resulting schema change sequence.
    */
   public SchemaChangeSequence getSchemaChangeSequence() {
     List<UpgradeStep> upgradeSteps = Lists.newArrayList();

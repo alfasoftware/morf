@@ -1,13 +1,22 @@
+
 package org.alfasoftware.morf.upgrade;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -20,14 +29,19 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final Table idTable;
   protected final TableNameResolver  tracker;
 
+  private final DeferredIndexSession deferredIndexSession;
+  private final DeferredIndexRegistrationPolicy registrationPolicy;
+
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
-                                     Table idTable) {
+                                     Table idTable, DeferredIndexSession deferredIndexSession) {
     this.currentSchema = currentSchema;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.tracker = new IdTableTracker(idTable.getName());
+    this.deferredIndexSession = deferredIndexSession;
+    this.registrationPolicy = new DeferredIndexRegistrationPolicy(sqlDialect);
   }
 
 
@@ -56,15 +70,65 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   }
 
 
+  /**
+   * Converts and writes an INSERT against the DeferredIndexes table. Uses
+   * the schema-free overload because DeferredIndexes is Morf infrastructure,
+   * not part of the user schema model. Each typed overload is its own
+   * compile-time entry point — new DML types (e.g. MERGE) force a new
+   * overload rather than a runtime instanceof failure.
+   *
+   * @param s the INSERT.
+   */
+  private void writeDeferredIndexesDml(InsertStatement s) {
+    writeStatements(sqlDialect.convertStatementToSQL(s));
+  }
+
+
+  /**
+   * Converts and writes an UPDATE against the DeferredIndexes table.
+   *
+   * @param s the UPDATE.
+   */
+  private void writeDeferredIndexesDml(UpdateStatement s) {
+    writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
+  }
+
+
+  /**
+   * Converts and writes a DELETE against the DeferredIndexes table.
+   *
+   * @param s the DELETE.
+   */
+  private void writeDeferredIndexesDml(DeleteStatement s) {
+    writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
+  }
+
+
   @Override
   public void visit(AddTable addTable) {
+    Table original = addTable.getTable();
     currentSchema = addTable.apply(currentSchema);
-    writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
+
+    // Deferred indexes are NOT built immediately. Filter them out of the CREATE
+    // TABLE statement so the adopter builds them via the deferred pipeline.
+    // Register them as PENDING (same as addIndex separately).
+    writeStatements(sqlDialect.tableDeploymentStatements(withoutDeferredOnSupportingDialect(original)));
+
+    for (Index index : original.indexes()) {
+      Index normalized = registrationPolicy.normalize(index);
+      if (registrationPolicy.shouldRegister(normalized)) {
+        // Table is being created here, so no physical index can pre-exist.
+        registerInDeferredIndexes(original.getName(), normalized, false);
+      }
+    }
   }
 
 
   @Override
   public void visit(RemoveTable removeTable) {
+    // Remove all registered indexes for this table
+    deferredIndexSession.unregisterAllFor(removeTable.getTable().getName())
+        .forEach(this::writeDeferredIndexesDml);
     currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
@@ -79,62 +143,111 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   @Override
   public void visit(ChangeColumn changeColumn) {
+    String tableName = changeColumn.getTableName();
+    String oldColName = changeColumn.getFromColumn().getName();
+    String newColName = changeColumn.getToColumn().getName();
+
     currentSchema = changeColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(tableName), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+
+    // Update column references in DeferredIndexes if column was renamed
+    if (!oldColName.equalsIgnoreCase(newColName)) {
+      deferredIndexSession.updateColumnName(tableName, oldColName, newColName)
+          .forEach(this::writeDeferredIndexesDml);
+    }
   }
 
 
   @Override
   public void visit(RemoveColumn removeColumn) {
+    String tableName = removeColumn.getTableName();
+    String colName = removeColumn.getColumnDefinition().getName();
+
+    // Remove registered indexes referencing the column
+    deferredIndexSession.unregisterByColumn(tableName, colName)
+        .forEach(this::writeDeferredIndexesDml);
+
     currentSchema = removeColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
+    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(tableName), removeColumn.getColumnDefinition()));
   }
 
 
   @Override
   public void visit(RemoveIndex removeIndex) {
+    String tableName = removeIndex.getTableName();
+    Index indexToRemove = removeIndex.getIndexToBeRemoved();
+
+    // Capture BEFORE the session-cache and currentSchema mutations below:
+    // unregisterIndex clears the record the session consults, and reading after
+    // would flip the decision.
+    boolean willBePresent = deferredIndexSession.willBePhysicallyPresent(tableName, indexToRemove.getName());
+
+    deferredIndexSession.unregisterIndex(tableName, indexToRemove.getName())
+        .forEach(this::writeDeferredIndexesDml);
+
     currentSchema = removeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
+
+    if (willBePresent) {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), indexToRemove));
+    }
   }
 
 
   @Override
   public void visit(ChangeIndex changeIndex) {
+    String tableName = changeIndex.getTableName();
+    Index fromIndex = changeIndex.getFromIndex();
+    Index toIndex = registrationPolicy.normalize(changeIndex.getToIndex());
+
+    // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
+    boolean fromWillBePresent = deferredIndexSession.willBePhysicallyPresent(tableName, fromIndex.getName());
+
+    // Always call removeIndex: the DELETE WHERE (table, index) clause is a
+    // no-op if the row doesn't exist, and we want to purge any prior deferred
+    // registration row if we're changing away from a deferred index.
+    deferredIndexSession.unregisterIndex(tableName, fromIndex.getName())
+        .forEach(this::writeDeferredIndexesDml);
     currentSchema = changeIndex.apply(currentSchema);
 
-    Index foundIndex = null;
-    List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(changeIndex.getTableName());
-    for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(changeIndex.getToIndex().columnNames()) && index.isUnique() == changeIndex.getToIndex().isUnique()) {
-        foundIndex = index;
-        break;
-      }
+    if (fromWillBePresent) {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), fromIndex));
     }
-
-    if (foundIndex != null) {
-      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(changeIndex.getTableName()), foundIndex.getName(), changeIndex.getToIndex().getName()));
-    } else {
-      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+    boolean toPhysicallyPresent = emitPhysicalIndexIfNeeded(tableName, toIndex);
+    if (registrationPolicy.shouldRegister(toIndex)) {
+      registerInDeferredIndexes(tableName, toIndex, toPhysicallyPresent);
     }
   }
 
 
   @Override
   public void visit(final RenameIndex renameIndex) {
+    String tableName = renameIndex.getTableName();
+
+    // Capture BEFORE the registration/schema mutations below (see visit(RemoveIndex) note).
+    boolean willBePresent = deferredIndexSession.willBePhysicallyPresent(tableName, renameIndex.getFromIndexName());
+
+    deferredIndexSession.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
+        .forEach(this::writeDeferredIndexesDml);
+
     currentSchema = renameIndex.apply(currentSchema);
-    writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(renameIndex.getTableName()),
-      renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+
+    if (willBePresent) {
+      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(tableName),
+          renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+    }
   }
 
 
   @Override
   public void visit(RenameTable renameTable) {
     Table oldTable = currentSchema.getTable(renameTable.getOldTableName());
+
+    // Update table name in DeferredIndexes for ALL indexes on this table
+    deferredIndexSession.updateTableName(renameTable.getOldTableName(), renameTable.getNewTableName())
+        .forEach(this::writeDeferredIndexesDml);
+
     currentSchema = renameTable.apply(currentSchema);
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
-
     writeStatements(sqlDialect.renameTableStatements(oldTable, newTable));
   }
 
@@ -151,8 +264,21 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    */
   @Override
   public void visit(AddTableFrom addTableFrom) {
+    Table original = addTableFrom.getTable();
     currentSchema = addTableFrom.apply(currentSchema);
-    writeStatements(sqlDialect.addTableFromStatements(addTableFrom.getTable(), addTableFrom.getSelectStatement()));
+
+    // Same actually-defer treatment as visit(AddTable): filter deferred-on-
+    // supporting indexes out of the CTAS statement and register them as PENDING.
+    writeStatements(sqlDialect.addTableFromStatements(
+        withoutDeferredOnSupportingDialect(original), addTableFrom.getSelectStatement()));
+
+    for (Index index : original.indexes()) {
+      Index normalized = registrationPolicy.normalize(index);
+      if (registrationPolicy.shouldRegister(normalized)) {
+        // Table is being created here, so no physical index can pre-exist.
+        registerInDeferredIndexes(original.getName(), normalized, false);
+      }
+    }
   }
 
 
@@ -217,19 +343,132 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
-    Index foundIndex = null;
-    List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
-    for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
-        foundIndex = index;
-        break;
-      }
-    }
+    String tableName = addIndex.getTableName();
+    Index newIndex = registrationPolicy.normalize(addIndex.getNewIndex());
 
-    if (foundIndex != null) {
-      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
-    } else {
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+    boolean physicallyPresent = emitPhysicalIndexIfNeeded(tableName, newIndex);
+    if (registrationPolicy.shouldRegister(newIndex)) {
+      registerInDeferredIndexes(tableName, newIndex, physicallyPresent);
     }
   }
+
+
+  /**
+   * Emits the physical DDL (if any) needed to bring {@code index} into
+   * existence. Two paths short-circuit CREATE INDEX:
+   * <ul>
+   *   <li><b>PRF-rename optimisation</b> — if the upgrade config lists an
+   *   ignored index whose shape (columns + unique flag) matches, RENAME the
+   *   PRF into {@code index.getName()} instead of running CREATE. This wins
+   *   regardless of the deferred flag: a metadata-only RENAME is always
+   *   cheaper than a full CREATE and the target physical is present
+   *   immediately, so the row (if registered separately) will self-heal to
+   *   COMPLETED on the next build pass via {@code isIndexValid}.</li>
+   *   <li><b>Deferred, no PRF match</b> — nothing is emitted here. The row
+   *   is registered separately and the adopter's background build task runs
+   *   CREATE INDEX later.</li>
+   * </ul>
+   *
+   * @param tableName the target table.
+   * @param index the index that needs to end up physically present.
+   * @return {@code true} if the index is physically present once the emitted
+   *     DDL has run, {@code false} if it was left for the adopter's build task.
+   *     Callers use this to register the row as COMPLETED rather than PENDING,
+   *     keeping the session's view of physical presence honest.
+   */
+  private boolean emitPhysicalIndexIfNeeded(String tableName, Index index) {
+    Table table = currentSchema.getTable(tableName);
+    Optional<Index> prfMatch = findMatchingIgnoredIndex(tableName, index);
+    if (prfMatch.isPresent()) {
+      writeStatements(sqlDialect.renameIndexStatements(table, prfMatch.get().getName(), index.getName()));
+      return true;
+    }
+    if (registrationPolicy.requiresImmediateBuild(index)) {
+      writeStatements(sqlDialect.addIndexStatements(table, index));
+      return true;
+    }
+    return false;
+  }
+
+
+  /**
+   * Looks for an ignored index on {@code tableName} that has the same shape
+   * (columns and uniqueness) as {@code newIndex} — the rename-optimisation.
+   *
+   * @param tableName the table.
+   * @param newIndex the index being added.
+   * @return the matching ignored index if found.
+   */
+  private Optional<Index> findMatchingIgnoredIndex(String tableName, Index newIndex) {
+    return upgradeConfigAndContext.getIgnoredIndexesForTable(tableName).stream()
+        .filter(i -> i.columnNames().equals(newIndex.columnNames()) && i.isUnique() == newIndex.isUnique())
+        .findFirst();
+  }
+
+
+  /**
+   * Records the index in DeferredIndexes and emits the INSERT DML.
+   *
+   * <p>When the index is already physically present at the end of this upgrade
+   * — the PRF-rename case — the row is registered as COMPLETED rather than
+   * PENDING, and the session records it as present. So a later
+   * RemoveIndex / ChangeIndex / RenameIndex
+   * in the same session (or a later upgrade run before the adopter drains the
+   * build queue) still emits its DROP / RENAME DDL.</p>
+   *
+   * @param tableName the table the index belongs to.
+   * @param index the index being registered.
+   * @param alreadyPhysicallyPresent whether the emitted DDL has already
+   *     materialised the index.
+   */
+  private void registerInDeferredIndexes(String tableName, Index index, boolean alreadyPhysicallyPresent) {
+    List<InsertStatement> inserts = alreadyPhysicallyPresent
+        ? deferredIndexSession.registerCompletedIndex(tableName, index)
+        : deferredIndexSession.registerIndex(tableName, index);
+    inserts.forEach(this::writeDeferredIndexesDml);
+  }
+
+
+  /**
+   * Returns a copy of {@code original} containing only the indexes that
+   * should be emitted alongside the CREATE TABLE (or CTAS) statement. Each
+   * declared index is treated as follows:
+   * <ul>
+   *   <li>Non-deferred -- kept as-is. Built by CREATE TABLE.</li>
+   *   <li>Deferred + dialect supports deferred creation (e.g. PostgreSQL) --
+   *       filtered out. The adopter's build task will create it
+   *       asynchronously.</li>
+   *   <li>Deferred + dialect doesn't support deferred creation (e.g. MySQL) --
+   *       kept, with the {@code .deferred()} flag stripped via
+   *       {@link DeferredIndexRegistrationPolicy#normalize}, so it builds as
+   *       a regular immediate index.</li>
+   * </ul>
+   *
+   * <p>Preserves name, columns, and isTemporary on the returned Table.</p>
+   *
+   * @param original the table as declared by the upgrade step.
+   * @return a Table copy with the index list filtered for immediate emission.
+   */
+  private Table withoutDeferredOnSupportingDialect(Table original) {
+    List<Index> kept = new ArrayList<>();
+    for (Index idx : original.indexes()) {
+      Index normalized = registrationPolicy.normalize(idx);
+      // Skip iff the adopter will build this one later.
+      if (registrationPolicy.shouldRegister(normalized)) continue;
+      kept.add(normalized);
+    }
+    TableBuilder builder = SchemaUtils.table(original.getName())
+        .columns(original.columns())
+        .indexes(kept);
+    if (original.isTemporary()) {
+      builder = builder.temporary();
+    }
+    return builder;
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Model helpers
+  // -------------------------------------------------------------------------
+
 }
