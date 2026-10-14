@@ -5,6 +5,7 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTy
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.shouldIgnoreIndex;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -41,9 +42,19 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private static final Log log = LogFactory.getLog(PostgreSQLMetaDataProvider.class);
 
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+  private static final String EXTENSION_RELATIONS_SQL = "SELECT c.relname"
+    + " FROM pg_catalog.pg_class c"
+    + " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+    + " JOIN pg_catalog.pg_depend d ON d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass"
+    + " AND d.objid = c.oid AND d.objsubid = 0"
+    + " JOIN pg_catalog.pg_extension e ON d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass"
+    + " AND d.refobjid = e.oid"
+    + " WHERE d.deptype = 'e'";
+  private static final String SCHEMA_EXTENSION_RELATIONS_SQL = EXTENSION_RELATIONS_SQL + " AND n.nspname = ?";
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
   private final Supplier<Map<String, List<Index>>> allIgnoredIndexes = Suppliers.memoize(this::loadIgnoredIndexes);
+  private final Supplier<Set<AName>> extensionRelationNames = Suppliers.memoize(this::loadExtensionRelationNames);
   private final Set<RealName> allIgnoredIndexesTables = new HashSet<>();
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
@@ -54,6 +65,48 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
     return indexName.getDbName().endsWith("_pk");
+  }
+
+
+  @Override
+  protected boolean isSystemTable(RealName tableName) {
+    return extensionRelationNames.get().contains(tableName);
+  }
+
+
+  @Override
+  protected boolean isSystemView(RealName viewName) {
+    return extensionRelationNames.get().contains(viewName);
+  }
+
+
+  private Set<AName> loadExtensionRelationNames() {
+    try {
+      if (StringUtils.isBlank(schemaName)) {
+        try (PreparedStatement statement = connection.prepareStatement(EXTENSION_RELATIONS_SQL)) {
+          return readExtensionRelationNames(statement);
+        }
+      }
+
+      try (PreparedStatement statement = connection.prepareStatement(SCHEMA_EXTENSION_RELATIONS_SQL)) {
+        statement.setString(1, schemaName);
+        return readExtensionRelationNames(statement);
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
+    }
+  }
+
+
+  private Set<AName> readExtensionRelationNames(PreparedStatement statement) throws SQLException {
+    Set<AName> relationNames = new HashSet<>();
+    try (ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        relationNames.add(named(resultSet.getString(1)));
+      }
+    }
+    return relationNames;
   }
 
 
