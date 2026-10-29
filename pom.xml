@@ -27,6 +27,7 @@
     <module>morf-integration-test</module>
     <module>morf-h2</module>
     <module>morf-h2v2</module>
+    <module>morf-examples</module>
   </modules>
   
   <properties>
