@@ -462,7 +462,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index lastIndex = null;
-            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toUpperCase())) {
+            for (Index currentIndex : ignoredIndexes.getOrDefault(currentTable.getName().toUpperCase(), List.of())) {
               if (currentIndex.getName().equalsIgnoreCase(indexName)) {
                 lastIndex = currentIndex;
                 break;
