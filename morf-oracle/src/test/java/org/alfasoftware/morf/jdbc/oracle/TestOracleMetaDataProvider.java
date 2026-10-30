@@ -291,6 +291,65 @@ public class TestOracleMetaDataProvider {
     assertTrue("Expression-based PRF index should be dropped", oracleMetaDataProvider.ignoredIndexes().get("AREALTABLE").isEmpty());
   }
 
+
+  /**
+   * An unusable PRF index gets the <UNUSABLE> suffix, so it is not recorded as an ignored index. Its columns
+   * must not be looked up in the ignored indexes when the table has no other PRF index.
+   */
+  @Test
+  public void testUnusableIndexIsOnlyIgnoredIndex() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement);
+
+    mockGetTableKeysQuery(0, false, false);
+    when(statement.executeQuery()).thenAnswer(invocation -> {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("REALNAME:[ArealTable]", "REALNAME:[ArealTable]");
+      when(resultSet.getString(3)).thenReturn("ID", "column1");
+      when(resultSet.getString(4)).thenReturn("REALNAME:[ID]/TYPE:[STRING]/AUTONUMSTART:[3]", "REALNAME:[column1]/TYPE:[STRING]");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2", "VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10", "11");
+      when(resultSet.getInt(8)).thenReturn(0, 0);
+      when(resultSet.getInt(9)).thenReturn(0, 0);
+      return resultSet;
+    }).thenAnswer(new ReturnTablesMockResultSet(2));
+
+    PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name")).thenReturn(statement1);
+    when(statement1.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_PRF1");
+      when(resultSet.getString(3)).thenReturn("");
+      when(resultSet.getString(4)).thenReturn("UNUSABLE");
+      return resultSet;
+    });
+
+    PreparedStatement statement2 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position")).thenReturn(statement2);
+    when(statement2.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_PRF1");
+      when(resultSet.getString(3)).thenReturn("column1");
+      return resultSet;
+    });
+
+    // When
+    final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+
+    // Then
+    assertNull("Unusable PRF index should not be an ignored index", oracleMetaDataProvider.ignoredIndexes().get("AREALTABLE"));
+    List<Index> indexes = oracleMetaDataProvider.getTable("AREALTABLE").indexes();
+    assertEquals("Indexes", 1, indexes.size());
+    assertEquals("ArealTable_PRF1<UNUSABLE>", indexes.get(0).getName());
+  }
+
   /**
    * Checks the building of the collection of primary key index names.
    * @throws SQLException
