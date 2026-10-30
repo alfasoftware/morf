@@ -58,6 +58,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 
 /**
@@ -380,15 +381,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
             String currentTableName = currentTable.getName().toUpperCase();
-            if (ignoredIndexes.containsKey(currentTableName)) {
-              ignoredIndexes.compute(currentTableName, (k, tableIgnoredIndexes) -> {
-                List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<>(tableIgnoredIndexes);
-                newList.add(ignoredIndex);
-                return newList;
-              });
-            } else {
-              ignoredIndexes.put(currentTableName, List.of(ignoredIndex));
-            }
+            ignoredIndexes.computeIfAbsent(currentTableName, k -> new ArrayList<>()).add(ignoredIndex);
             continue;
           }
 
@@ -442,6 +435,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     // -- Stage 4: find the index columns...
     //
     final String getIndexColumnsSql = "select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position";
+    final Set<Index> ignoredExpressionIndexes = Sets.newIdentityHashSet();
     runSQL(getIndexColumnsSql, new ResultSetHandler() {
       @Override
       public void handle(ResultSet resultSet) throws SQLException {
@@ -468,7 +462,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index lastIndex = null;
-            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toUpperCase())) {
+            for (Index currentIndex : ignoredIndexes.getOrDefault(currentTable.getName().toUpperCase(), List.of())) {
               if (currentIndex.getName().equalsIgnoreCase(indexName)) {
                 lastIndex = currentIndex;
                 break;
@@ -483,11 +477,11 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
             // Correct the case on the column name
             columnName = getColumnCorrectCase(currentTable, columnName);
 
-            lastIndex.columnNames().add(columnName);
-
             if (StringUtils.isEmpty(columnName)) {
-              // remove invalid index has it has an expression
-              ignoredIndexes.get(currentTable.getName().toUpperCase()).remove(lastIndex);
+              // Expression-based index (e.g. UPPER(col)); we can't represent it, so it is dropped once all columns are read
+              ignoredExpressionIndexes.add(lastIndex);
+            } else {
+              lastIndex.columnNames().add(columnName);
             }
 
             continue;
@@ -527,6 +521,8 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
         return columnNameFound;
       }
     });
+
+    ignoredIndexes.values().forEach(tableIgnoredIndexes -> tableIgnoredIndexes.removeIf(ignoredExpressionIndexes::contains));
 
     long end = System.currentTimeMillis();
     if (log.isDebugEnabled()) log.debug(String.format("Loaded index column list in %dms", end - pointThree));
