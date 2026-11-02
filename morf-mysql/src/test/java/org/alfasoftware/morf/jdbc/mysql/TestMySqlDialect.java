@@ -1126,7 +1126,13 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeWithUpdateWhereClause() {
-    return null;
+    return "INSERT INTO " + tableName("foo") + "(id, typeId, eventDate, rate, description, sequenceId)"
+        + " SELECT 12345 AS id, 1004 AS typeId, '2025-04-20' AS eventDate, 5.00001 AS rate, 'important rate' AS description, 43037 AS sequenceId FROM dual"
+        + " ON DUPLICATE KEY UPDATE"
+        + " id = IF(@morf_merge_matched := (((foo.rate <> values(rate)) OR (foo.description <> values(description)))), values(id), id),"
+        + " rate = IF(@morf_merge_matched, values(rate), rate),"
+        + " description = IF(@morf_merge_matched, values(description), description),"
+        + " sequenceId = IF(@morf_merge_matched, values(sequenceId), sequenceId)";
   }
 
 
@@ -1329,7 +1335,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected Collection<String> expectedAnalyseTableSql() {
-    return SqlDialect.NO_STATEMENTS;
+    return Arrays.asList("ANALYZE TABLE `TempTest`");
   }
 
 
@@ -1440,66 +1446,45 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithLimit() {
-    return null;
+    return "SELECT * FROM " + tableName(TEST_TABLE) + " LIMIT 10";
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithOrderByAndLimit() {
-    return null;
+    return "SELECT id FROM " + tableName(TEST_TABLE) + " ORDER BY id LIMIT 10";
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithLimitInSubquery() {
-    return null;
+    return "SELECT COUNT(*) AS cnt FROM (SELECT * FROM " + tableName(TEST_TABLE) + " LIMIT 1000) t";
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithWhereAndLimit() {
-    return null;
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (intField = 100) LIMIT 5";
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithDistinctAndLimit() {
-    return null;
+    return "SELECT DISTINCT stringField FROM " + tableName(TEST_TABLE) + " LIMIT 20";
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithGroupByAndLimit() {
-    return null;
+    return "SELECT stringField, COUNT(*) AS cnt FROM " + tableName(TEST_TABLE) + " GROUP BY stringField LIMIT 15";
   }
 
 
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithJoinAndLimit() {
-    return null;
+    return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) LIMIT 25";
   }
 
 
@@ -1511,11 +1496,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
     return "SELECT IF(active = 1, 'yes', 'no') field FROM Test";
   }
   
-  /**
-   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
-    return null;
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC LIMIT 10";
   }
 }
