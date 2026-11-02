@@ -1188,6 +1188,38 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
+   * @see SqlDialect#getSqlForAnalyseTable(Table)
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return Arrays.asList("UPDATE STATISTICS " + schemaNamePrefix() + table.getName());
+  }
+
+
+  /**
+   * SQL Server only supports {@code OFFSET ... FETCH} in the presence of an {@code ORDER BY}, so when the
+   * statement has none we add one that does not change the semantics of the query. {@code DISTINCT} and
+   * set operators require the ordering to refer to the select list, so we use the first column there.
+   *
+   * @see SqlDialect#appendLimit(StringBuilder, SelectStatement)
+   */
+  @Override
+  protected void appendLimit(StringBuilder result, SelectStatement stmt) {
+    Optional<Integer> limit = stmt.getLimit();
+    if (!limit.isPresent()) {
+      return;
+    }
+
+    if (stmt.getOrderBys().isEmpty()) {
+      boolean setOperators = stmt.getSetOperators() != null && !stmt.getSetOperators().isEmpty();
+      result.append(stmt.isDistinct() || setOperators ? " ORDER BY 1" : " ORDER BY (SELECT NULL)");
+    }
+
+    result.append(" OFFSET 0 ROWS FETCH NEXT ").append(limit.get()).append(" ROWS ONLY");
+  }
+
+
+  /**
    * @see SqlDialect#getDeleteLimitPreFromClause(int)
    */
   @Override

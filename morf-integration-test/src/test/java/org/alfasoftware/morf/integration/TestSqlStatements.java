@@ -212,10 +212,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   private static final String BLOB1_VALUE = "A Blob named One";
   private static final String BLOB2_VALUE = "A Blob named Two";
 
-  private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
-  private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
-  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT not supported by Morf for MySQL";
-  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT not supported by Morf for SQL Server";
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
@@ -929,7 +925,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeStatementWithMultipleKeysWhenTrueEqTrue() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         return builder.whenMatched(
@@ -954,7 +949,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeStatementWithMultipleKeysWhenTrueEqFalse() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         return builder.whenMatched(
@@ -980,7 +974,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeStatementWithMultipleKeysWhenMatchedAllFields() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
@@ -1010,7 +1003,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeStatementWithMultipleKeysNoUpdate() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
@@ -1040,7 +1032,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeStatementWithMultipleKeysPartialUpdate() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
@@ -1067,7 +1058,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeWhenMatchedNoUpdateWhenUnchanged() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
@@ -1094,7 +1084,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeStatementWithIfUpdatingAndWhenMatched() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
@@ -1128,7 +1117,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testMergeWhenMatchedWithNullCheck() throws SQLException {
-    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     testMergeStatementWithMultipleKeysInternal(
       builder -> {
         TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
@@ -3347,8 +3335,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitBasicSelectWithLimit() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement stmt = select(field("field1"), field("field2"))
       .from(tableRef("SelectFirstTable"))
@@ -3364,8 +3350,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitWithOrderBy() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement stmt = select(field("field1"), field("field2"))
       .from(tableRef("SelectFirstTable"))
@@ -3399,8 +3383,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitWithWhereClause() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement stmt = select(field("id"), field("column1"))
       .from(tableRef("SelectDistinctJoinTable"))
@@ -3417,8 +3399,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitWithJoin() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     TableReference selectTable = tableRef("SelectDistinctTable");
     TableReference joinTable = tableRef("SelectDistinctJoinTable");
@@ -3439,8 +3419,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitLargerThanResultSet() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement stmt = select(field("id"), field("column1"))
       .from(tableRef("SelectDistinctTable"))
@@ -3456,8 +3434,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitWithOrderByAndWhere() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement stmt = select(field("field1"), field("field2"))
       .from(tableRef("SelectFirstTable"))
@@ -3489,8 +3465,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitInSubquery() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement innerStmt = select(field("field1"), field("field2"))
       .from(tableRef("SelectFirstTable"))
@@ -3520,8 +3494,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitWithDistinct() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     TableReference selectTable = tableRef("SelectDistinctTable");
     TableReference joinTable = tableRef("SelectDistinctJoinTable");
@@ -3542,8 +3514,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLimitWithAggregation() {
-    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
-    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
 
     SelectStatement stmt = select(
         field("field1"),

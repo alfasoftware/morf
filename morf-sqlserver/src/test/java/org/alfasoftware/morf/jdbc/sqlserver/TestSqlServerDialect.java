@@ -1432,7 +1432,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected Collection<String> expectedAnalyseTableSql() {
-    return SqlDialect.NO_STATEMENTS;
+    return Arrays.asList("UPDATE STATISTICS TESTSCHEMA.#TempTest");
   }
 
 
@@ -1526,66 +1526,45 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithLimit() {
-    return null;
+    return "SELECT * FROM " + tableName(TEST_TABLE) + " ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY";
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithOrderByAndLimit() {
-    return null;
+    return "SELECT id FROM " + tableName(TEST_TABLE) + " ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY";
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithLimitInSubquery() {
-    return null;
+    return "SELECT COUNT(*) AS cnt FROM (SELECT * FROM " + tableName(TEST_TABLE) + " ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 1000 ROWS ONLY) t";
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithWhereAndLimit() {
-    return null;
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (intField = 100) ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY";
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithDistinctAndLimit() {
-    return null;
+    return "SELECT DISTINCT stringField FROM " + tableName(TEST_TABLE) + " ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY";
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithGroupByAndLimit() {
-    return null;
+    return "SELECT stringField, COUNT(*) AS cnt FROM " + tableName(TEST_TABLE) + " GROUP BY stringField ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 15 ROWS ONLY";
   }
 
 
-  /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
   @Override
   protected String expectedSelectWithJoinAndLimit() {
-    return null;
+    return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 25 ROWS ONLY";
   }
 
 
@@ -1598,11 +1577,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
   
   
-   /**
-   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
-   */
-  @Override
+   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
-    return null;
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY";
   }
 }

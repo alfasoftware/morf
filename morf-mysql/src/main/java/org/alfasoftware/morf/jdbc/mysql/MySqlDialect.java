@@ -49,6 +49,7 @@ import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
@@ -56,6 +57,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -77,6 +79,8 @@ import com.google.common.collect.Lists;
 class MySqlDialect extends SqlDialect {
 
   private static final long AUTONUMBER_LIMIT = 1000;
+
+  private static final String MERGE_MATCHED_VARIABLE = "@morf_merge_matched";
 
   /**
    * Default constructor.
@@ -817,11 +821,6 @@ class MySqlDialect extends SqlDialect {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
 
-    Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
-    if (whenMatchedAction.isPresent() && whenMatchedAction.get().getWhereClause().isPresent()) {
-      throw new IllegalStateException(MergeMatchClause.class.getName() + " is not supported in the MySQL dialect.");
-    }
-
     checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
 
     final boolean hasNonKeyFields = getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext();
@@ -847,10 +846,32 @@ class MySqlDialect extends SqlDialect {
     if (hasNonKeyFields) {
       sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
       Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
-      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      Optional<Criterion> updateCondition = statement.getWhenMatchedAction()
+        .filter(clause -> clause.getAction() == MatchAction.UPDATE)
+        .flatMap(MergeMatchClause::getWhereClause);
+      String updateExpressionsSql = updateCondition.isPresent()
+          ? getConditionalMergeAssignmentsSql(updateExpressions, updateCondition.get())
+          : getMergeStatementAssignmentsSql(updateExpressions);
       sqlBuilder.append(updateExpressionsSql);
     }
     return sqlBuilder.toString();
+  }
+
+
+  /**
+   * MySQL has no equivalent of a WHEN MATCHED ... AND condition, so each assignment is guarded by the
+   * condition instead. Assignments in ON DUPLICATE KEY UPDATE are evaluated left to right and see the
+   * columns already changed by earlier ones, so the condition is evaluated once, against the original
+   * row, in the first assignment and remembered in a user variable for the others.
+   */
+  private String getConditionalMergeAssignmentsSql(Iterable<AliasedField> fields, Criterion condition) {
+    List<String> assignments = new ArrayList<>();
+    String guard = MERGE_MATCHED_VARIABLE + " := (" + getSqlFrom(condition) + ")";
+    for (AliasedField field : fields) {
+      assignments.add(field.getAlias() + " = IF(" + guard + ", " + getSqlFrom(field) + ", " + field.getAlias() + ")");
+      guard = MERGE_MATCHED_VARIABLE;
+    }
+    return Joiner.on(", ").join(assignments);
   }
 
 
@@ -934,6 +955,24 @@ class MySqlDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "LAST_DAY(" + getSqlFrom(date) + ")";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable(Table)
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return Arrays.asList("ANALYZE TABLE `" + table.getName() + "`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSelectLimitSuffix(int)
+   */
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
   }
 
 
