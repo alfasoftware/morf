@@ -1,0 +1,30 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.alfasoftware</groupId>
+    <artifactId>morf-parent</artifactId>
+    <version>2.35.4-SNAPSHOT</version>
+  </parent>
+
+  <name>Morf - Examples</name>
+  <description>Small, runnable examples of using Morf.</description>
+  <url>https://github.com/alfasoftware/morf</url>
+
+  <artifactId>morf-examples</artifactId>
+
+  <properties>
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.alfasoftware</groupId>
+      <artifactId>morf-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.alfasoftware</groupId>
+      <artifactId>morf-h2</artifactId>
+    </dependency>
+  </dependencies>
+</project>

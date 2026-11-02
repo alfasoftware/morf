@@ -5,47 +5,29 @@
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.alfasoftware%3Amorf-parent&metric=alert_status)](https://sonarcloud.io/project/overview?id=org.alfasoftware:morf-parent)
 [![Changelog](https://img.shields.io/badge/-Changelog-grey.svg)](https://github.com/alfasoftware/morf/releases)
 
-Morf is a library for cross-platform evolutionary relational database mechanics, database access and database imaging/cloning.  It has been developed over many years at Alfa and is used to manage all of our RDBMS-backed applications.
+**Morf makes databases less of a headache.** It's a Java library for evolving your schema, talking to your database, and moving data between platforms, all without writing platform-specific SQL.
 
-## Status
+We've been building it at [Alfa](https://www.alfasystems.com) for many years, and it manages every database-backed application we ship. Now we're sharing it with everyone else.
 
-Morf is proven technology and has been used in mission-critical production applications for many years as part of our flagship product.  **However**, as an open source project, it is in an early **pre-alpha** state, as we go through the process of disentangling it from parts of the rest of our stack, tidying up the code for long-term support, and making it easier and more convenient to use in other projects. Until then, consider the API unstable.
+## What can it do?
 
-We are maintaining Morf in the open, because we believe this is the right thing to do. Please [get involved](https://github.com/alfasoftware/morf/wiki/Contributing) if you would like to help steer the project.
+- **Evolve your schema safely.** Write upgrade steps in plain Java. Morf checks them against your target schema, handles data migration alongside schema changes, and can even tidy up after branches that merge out of order.
+- **Start from nothing.** Empty database? Morf bootstraps it for you, with no extra code.
+- **Work on your database of choice.** Oracle, PostgreSQL, MySQL, SQL Server and H2 are supported. Prefer a different one? Adding a platform is designed to be easy.
+- **Hand DBAs what they want.** Export upgrade scripts as SQL in any supported dialect.
+- **Snapshot and clone.** Dump a MySQL database to XML and restore it into Oracle. Copy a live PostgreSQL database into in-memory H2. Run your JUnit tests against a snapshot of a real environment, and let Morf apply any missing upgrades afterwards.
+- **Query with the same DSL.** The Java API you use for upgrades also works for run-time database access. There's no XML, JSON or YAML to wrangle.
 
-See the [Roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) for more information.
+## Getting started
 
-## Getting Started
-Documentation is somewhat sparse, not least because the APIs are not quite _ready_ to document.  One of the first items on the [roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) is to agree our new user "hello world" user stories, write them up and make sure the necessary APIs are in place to support them.
+Morf is published to Maven Central under `org.alfasoftware`. Start with `morf-core`, then add the module for your database (for example `morf-postgresql` or `morf-h2`).
 
-As we work on those, we will be expanding the [Start here](https://github.com/alfasoftware/morf/wiki/Start-Here) part of the Wiki.
+Want to see it work first? [`HelloMorf`](morf-examples/src/main/java/org/alfasoftware/morf/examples/HelloMorf.java) is a single file that builds an in-memory H2 database, then upgrades it. There's nothing to install.
 
-## Key features
+Our [Start Here](https://github.com/alfasoftware/morf/wiki/Start-Here) wiki page is the best place to begin, and we're adding to it all the time. If something is unclear, that's our gap to fill, so please [open an issue](https://github.com/alfasoftware/morf/issues). The [roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) shows where we're headed.
 
-### Pure Java API
-- No XML/JSON/YAML etc
-- Clean and easy to integrate with existing applications
+## Come and help
 
-### Evolutionary Database Design
-- Implements bidirectional run-time verification of upgrades against a known target schema.
-- Bootstraps empty databases with no additional coding
-- Manages complex data migration and fixing alongside schema changes
-- Targets multiple database platforms without platform-specific scripting and without sacrificing low level control
-- Cleanly integrates disordered branches
-- Exports SQL upgrade scripts in any SQL dialect for DBA use
+We're developing Morf in the open, and we'd love your help, whether that's a bug report, a doc fix, a new database platform, or just an idea. Take a look at the [contribution guide](https://github.com/alfasoftware/morf/wiki/Contributing) and say hello.
 
-### Extensible
-- Easy to add new database platform support
-
-### Cross-platform Snapshots and Cloning
-- Clone or dump a full database, including schema and data
-- Create a dump of a MySQL database as XML, restore to Oracle
-- Copy a live PostgreSQL database directly into in-memory H2
-- Run a JUnit test over an in-memory H2 database using a snapshot from a live Oracle environment
-- Automatically run missing upgrades after restoring from a snapshot
-
-### Database Access API
-- Database access at run-time using the same DSL used in upgrades
-
-## Contributing
-If you're interested in contributing to the project, please read the [contribution guide](https://github.com/alfasoftware/morf/wiki/Contributing).
+Morf is licensed under [Apache 2.0](LICENSE).
