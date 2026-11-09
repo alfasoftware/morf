@@ -1670,6 +1670,9 @@ public abstract class SqlDialect {
       case NEQ:
         result.append(getOperatorLine(criterion, "<>"));
         break;
+      case BLOB_EQ:
+        result.append(getSqlForBlobEqual(criterion));
+        break;
       case GT:
         result.append(getOperatorLine(criterion, ">"));
         break;
@@ -2974,6 +2977,17 @@ public abstract class SqlDialect {
    */
   protected String getOperatorLine(Criterion criterion, String operator) {
     return getSqlFrom(criterion.getField()) + " " + operator + " " + getSqlForCriterionValue(criterion.getValue());
+  }
+
+
+  /**
+   * Converts a criterion created by {@link Criterion#blobEqual(AliasedField, AliasedField)}.
+   *
+   * @param criterion the criterion to convert
+   * @return a string representation of the criterion
+   */
+  protected String getSqlForBlobEqual(Criterion criterion) {
+    return getOperatorLine(criterion, "=");
   }
 
 

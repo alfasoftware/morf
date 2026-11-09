@@ -1551,6 +1551,17 @@ class OracleDialect extends SqlDialect {
   }
 
   /**
+   * Oracle can't compare BLOBs with the regular equals operator (ORA-00932).
+   * DBMS_LOB.COMPARE returns NULL when either side is NULL, as = does.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForBlobEqual(org.alfasoftware.morf.sql.element.Criterion)
+   */
+  @Override
+  protected String getSqlForBlobEqual(Criterion criterion) {
+    return "DBMS_LOB.COMPARE(" + getSqlFrom(criterion.getField()) + ", " + getSqlForCriterionValue(criterion.getValue()) + ") = 0";
+  }
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#selectStatementPreFieldDirectives(org.alfasoftware.morf.sql.SelectStatement)
    */
   @Override

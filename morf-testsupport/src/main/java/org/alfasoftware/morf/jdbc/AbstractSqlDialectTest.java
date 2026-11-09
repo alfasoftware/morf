@@ -45,6 +45,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
+import static org.alfasoftware.morf.sql.element.Criterion.blobEqual;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import static org.alfasoftware.morf.sql.element.Criterion.exists;
 import static org.alfasoftware.morf.sql.element.Criterion.greaterThan;
@@ -2526,6 +2527,23 @@ public abstract class AbstractSqlDialectTest {
       expectedUpdateWithLiteralValues(),
       testDialect.convertStatementToSQL(stmt)
     );
+  }
+
+
+  /**
+   * Tests {@link org.alfasoftware.morf.sql.element.Criterion#blobEqual(AliasedField, AliasedField)}, with a literal and with another BLOB.
+   */
+  @Test
+  public void testBlobEqual() {
+    SelectStatement stmt = select(field("id")).from(tableRef(TEST_TABLE))
+      .where(or(
+        blobEqual(field(BLOB_FIELD), blobLiteral(OLD_BLOB_VALUE)),
+        not(blobEqual(field(BLOB_FIELD), field("otherBlobField")))
+      ));
+    String expectedSql = "SELECT id FROM " + tableName(TEST_TABLE)
+        + " WHERE ((" + expectedBlobEqual(BLOB_FIELD, expectedBlobLiteral(OLD_BLOB_VALUE_HEX))
+        + ") OR (NOT (" + expectedBlobEqual(BLOB_FIELD, "otherBlobField") + ")))";
+    assertEquals("Select with blobEqual", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
 
@@ -6249,6 +6267,16 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedBooleanLiteral(boolean value) {
     return value ? "1" : "0";
+  }
+
+
+  /**
+   * @param left the left operand.
+   * @param right the right operand.
+   * @return The expected SQL for {@link org.alfasoftware.morf.sql.element.Criterion#blobEqual(AliasedField, AliasedField)}.
+   */
+  protected String expectedBlobEqual(String left, String right) {
+    return left + " = " + right;
   }
 
 

@@ -1227,6 +1227,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobEqual(String, String)
+   */
+  @Override
+  protected String expectedBlobEqual(String left, String right) {
+    return "DBMS_LOB.COMPARE(" + left + ", " + right + ") = 0";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDateToYyyymmddHHmmss()
    */
   @Override

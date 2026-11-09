@@ -403,6 +403,21 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
   }
 
   /**
+   * Helper method to create a new "EQUALS" expression for BLOBs. Not every database can compare BLOBs with {@code =} (Oracle can't).
+   * For "NOT EQUAL", use {@link #not(Criterion)}.
+   *
+   * <blockquote><pre>
+   *    Criterion.blobEqual(new FieldReference("document"), SqlUtils.blobLiteral(bytes));</pre></blockquote>
+   *
+   * @param field the BLOB to evaluate in the expression (the left hand side of the expression)
+   * @param value the BLOB to compare it with (the right hand side)
+   * @return a new Criterion object
+   */
+  public static Criterion blobEqual(AliasedField field, AliasedField value) {
+    return new Criterion(Operator.BLOB_EQ, field, value);
+  }
+
+  /**
    * Helper method to create a new "LESS THAN" expression.
    *
    * <blockquote><pre>
