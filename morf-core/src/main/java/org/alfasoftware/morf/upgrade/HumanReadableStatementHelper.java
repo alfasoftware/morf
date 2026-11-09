@@ -774,6 +774,7 @@ class HumanReadableStatementHelper {
         }
       case EQ:
       case BLOB_EQ:
+      case CLOB_EQ:
         return generateBinaryOperatorString(criterion, invert ? "is not" : "is");
       case EXISTS:
         if (invert) {

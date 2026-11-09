@@ -32,6 +32,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
+import static org.alfasoftware.morf.sql.SqlUtils.clobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
@@ -46,6 +47,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.blobEqual;
+import static org.alfasoftware.morf.sql.element.Criterion.clobEqual;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import static org.alfasoftware.morf.sql.element.Criterion.exists;
 import static org.alfasoftware.morf.sql.element.Criterion.greaterThan;
@@ -2544,6 +2546,23 @@ public abstract class AbstractSqlDialectTest {
         + " WHERE ((" + expectedBlobEqual(BLOB_FIELD, expectedBlobLiteral(OLD_BLOB_VALUE_HEX))
         + ") OR (NOT (" + expectedBlobEqual(BLOB_FIELD, "otherBlobField") + ")))";
     assertEquals("Select with blobEqual", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests {@link org.alfasoftware.morf.sql.element.Criterion#clobEqual(AliasedField, AliasedField)}, with a literal and with another CLOB.
+   */
+  @Test
+  public void testClobEqual() {
+    SelectStatement stmt = select(field("id")).from(tableRef(TEST_TABLE))
+      .where(or(
+        clobEqual(field(CLOB_FIELD), clobLiteral("Value")),
+        not(clobEqual(field(CLOB_FIELD), field("otherClobField")))
+      ));
+    String expectedSql = "SELECT id FROM " + tableName(TEST_TABLE)
+        + " WHERE ((" + expectedClobEqual(CLOB_FIELD, stringLiteralPrefix() + varCharCast("'Value'"))
+        + ") OR (NOT (" + expectedClobEqual(CLOB_FIELD, "otherClobField") + ")))";
+    assertEquals("Select with clobEqual", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
 
@@ -6276,6 +6295,16 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for {@link org.alfasoftware.morf.sql.element.Criterion#blobEqual(AliasedField, AliasedField)}.
    */
   protected String expectedBlobEqual(String left, String right) {
+    return left + " = " + right;
+  }
+
+
+  /**
+   * @param left the left operand.
+   * @param right the right operand.
+   * @return The expected SQL for {@link org.alfasoftware.morf.sql.element.Criterion#clobEqual(AliasedField, AliasedField)}.
+   */
+  protected String expectedClobEqual(String left, String right) {
     return left + " = " + right;
   }
 

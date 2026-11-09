@@ -1673,6 +1673,9 @@ public abstract class SqlDialect {
       case BLOB_EQ:
         result.append(getSqlForBlobEqual(criterion));
         break;
+      case CLOB_EQ:
+        result.append(getSqlForClobEqual(criterion));
+        break;
       case GT:
         result.append(getOperatorLine(criterion, ">"));
         break;
@@ -2987,6 +2990,17 @@ public abstract class SqlDialect {
    * @return a string representation of the criterion
    */
   protected String getSqlForBlobEqual(Criterion criterion) {
+    return getOperatorLine(criterion, "=");
+  }
+
+
+  /**
+   * Converts a criterion created by {@link Criterion#clobEqual(AliasedField, AliasedField)}.
+   *
+   * @param criterion the criterion to convert
+   * @return a string representation of the criterion
+   */
+  protected String getSqlForClobEqual(Criterion criterion) {
     return getOperatorLine(criterion, "=");
   }
 

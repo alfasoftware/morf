@@ -552,6 +552,7 @@ public class TestHumanReadableStatementHelper {
     final Criterion lte = Criterion.lessThanOrEqualTo(new FieldReference("k"), 42);
     final Criterion neq = Criterion.neq(new FieldReference("l"), 42);
     final Criterion blobEqual = Criterion.blobEqual(new FieldReference("m"), new FieldReference("n"));
+    final Criterion clobEqual = Criterion.clobEqual(new FieldReference("o"), new FieldReference("p"));
     final Criterion and = Criterion.and(eq, inSelect, inValues, isNull);
     final Criterion or = Criterion.or(eq, and, gt, inSelect);
 
@@ -569,6 +570,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("LTE", "k is less than or equal to 42", HumanReadableStatementHelper.generateCriterionString(lte));
     assertEquals("NEQ", "l is not 42", HumanReadableStatementHelper.generateCriterionString(neq));
     assertEquals("BLOB_EQ", "m is n", HumanReadableStatementHelper.generateCriterionString(blobEqual));
+    assertEquals("CLOB_EQ", "o is p", HumanReadableStatementHelper.generateCriterionString(clobEqual));
     assertEquals("AND", "a is 42 and e is in Bar and d is in (1, 2, 3) and h is null", HumanReadableStatementHelper.generateCriterionString(and));
     assertEquals("OR", "a is 42 or (a is 42 and e is in Bar and d is in (1, 2, 3) and h is null) or b is greater than 42 or e is in Bar",
       HumanReadableStatementHelper.generateCriterionString(or));
@@ -587,6 +589,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("!LTE", "k is greater than 42", HumanReadableStatementHelper.generateCriterionString(Criterion.not(lte)));
     assertEquals("!NEQ", "l is 42", HumanReadableStatementHelper.generateCriterionString(Criterion.not(neq)));
     assertEquals("!BLOB_EQ", "m is not n", HumanReadableStatementHelper.generateCriterionString(Criterion.not(blobEqual)));
+    assertEquals("!CLOB_EQ", "o is not p", HumanReadableStatementHelper.generateCriterionString(Criterion.not(clobEqual)));
     assertEquals("!AND", "a is not 42 or e is not in Bar or d is not in (1, 2, 3) or h is not null", HumanReadableStatementHelper.generateCriterionString(Criterion.not(and)));
     assertEquals("!OR", "a is not 42 and (a is not 42 or e is not in Bar or d is not in (1, 2, 3) or h is not null) and b is less than or equal to 42 and e is not in Bar",
       HumanReadableStatementHelper.generateCriterionString(Criterion.not(or)));

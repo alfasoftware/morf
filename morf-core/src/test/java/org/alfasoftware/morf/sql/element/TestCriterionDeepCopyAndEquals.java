@@ -54,6 +54,8 @@ public class TestCriterionDeepCopyAndEquals extends AbstractDeepCopyableTest<Cri
       testCase("eq 2", () -> Criterion.eq(literal(1), literal(3))),
       testCase("blobEqual 1", () -> Criterion.blobEqual(literal(1), literal(2))),
       testCase("blobEqual 2", () -> Criterion.blobEqual(literal(1), literal(3))),
+      testCase("clobEqual 1", () -> Criterion.clobEqual(literal(1), literal(2))),
+      testCase("clobEqual 2", () -> Criterion.clobEqual(literal(1), literal(3))),
       testCase("and 1", () -> Criterion.and(MOCK_1, MOCK_2)),
       testCase("and 2", () -> Criterion.and(MOCK_1, MOCK_3)),
       testCase("and 3", () -> Criterion.and(MOCK_1, MOCK_2, MOCK_3)),

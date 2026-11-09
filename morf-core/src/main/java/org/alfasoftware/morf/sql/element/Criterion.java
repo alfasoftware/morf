@@ -418,6 +418,21 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
   }
 
   /**
+   * Helper method to create a new "EQUALS" expression for CLOBs. Not every database can compare CLOBs with {@code =} (Oracle can't).
+   * For "NOT EQUAL", use {@link #not(Criterion)}.
+   *
+   * <blockquote><pre>
+   *    Criterion.clobEqual(new FieldReference("description"), SqlUtils.clobLiteral(text));</pre></blockquote>
+   *
+   * @param field the CLOB to evaluate in the expression (the left hand side of the expression)
+   * @param value the CLOB to compare it with (the right hand side)
+   * @return a new Criterion object
+   */
+  public static Criterion clobEqual(AliasedField field, AliasedField value) {
+    return new Criterion(Operator.CLOB_EQ, field, value);
+  }
+
+  /**
    * Helper method to create a new "LESS THAN" expression.
    *
    * <blockquote><pre>

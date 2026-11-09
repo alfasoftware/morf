@@ -95,7 +95,12 @@ public enum Operator {
   /**
    * Equals, for BLOBs: see {@link Criterion#blobEqual(AliasedField, AliasedField)}
    */
-  BLOB_EQ("=");
+  BLOB_EQ("="),
+
+  /**
+   * Equals, for CLOBs: see {@link Criterion#clobEqual(AliasedField, AliasedField)}
+   */
+  CLOB_EQ("=");
 
 
   private final String stringRepresentation;
