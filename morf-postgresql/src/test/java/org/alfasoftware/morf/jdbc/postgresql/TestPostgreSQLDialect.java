@@ -852,9 +852,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnCompositeKeyStatements() {
-    return Arrays.asList("ALTER TABLE testschema.CompositePrimaryKey DROP CONSTRAINT CompositePrimaryKey_PK",
+    return Arrays.asList(
         "ALTER TABLE testschema.CompositePrimaryKey ALTER COLUMN secondPrimaryKey TYPE VARCHAR(5) COLLATE \"POSIX\"",
-        "ALTER TABLE testschema.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY(id, secondPrimaryKey)",
         "COMMENT ON COLUMN testschema.CompositePrimaryKey.secondPrimaryKey IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[secondPrimaryKey]/TYPE:[STRING]'");
   }
 
@@ -879,9 +878,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnStatements() {
     return Arrays.asList(
-        "ALTER TABLE testschema.Test DROP CONSTRAINT Test_PK",
         "ALTER TABLE testschema.Test RENAME id TO renamedId",
-        "ALTER TABLE testschema.Test ADD CONSTRAINT Test_PK PRIMARY KEY(renamedId)",
         "COMMENT ON COLUMN testschema.Test.renamedId IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[renamedId]/TYPE:[BIG_INTEGER]'"
     );
   }

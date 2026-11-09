@@ -80,8 +80,14 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddTableAndIndex;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnDataType;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnLengthAndCase;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeDefaultOfIndexedColumns;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeIndexedColumnsAndIndexes;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeIndexedPrimaryKeyColumn;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeNullabilityOfIndexedColumns;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrecisionOfIndexedColumns;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumnOrder;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumns;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeWidthOfIndexedColumns;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrder;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrderNoOp;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CreateTableAsSelect;
@@ -251,6 +257,19 @@ public class TestDatabaseUpgradeIntegration {
         .indexes(
           index("WrongIndexName_1").columns("bigIntegerCol")),
 
+      table("IndexedColumnTable")
+        .columns(
+          column("code", DataType.STRING, 10).primaryKey(),
+          column("stringCol", DataType.STRING, 10),
+          column("nullableStringCol", DataType.STRING, 10).nullable(),
+          column("decimalTenZeroCol", DataType.DECIMAL, 10),
+          column("decimalNineTwoCol", DataType.DECIMAL, 9, 2).nullable(),
+          column("bigIntegerCol", DataType.BIG_INTEGER))
+        .indexes(
+          index("IndexedColumnTable_1").unique().columns("stringCol"),
+          index("IndexedColumnTable_2").columns("nullableStringCol", "decimalTenZeroCol"),
+          index("IndexedColumnTable_3").columns("decimalNineTwoCol", "bigIntegerCol")),
+
       table("AutoNumTable")
         .columns(
           column("autonum", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
@@ -362,6 +381,29 @@ public class TestDatabaseUpgradeIntegration {
         .setBigDecimal("decimalNineFiveCol", new BigDecimal("378.231"))
         .setLong("bigIntegerCol", 98237L)
         .setLong("nullableBigIntegerCol", 892375L)
+    )
+    .table("IndexedColumnTable",
+      record()
+        .setString("code", "A")
+        .setString("stringCol", "alpha")
+        .setString("nullableStringCol", "one")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("9817236"))
+        .setBigDecimal("decimalNineTwoCol", new BigDecimal("278.23"))
+        .setLong("bigIntegerCol", 1234567890123456L),
+      record()
+        .setString("code", "B")
+        .setString("stringCol", "beta")
+        .setString("nullableStringCol", "two")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
+        .setBigDecimal("decimalNineTwoCol", new BigDecimal("378.20"))
+        .setLong("bigIntegerCol", 98237L),
+      record()
+        .setString("code", "C")
+        .setString("stringCol", "gamma")
+        .setString("nullableStringCol", "one")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
+        .setBigDecimal("decimalNineTwoCol", new BigDecimal("-0.05"))
+        .setLong("bigIntegerCol", 7L)
     )
     .table("AutoNumTable")
     .table("IdTable");
@@ -824,6 +866,152 @@ public class TestDatabaseUpgradeIntegration {
     Schema expected = replaceTablesInSchema(tableWithReducedWidth);
 
     verifyUpgrade(expected, ReduceStringColumnWidth.class);
+  }
+
+
+  /**
+   * Tests widening and reducing the width of indexed columns.
+   */
+  @Test
+  public void testChangeWidthOfIndexedColumns() {
+    Table expectedTable = table("IndexedColumnTable")
+      .columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("stringCol", DataType.STRING, 6),
+        column("nullableStringCol", DataType.STRING, 8).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("decimalNineTwoCol", DataType.DECIMAL, 9, 2).nullable(),
+        column("bigIntegerCol", DataType.BIG_INTEGER))
+      .indexes(
+        index("IndexedColumnTable_1").unique().columns("stringCol"),
+        index("IndexedColumnTable_2").columns("nullableStringCol", "decimalTenZeroCol"),
+        index("IndexedColumnTable_3").columns("decimalNineTwoCol", "bigIntegerCol"));
+
+    verifyUpgrade(replaceTablesInSchema(expectedTable), ChangeWidthOfIndexedColumns.class);
+  }
+
+
+  /**
+   * Tests changing the nullability of indexed columns.
+   */
+  @Test
+  public void testChangeNullabilityOfIndexedColumns() {
+    Table expectedTable = table("IndexedColumnTable")
+      .columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("stringCol", DataType.STRING, 10).nullable(),
+        column("nullableStringCol", DataType.STRING, 10),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("decimalNineTwoCol", DataType.DECIMAL, 9, 2).nullable(),
+        column("bigIntegerCol", DataType.BIG_INTEGER))
+      .indexes(
+        index("IndexedColumnTable_1").unique().columns("stringCol"),
+        index("IndexedColumnTable_2").columns("nullableStringCol", "decimalTenZeroCol"),
+        index("IndexedColumnTable_3").columns("decimalNineTwoCol", "bigIntegerCol"));
+
+    verifyUpgrade(replaceTablesInSchema(expectedTable), ChangeNullabilityOfIndexedColumns.class);
+  }
+
+
+  /**
+   * Tests adding, changing and dropping the default values of indexed columns, including a primary key column.
+   * The defaults have to be dropped again, as default values are not part of the schema read from the database.
+   */
+  @Test
+  public void testChangeDefaultOfIndexedColumns() {
+    verifyUpgrade(schema, ChangeDefaultOfIndexedColumns.class);
+  }
+
+
+  /**
+   * Tests increasing the precision and scale of an indexed decimal column, and changing an indexed decimal column to a big integer.
+   *
+   * @throws SQLException if the data cannot be read back.
+   */
+  @Test
+  public void testChangePrecisionOfIndexedColumns() throws SQLException {
+    Table expectedTable = table("IndexedColumnTable")
+      .columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("stringCol", DataType.STRING, 10),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.BIG_INTEGER),
+        column("decimalNineTwoCol", DataType.DECIMAL, 12, 4).nullable(),
+        column("bigIntegerCol", DataType.BIG_INTEGER))
+      .indexes(
+        index("IndexedColumnTable_1").unique().columns("stringCol"),
+        index("IndexedColumnTable_2").columns("nullableStringCol", "decimalTenZeroCol"),
+        index("IndexedColumnTable_3").columns("decimalNineTwoCol", "bigIntegerCol"));
+
+    verifyUpgrade(replaceTablesInSchema(expectedTable), ChangePrecisionOfIndexedColumns.class);
+
+    assertEquals(Arrays.asList("9817236", "32", "32"), numericValuesOfIndexedColumnTable("decimalTenZeroCol"));
+    assertEquals(Arrays.asList("278.23", "378.2", "-0.05"), numericValuesOfIndexedColumnTable("decimalNineTwoCol"));
+  }
+
+
+  /**
+   * Tests changes to the primary key columns of a table with other indexes: taking the only key column out of the key
+   * and putting it back, renaming, widening and then reducing its width, and changing the type of an indexed column
+   * while it is in a composite key and then taking it out of the key.
+   */
+  @Test
+  public void testChangeIndexedPrimaryKeyColumn() {
+    Table expectedTable = table("IndexedColumnTable")
+      .columns(
+        column("renamedCode", DataType.STRING, 5).primaryKey(),
+        column("stringCol", DataType.STRING, 10),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.BIG_INTEGER),
+        column("decimalNineTwoCol", DataType.DECIMAL, 9, 2).nullable(),
+        column("bigIntegerCol", DataType.BIG_INTEGER))
+      .indexes(
+        index("IndexedColumnTable_1").unique().columns("stringCol"),
+        index("IndexedColumnTable_2").columns("nullableStringCol", "decimalTenZeroCol"),
+        index("IndexedColumnTable_3").columns("decimalNineTwoCol", "bigIntegerCol"));
+
+    verifyUpgrade(replaceTablesInSchema(expectedTable), ChangeIndexedPrimaryKeyColumn.class);
+  }
+
+
+  /**
+   * Tests a sequence of changes to indexed columns interleaved with changes to their indexes,
+   * each of which has to work on the indexes as left by the changes before it.
+   */
+  @Test
+  public void testChangeIndexedColumnsAndIndexes() {
+    Table expectedTable = table("IndexedColumnTable")
+      .columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("renamedStringCol", DataType.STRING, 25).nullable(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("DecimalNineTwoCol", DataType.DECIMAL, 9, 2).nullable(),
+        column("bigIntegerCol", DataType.BIG_INTEGER).nullable())
+      .indexes(
+        index("IndexedColumnTable_1").unique().columns("renamedStringCol", "code"),
+        index("IndexedColumnTable_2").columns("nullableStringCol", "decimalTenZeroCol"),
+        index("IndexedColumnTable_3").columns("decimalNineTwoCol", "bigIntegerCol"),
+        index("IndexedColumnTable_4").columns("bigIntegerCol", "renamedStringCol"));
+
+    verifyUpgrade(replaceTablesInSchema(expectedTable), ChangeIndexedColumnsAndIndexes.class);
+  }
+
+
+  private List<String> numericValuesOfIndexedColumnTable(String columnName) throws SQLException {
+    SelectStatement select = select(field(columnName)).from(tableRef("IndexedColumnTable")).orderBy(field("code"));
+    try (Connection connection = dataSource.getConnection()) {
+      return sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).executeQuery(
+        connectionResources.sqlDialect().convertStatementToSQL(select),
+        connection,
+        resultSet -> {
+          ImmutableList.Builder<String> values = ImmutableList.builder();
+          while (resultSet.next()) {
+            values.add(resultSet.getBigDecimal(1).stripTrailingZeros().toPlainString());
+          }
+          return values.build();
+        });
+    }
   }
 
 
