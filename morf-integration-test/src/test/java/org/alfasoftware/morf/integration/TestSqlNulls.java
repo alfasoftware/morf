@@ -20,15 +20,20 @@ import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
+import static org.alfasoftware.morf.sql.SqlUtils.clobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.nullLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.SqlUtils.when;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
+import static org.alfasoftware.morf.sql.element.Criterion.blobEqual;
+import static org.alfasoftware.morf.sql.element.Criterion.clobEqual;
 import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.average;
@@ -111,7 +116,9 @@ public class TestSqlNulls {
       .columns(
         column("id", DataType.BIG_INTEGER).primaryKey(),
         column("name", DataType.STRING, 10).nullable(),
-        column("val", DataType.DECIMAL, 9, 5).nullable()
+        column("val", DataType.DECIMAL, 9, 5).nullable(),
+        column("blobVal", DataType.BLOB).nullable(),
+        column("clobVal", DataType.CLOB).nullable()
       )
   );
 
@@ -120,19 +127,27 @@ public class TestSqlNulls {
       record()
         .setLong("id", 1L)
         .setString("name", "A")
-        .setBigDecimal("val", new BigDecimal("3.5")),
+        .setBigDecimal("val", new BigDecimal("3.5"))
+        .setByteArray("blobVal", "A".getBytes())
+        .setString("clobVal", "A"),
       record()
         .setLong("id", 2L)
         .setString("name", "N")
-        .setBigDecimal("val", null),
+        .setBigDecimal("val", null)
+        .setByteArray("blobVal", "N".getBytes())
+        .setString("clobVal", "N"),
       record()
         .setLong("id", 3L)
         .setString("name", null)
-        .setBigDecimal("val", BigDecimal.ONE),
+        .setBigDecimal("val", BigDecimal.ONE)
+        .setByteArray("blobVal", null)
+        .setString("clobVal", null),
       record()
         .setLong("id", 4L)
         .setString("name", "X")
         .setBigDecimal("val", null)
+        .setByteArray("blobVal", "X".getBytes())
+        .setString("clobVal", "X")
     );
 
   private String databaseType;
@@ -547,6 +562,57 @@ public class TestSqlNulls {
         assertEquals(1, resultSet.getInt(7));
         // last column
         assertEquals(-7, resultSet.getInt(8));
+      }
+      assertFalse(resultSet.next());
+      return null;
+    });
+  }
+
+
+  @Test
+  public void testLobCriteriaWithNulls() {
+    final SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    // the data set stores a null BLOB as an empty one (SqlDialect.prepareStatementParameters), so make it NULL
+    executor.execute(connectionResources.sqlDialect().convertStatementToSQL(
+      update(tableRef("SimpleTypes")).set(nullLiteral().as("blobVal")).where(field("id").eq(3))));
+
+    SelectStatement statement =
+        select(
+          field("id"),
+          // blob: NULL column vs literal, vs itself, literal vs NULL
+          caseStatement(when(blobEqual(field("blobVal"), blobLiteral("A"))).then(1)).otherwise(0),
+          caseStatement(when(not(blobEqual(field("blobVal"), blobLiteral("A")))).then(1)).otherwise(0),
+          caseStatement(when(blobEqual(field("blobVal"), field("blobVal"))).then(1)).otherwise(0),
+          caseStatement(when(not(blobEqual(field("blobVal"), field("blobVal")))).then(1)).otherwise(0),
+          caseStatement(when(blobEqual(blobLiteral("A"), nullLiteral())).then(1)).otherwise(0),
+          caseStatement(when(not(blobEqual(blobLiteral("A"), nullLiteral()))).then(1)).otherwise(0),
+          // clob: NULL column vs literal, vs itself, literal vs NULL
+          caseStatement(when(clobEqual(field("clobVal"), clobLiteral("A"))).then(1)).otherwise(0),
+          caseStatement(when(not(clobEqual(field("clobVal"), clobLiteral("A")))).then(1)).otherwise(0),
+          caseStatement(when(clobEqual(field("clobVal"), field("clobVal"))).then(1)).otherwise(0),
+          caseStatement(when(not(clobEqual(field("clobVal"), field("clobVal")))).then(1)).otherwise(0),
+          caseStatement(when(clobEqual(clobLiteral("A"), nullLiteral())).then(1)).otherwise(0),
+          caseStatement(when(not(clobEqual(clobLiteral("A"), nullLiteral()))).then(1)).otherwise(0),
+          // last column
+          literal(-7))
+          .from(tableRef("SimpleTypes"))
+          .where(field("id").eq(3));
+
+    executor.executeQuery(statement).processWith(resultSet -> {
+      assertEquals(14, resultSet.getMetaData().getColumnCount());
+      if (resultSet.next()) {
+        assertEquals(3, resultSet.getInt(1));
+        // blob: NULL, so neither equal nor not equal
+        for (int column = 2; column <= 7; column++) {
+          assertEquals("Column " + column, 0, resultSet.getInt(column));
+        }
+        // clob: NULL, so neither equal nor not equal
+        for (int column = 8; column <= 13; column++) {
+          assertEquals("Column " + column, 0, resultSet.getInt(column));
+        }
+        // last column
+        assertEquals(-7, resultSet.getInt(14));
       }
       assertFalse(resultSet.next());
       return null;
