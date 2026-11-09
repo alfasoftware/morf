@@ -239,6 +239,27 @@ public class TestChangeColumn {
 
 
   /**
+   * Tests that a column can't leave a composite primary key if the remaining key would have the same columns as an index
+   */
+  @Test
+  public void testChangeLeavingPrimaryKeyEqualToIndexFails() {
+    Schema schema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("variety", DataType.STRING, 10).primaryKey()
+      ).indexes(
+        index("Apple_1").columns("code")
+      ));
+
+    try {
+      new ChangeColumn("Apple", column("variety", DataType.STRING, 10).primaryKey(), column("variety", DataType.STRING, 10)).apply(schema);
+      fail("The remaining key would duplicate index Apple_1");
+    } catch (IllegalArgumentException e) {
+      assertTrue("Index name 'Apple_1' should be mentioned", e.getMessage().contains("Apple_1"));
+    }
+  }
+
+
+  /**
    * Tests that a BLOB or CLOB column cannot be added to the primary key, as databases can't index them as keys
    */
   @Test

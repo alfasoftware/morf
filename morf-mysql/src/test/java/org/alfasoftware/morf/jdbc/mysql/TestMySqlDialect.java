@@ -1162,7 +1162,9 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
-    return Collections.singletonList("ALTER TABLE `CompositePrimaryKey` DROP `secondPrimaryKey`");
+    return Arrays.asList(
+      "ALTER TABLE `CompositePrimaryKey` DROP `secondPrimaryKey`",
+      "ALTER TABLE `TempCompositeKey` DROP `secondPrimaryKey`");
   }
 
 

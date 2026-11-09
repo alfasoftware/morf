@@ -147,19 +147,21 @@ public class TestChangePrimaryKey {
   @Test
   public void testCannotChangePrimaryKeyToIncludeLobColumn() {
     ChangePrimaryKeyColumns changePrimaryKeyColumns = new ChangePrimaryKeyColumns("Table", Arrays.asList("col1"), Arrays.asList("col1", "col2"));
-    Schema schema = schema(
-      table("Table").columns(
-        column("col1", DataType.STRING).primaryKey(),
-        column("col2", DataType.CLOB)
-      )
-    );
+    for (DataType lobType : new DataType[] { DataType.BLOB, DataType.CLOB }) {
+      Schema schema = schema(
+        table("Table").columns(
+          column("col1", DataType.STRING).primaryKey(),
+          column("col2", lobType)
+        )
+      );
 
-    try {
-      changePrimaryKeyColumns.apply(schema);
-      fail("Expect exception");
-    } catch (IllegalArgumentException e) {
-      assertTrue(e.getMessage().contains("col2"));
-      assertTrue(e.getMessage().contains("CLOB"));
+      try {
+        changePrimaryKeyColumns.apply(schema);
+        fail("Expect exception for " + lobType);
+      } catch (IllegalArgumentException e) {
+        assertTrue(e.getMessage().contains("col2"));
+        assertTrue(e.getMessage().contains(lobType.toString()));
+      }
     }
   }
 

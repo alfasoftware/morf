@@ -1224,7 +1224,10 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP COLUMN secondPrimaryKey",
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])",
+      "ALTER TABLE TESTSCHEMA.#TempCompositeKey DROP CONSTRAINT [TempCompositeKey_PK]",
+      "ALTER TABLE TESTSCHEMA.#TempCompositeKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE TESTSCHEMA.#TempCompositeKey ADD CONSTRAINT [TempCompositeKey_PK] PRIMARY KEY ([id])");
   }
 
 

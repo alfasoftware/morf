@@ -1224,7 +1224,10 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE testschema.CompositePrimaryKey DROP CONSTRAINT CompositePrimaryKey_PK",
       "ALTER TABLE testschema.CompositePrimaryKey DROP COLUMN secondPrimaryKey",
-      "ALTER TABLE testschema.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY(id)");
+      "ALTER TABLE testschema.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY(id)",
+      "ALTER TABLE TempCompositeKey DROP CONSTRAINT TempCompositeKey_PK",
+      "ALTER TABLE TempCompositeKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE TempCompositeKey ADD CONSTRAINT TempCompositeKey_PK PRIMARY KEY(id)");
   }
 
 

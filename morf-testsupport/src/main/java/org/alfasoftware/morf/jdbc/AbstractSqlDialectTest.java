@@ -4322,14 +4322,27 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests removing a column which is part of a composite primary key, which leaves the key on the remaining column.
+   * Tests removing a column which is part of a composite primary key, which leaves the key on the remaining column,
+   * of a table and of a temporary table.
    */
   @Test
+  @SuppressWarnings("unchecked")
   public void testRemoveCompositePrimaryKeyColumn() {
-    testAlterTableColumn(COMPOSITE_PRIMARY_KEY_TABLE,
-      AlterationType.DROP,
-      getColumn(COMPOSITE_PRIMARY_KEY_TABLE, SECOND_PRIMARY_KEY), null,
-      expectedRemoveCompositePrimaryKeyColumnStatements());
+    Table tempCompositeKey = table(testDialect.decorateTemporaryTableName("TempCompositeKey")).temporary()
+        .columns(
+          idColumn(),
+          column(SECOND_PRIMARY_KEY, DataType.STRING, 3).primaryKey());
+
+    compareStatements(expectedRemoveCompositePrimaryKeyColumnStatements(),
+      removeSecondPrimaryKey(metadata.getTable(COMPOSITE_PRIMARY_KEY_TABLE)),
+      removeSecondPrimaryKey(tempCompositeKey));
+  }
+
+
+  private Collection<String> removeSecondPrimaryKey(Table table) {
+    Column column = table.columns().stream().filter(c -> c.getName().equals(SECOND_PRIMARY_KEY)).findFirst().get();
+    Table modifiedTable = new RemoveColumn(table.getName(), column).apply(schema(table)).getTable(table.getName());
+    return testDialect.alterTableDropColumnStatements(modifiedTable, column);
   }
 
 

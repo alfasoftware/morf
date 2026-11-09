@@ -1513,7 +1513,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey SET UNUSED (secondPrimaryKey)",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.CompositePrimaryKey_PK ON TESTSCHEMA.CompositePrimaryKey (id) NOLOGGING PARALLEL)",
-      "ALTER INDEX TESTSCHEMA.CompositePrimaryKey_PK NOPARALLEL LOGGING");
+      "ALTER INDEX TESTSCHEMA.CompositePrimaryKey_PK NOPARALLEL LOGGING",
+      "ALTER TABLE TESTSCHEMA.TempCompositeKey DROP PRIMARY KEY DROP INDEX",
+      "ALTER TABLE TESTSCHEMA.TempCompositeKey SET UNUSED (secondPrimaryKey)",
+      "ALTER TABLE TESTSCHEMA.TempCompositeKey ADD CONSTRAINT TempCompositeKey_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.TempCompositeKey_PK ON TESTSCHEMA.TempCompositeKey (id))");
   }
 
 

@@ -1151,7 +1151,10 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey DROP PRIMARY KEY",
       "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey DROP COLUMN secondPrimaryKey",
-      "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id)");
+      "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id)",
+      "ALTER TABLE "+TEST_SCHEMA+".TEMP_TempCompositeKey DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".TEMP_TempCompositeKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE "+TEST_SCHEMA+".TEMP_TempCompositeKey ADD CONSTRAINT TEMP_TempCompositeKey_PK PRIMARY KEY (id)");
   }
 
 
