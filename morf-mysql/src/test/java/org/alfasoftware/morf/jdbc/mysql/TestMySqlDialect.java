@@ -1158,6 +1158,19 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE `Test` DROP PRIMARY KEY",
+      "ALTER TABLE `Test` ADD CONSTRAINT `Test_PK` PRIMARY KEY (`id`, `floatField`)",
+      "ALTER TABLE `TempTest` DROP PRIMARY KEY",
+      "ALTER TABLE `TempTest` ADD CONSTRAINT `TempTest_PK` PRIMARY KEY (`id`, `floatField`)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameTableStatements()
    */
   @Override

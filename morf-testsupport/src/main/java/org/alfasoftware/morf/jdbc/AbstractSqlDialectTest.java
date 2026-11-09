@@ -169,6 +169,7 @@ import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
+import org.alfasoftware.morf.upgrade.ChangePrimaryKeyColumns;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.apache.commons.lang3.StringUtils;
@@ -4321,6 +4322,26 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests changing the primary key columns of a table, and of a temporary table.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testChangePrimaryKeyColumns() {
+    compareStatements(expectedChangePrimaryKeyColumnsStatements(),
+      changePrimaryKeyColumns(TEST_TABLE),
+      changePrimaryKeyColumns(testTempTable.getName()));
+  }
+
+
+  private Collection<String> changePrimaryKeyColumns(String tableName) {
+    List<String> oldPrimaryKeyColumns = ImmutableList.of("id");
+    List<String> newPrimaryKeyColumns = ImmutableList.of("id", FLOAT_FIELD);
+    Table table = new ChangePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns).apply(metadata).getTable(tableName);
+    return testDialect.changePrimaryKeyColumns(table, oldPrimaryKeyColumns, newPrimaryKeyColumns);
+  }
+
+
+  /**
    * Test adding an index over a single column.
    */
   @SuppressWarnings("unchecked")
@@ -5056,6 +5077,11 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testRemoveSimplePrimaryKeyColumn()}.
    */
   protected abstract List<String> expectedAlterRemoveColumnFromSimpleKeyStatements();
+
+  /**
+   * @return Expected SQL for {@link #testChangePrimaryKeyColumns()}: the table first, then the temporary table.
+   */
+  protected abstract List<String> expectedChangePrimaryKeyColumnsStatements();
 
   /**
    * @return Expected SQL for {@link #testAlterPrimaryKeyColumn()}

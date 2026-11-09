@@ -999,6 +999,9 @@ class OracleDialect extends SqlDialect {
     //Create new primary key constraint
     if (!newPrimaryKeyColumns.isEmpty()) {
       result.add(generatePrimaryKeyStatement(newPrimaryKeyColumns, table.getName(), table.isTemporary()));
+      if (!table.isTemporary()) {
+        result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+      }
     }
 
     return result;

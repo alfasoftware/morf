@@ -1217,6 +1217,19 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
+      "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([id], [floatField])",
+      "ALTER TABLE TESTSCHEMA.#TempTest DROP CONSTRAINT [TempTest_PK]",
+      "ALTER TABLE TESTSCHEMA.#TempTest ADD CONSTRAINT [TempTest_PK] PRIMARY KEY ([id], [floatField])");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameTableStatements()
    */
   @Override

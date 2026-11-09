@@ -1099,6 +1099,19 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE "+TEST_SCHEMA+".Test DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, floatField)",
+      "ALTER TABLE "+TEST_SCHEMA+".TEMP_TempTest DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".TEMP_TempTest ADD CONSTRAINT TEMP_TempTest_PK PRIMARY KEY (id, floatField)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameTableStatements()
    */
   @Override

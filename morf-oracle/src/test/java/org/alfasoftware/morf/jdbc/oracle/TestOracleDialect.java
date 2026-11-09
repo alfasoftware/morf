@@ -1505,6 +1505,22 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
+      "DECLARE \n  e EXCEPTION; \n  pragma exception_init(e,-1442); \nBEGIN \n  EXECUTE immediate 'ALTER TABLE TESTSCHEMA.Test MODIFY (id NOT NULL)'; \nEXCEPTION \nWHEN e THEN \n  NULL; \nEND;",
+      "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, floatField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.Test_PK ON TESTSCHEMA.Test (id, floatField) NOLOGGING PARALLEL)",
+      "ALTER INDEX TESTSCHEMA.Test_PK NOPARALLEL LOGGING",
+      "ALTER TABLE TESTSCHEMA.TempTest DROP PRIMARY KEY DROP INDEX",
+      "DECLARE \n  e EXCEPTION; \n  pragma exception_init(e,-1442); \nBEGIN \n  EXECUTE immediate 'ALTER TABLE TESTSCHEMA.TempTest MODIFY (id NOT NULL)'; \nEXCEPTION \nWHEN e THEN \n  NULL; \nEND;",
+      "ALTER TABLE TESTSCHEMA.TempTest ADD CONSTRAINT TempTest_PK PRIMARY KEY (id, floatField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.TempTest_PK ON TESTSCHEMA.TempTest (id, floatField))");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameTableStatements()
    */
   @Override

@@ -1217,6 +1217,19 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE testschema.Test DROP CONSTRAINT Test_PK",
+      "ALTER TABLE testschema.Test ADD CONSTRAINT Test_PK PRIMARY KEY(id, floatField)",
+      "ALTER TABLE TempTest DROP CONSTRAINT TempTest_PK",
+      "ALTER TABLE TempTest ADD CONSTRAINT TempTest_PK PRIMARY KEY(id, floatField)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameTableStatements()
    */
   @Override
