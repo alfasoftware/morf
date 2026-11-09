@@ -104,8 +104,6 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
 
     assertExistingPrimaryKey(from, table);
 
-    verifyNewPrimaryKeyIsNotIndexed(table, newPrimaryKeyColumnsUpperCase);
-
     // Do the "to" primary key columns exist?
     List<String> allColumns = table.columns().stream().map(Column::getUpperCaseName).collect(Collectors.toList());
 
@@ -118,12 +116,6 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
     for (String newPrimaryColumn : newPrimaryKeyColumnsUpperCase) {
       if (allColumns.contains(newPrimaryColumn)) {
         Column pk = columnsMap.get(newPrimaryColumn);
-        if (pk.isNullable()) {
-          throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is nullable, so it cannot be in the primary key");
-        }
-        if (pk.getType() == DataType.BLOB || pk.getType() == DataType.CLOB) {
-          throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is a " + pk.getType() + ", so it cannot be in the primary key");
-        }
         newColumns.add(column(pk).primaryKey());
         nonPrimaries.remove(pk);
       } else {
@@ -176,7 +168,21 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
    */
   @Override
   public Schema apply(Schema schema) {
-    return applyChange(schema, oldPrimaryKeyColumns, newPrimaryKeyColumns);
+    Schema result = applyChange(schema, oldPrimaryKeyColumns, newPrimaryKeyColumns);
+
+    // Checked forward only: so that we can upgrade even from a forbidden state
+    Table table = result.getTable(tableName);
+    verifyNewPrimaryKeyIsNotIndexed(table, toUpperCase(newPrimaryKeyColumns));
+    for (Column pk : primaryKeysForTable(table)) {
+      if (pk.isNullable()) {
+        throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is nullable, so it cannot be in the primary key");
+      }
+      if (pk.getType() == DataType.BLOB || pk.getType() == DataType.CLOB) {
+        throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is a " + pk.getType() + ", so it cannot be in the primary key");
+      }
+    }
+
+    return result;
   }
 
 

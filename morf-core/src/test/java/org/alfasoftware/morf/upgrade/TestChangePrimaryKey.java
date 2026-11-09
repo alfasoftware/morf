@@ -17,6 +17,8 @@ package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static com.google.common.collect.Lists.newArrayList;
@@ -158,6 +160,31 @@ public class TestChangePrimaryKey {
     } catch (IllegalArgumentException e) {
       assertTrue(e.getMessage().contains("col2"));
       assertTrue(e.getMessage().contains("CLOB"));
+    }
+  }
+
+
+  /**
+   * Tests that a change fixing a key that is no longer permitted (nullable, CLOB and indexed columns) can be reversed.
+   * A reverse only restores the key the database already has, and failing it would block the upgrade.
+   */
+  @Test
+  public void testChangeFixingKeyCanBeReversed() {
+    Schema schema = schema(
+      table("Table").columns(
+        column("col1", DataType.STRING).primaryKey(),
+        column("col2", DataType.STRING).nullable().primaryKey(),
+        column("col3", DataType.CLOB).primaryKey()
+      ).indexes(
+        index("Table_1").columns("col1", "col2", "col3")
+      )
+    );
+
+    for (ChangePrimaryKeyColumns change : Arrays.asList(
+        new ChangePrimaryKeyColumns("Table", Arrays.asList("col1", "col2", "col3"), Arrays.asList("col1")),
+        new CorrectPrimaryKeyColumns("Table", Arrays.asList("col1")))) {
+      Schema reversed = change.reverse(change.apply(schema));
+      assertEquals(change.toString(), Arrays.asList("col1", "col2", "col3"), namesOfColumns(primaryKeysForTable(reversed.getTable("Table"))));
     }
   }
 }
