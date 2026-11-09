@@ -92,6 +92,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReduceStringColumnWidth;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveAutoNumbered;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveColumnFromCompositePrimaryKey;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveCompositePrimaryKeyColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveColumnWithDefault;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemovePrimaryKeyColumns;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveSequence;
@@ -636,6 +637,23 @@ public class TestDatabaseUpgradeIntegration {
     );
 
     verifyUpgrade(expectedSchema, RemoveColumnFromCompositePrimaryKey.class);
+  }
+
+
+  /**
+   * Tests removing a column which is part of a composite primary key, which leaves the key on the remaining column.
+   */
+  @Test
+  public void testRemoveCompositePrimaryKeyColumn() {
+    Schema expectedSchema = replaceTablesInSchema(
+      table("CompositeKeyTable")
+      .columns(
+        column("keyCol1", DataType.STRING, 20).primaryKey(),
+        column("valCol", DataType.STRING, 20)
+      )
+    );
+
+    verifyUpgrade(expectedSchema, RemoveCompositePrimaryKeyColumn.class);
   }
 
 
