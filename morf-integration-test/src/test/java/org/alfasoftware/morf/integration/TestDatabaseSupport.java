@@ -279,7 +279,8 @@ public class TestDatabaseSupport {
     Schema schemaTableA = schema(table("TableA")
             .columns(column("field", DataType.BIG_INTEGER))
             .indexes(index("CommonIndex").columns("field")),
-        table("TableB"));
+        table("TableB")
+            .columns(column("field", DataType.BIG_INTEGER)));
     Schema schemaTableB = schema(table("TableB")
         .columns(column("field", DataType.BIG_INTEGER))
         .indexes(index("CommonIndex").columns("field")));
