@@ -203,6 +203,80 @@ public class TestChangeColumn {
 
 
   /**
+   * Tests that a column cannot be changed to be both nullable and in the primary key, as databases require primary key columns to be not null
+   */
+  @Test
+  public void testChangeToNullablePrimaryKeyColumnFails() {
+    try {
+      new ChangeColumn("Apple", column("nullcheck", DataType.DECIMAL, 9, 0).nullable(), column("nullcheck", DataType.DECIMAL, 9, 0).nullable().primaryKey());
+      fail("A nullable primary key column should not be permitted");
+    } catch (IllegalArgumentException e) {
+      assertTrue("Column name 'nullcheck' should be mentioned", e.getMessage().contains("nullcheck"));
+    }
+  }
+
+
+  /**
+   * Tests that a column can't join the primary key if the key would then have the same columns as an index,
+   * as Oracle refuses to create the key over an already indexed column list
+   */
+  @Test
+  public void testChangeToPrimaryKeyEqualToIndexFails() {
+    Schema schema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("variety", DataType.STRING, 10)
+      ).indexes(
+        index("Apple_1").columns("code", "variety")
+      ));
+
+    try {
+      new ChangeColumn("Apple", column("variety", DataType.STRING, 10), column("variety", DataType.STRING, 10).primaryKey()).apply(schema);
+      fail("The new key would duplicate index Apple_1");
+    } catch (IllegalArgumentException e) {
+      assertTrue("Index name 'Apple_1' should be mentioned", e.getMessage().contains("Apple_1"));
+    }
+  }
+
+
+  /**
+   * Tests that a column can't leave a composite primary key if the remaining key would have the same columns as an index
+   */
+  @Test
+  public void testChangeLeavingPrimaryKeyEqualToIndexFails() {
+    Schema schema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("variety", DataType.STRING, 10).primaryKey()
+      ).indexes(
+        index("Apple_1").columns("code")
+      ));
+
+    try {
+      new ChangeColumn("Apple", column("variety", DataType.STRING, 10).primaryKey(), column("variety", DataType.STRING, 10)).apply(schema);
+      fail("The remaining key would duplicate index Apple_1");
+    } catch (IllegalArgumentException e) {
+      assertTrue("Index name 'Apple_1' should be mentioned", e.getMessage().contains("Apple_1"));
+    }
+  }
+
+
+  /**
+   * Tests that a BLOB or CLOB column cannot be added to the primary key, as databases can't index them as keys
+   */
+  @Test
+  public void testChangeToLobPrimaryKeyColumnFails() {
+    for (DataType lobType : new DataType[] { DataType.BLOB, DataType.CLOB }) {
+      try {
+        new ChangeColumn("Apple", column("lobcolumn", lobType), column("lobcolumn", lobType).primaryKey());
+        fail("A " + lobType + " primary key column should not be permitted");
+      } catch (IllegalArgumentException e) {
+        assertTrue("Column name 'lobcolumn' should be mentioned", e.getMessage().contains("lobcolumn"));
+        assertTrue("Data type should be mentioned", e.getMessage().contains(lobType.toString()));
+      }
+    }
+  }
+
+
+  /**
    * Tests that changing the type of a column fails
    */
   @Test

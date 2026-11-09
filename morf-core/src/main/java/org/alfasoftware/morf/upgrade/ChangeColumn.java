@@ -84,6 +84,14 @@ public class ChangeColumn implements SchemaChange {
       throw new IllegalStateException(String.format("Cannot change column [%s] to be null", fromColumn.getName()));
     }
 
+    if (toColumn.isPrimaryKey() && toColumn.isNullable()) {
+      throw new IllegalArgumentException(String.format("Cannot change column [%s] on table [%s] to be both nullable and in the primary key", toColumn.getName(), tableName));
+    }
+
+    if (toColumn.isPrimaryKey() && (toColumn.getType() == DataType.BLOB || toColumn.getType() == DataType.CLOB)) {
+      throw new IllegalArgumentException(String.format("Cannot change column [%s] on table [%s] to be both a %s and in the primary key", toColumn.getName(), tableName, toColumn.getType()));
+    }
+
     verifyDataTypeChanges();
     verifyWidthAndScaleChanges();
   }
@@ -237,7 +245,19 @@ public class ChangeColumn implements SchemaChange {
    */
   @Override
   public Schema apply(Schema schema) {
-    return applyChange(schema, fromColumn, toColumn);
+    Schema result = applyChange(schema, fromColumn, toColumn);
+
+    if (fromColumn.isPrimaryKey() != toColumn.isPrimaryKey()) {
+      Table table = result.getTable(tableName);
+      List<String> primaryKeyColumnNames = SchemaUtils.upperCaseNamesOfColumns(SchemaUtils.primaryKeysForTable(table));
+      for (Index index : table.indexes()) {
+        if (!primaryKeyColumnNames.isEmpty() && SchemaUtils.toUpperCase(index.columnNames()).equals(primaryKeyColumnNames)) {
+          throw new IllegalArgumentException(String.format("Cannot change column [%s] on table [%s] as the primary key would have the same columns as index [%s]", toColumn.getName(), tableName, index.getName()));
+        }
+      }
+    }
+
+    return result;
   }
 
 

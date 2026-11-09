@@ -15,9 +15,6 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static com.google.common.collect.Iterables.filter;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -35,13 +32,11 @@ import java.util.regex.Pattern;
 import org.alfasoftware.morf.sql.element.AliasedField;
 
 import com.google.common.base.Function;
-import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.io.CharStreams;
 
@@ -334,6 +329,10 @@ public class SchemaValidator {
       if (column.isPrimaryKey() && column.isNullable()) {
         validationFailures.add("Column [" + column.getName() + "] on table [" + table.getName() + "] is both nullable and in the primary key. This is not permitted.");
       }
+
+      if (column.isPrimaryKey() && (column.getType() == DataType.BLOB || column.getType() == DataType.CLOB)) {
+        validationFailures.add("Column [" + column.getName() + "] on table [" + table.getName() + "] is both a " + column.getType() + " and in the primary key. This is not permitted.");
+      }
     }
   }
 
@@ -368,29 +367,9 @@ public class SchemaValidator {
 
     Map<IndexSignature, Index> indexesBySignature = new HashMap<>();
 
-    // -- First add the 'PRIMARY' index which is always present in the database
-    //    for the column annotated @Id or @GeneratedId...
-    //
-    Iterable<Column> primaryKeyColumns = filter(table.columns(), new Predicate<Column>() {
-      @Override public boolean apply(Column input) {
-        return input.isPrimaryKey();
-      }
-    });
-
-    Iterable<String> primaryKeyColumnNames = Iterables.transform(
-      primaryKeyColumns,
-      new Function<Column, String>() {
-        @Override
-        public String apply(Column input) {
-          return input.getName();
-        }
-    });
-
-    Index primaryKeyIndex = index("PRIMARY")
-      .unique()
-      .columns(primaryKeyColumnNames);
-
-    indexesBySignature.put(new IndexSignature(primaryKeyIndex), primaryKeyIndex);
+    // The primary key is always backed by an index. Oracle refuses any other index on exactly its columns (ORA-01408),
+    // unique or not, so the comparison ignores uniqueness and letter case.
+    List<String> primaryKeyColumnNames = SchemaUtils.upperCaseNamesOfColumns(SchemaUtils.primaryKeysForTable(table));
 
     for (Index index : table.indexes()) {
       if (!isEntityNameLengthValid(index.getName())) {
@@ -409,6 +388,10 @@ public class SchemaValidator {
       // fact it breaks Oracle.
       if (index.columnNames().equals(Arrays.asList("id"))) {
         validationFailures.add("Index [" + index.getName() + "] on table [" + table.getName() + "] is not allowed - indexes by 'id' only are superfluous since 'id' is the primary key.");
+      }
+
+      if (!primaryKeyColumnNames.isEmpty() && SchemaUtils.toUpperCase(index.columnNames()).equals(primaryKeyColumnNames)) {
+        validationFailures.add("Indexes [" + index.getName() + "] and [PRIMARY] on table [" + table.getName() + "] are not allowed - one is a duplicate of the other");
       }
 
       // validate that there aren't any duplicate indexes

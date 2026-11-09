@@ -1069,6 +1069,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
+      "ALTER TABLE TESTSCHEMA.Test MODIFY (dateField  NOT NULL)",
       "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, dateField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.Test_PK ON TESTSCHEMA.Test (id, dateField) NOLOGGING PARALLEL)",
       "ALTER INDEX TESTSCHEMA.Test_PK NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");
@@ -1500,6 +1501,38 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromSimpleKeyStatements() {
     return Collections.singletonList("ALTER TABLE TESTSCHEMA.Test SET UNUSED (id)");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY DROP INDEX",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey SET UNUSED (secondPrimaryKey)",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.CompositePrimaryKey_PK ON TESTSCHEMA.CompositePrimaryKey (id) NOLOGGING PARALLEL)",
+      "ALTER INDEX TESTSCHEMA.CompositePrimaryKey_PK NOPARALLEL LOGGING",
+      "ALTER TABLE TESTSCHEMA.TempCompositeKey DROP PRIMARY KEY DROP INDEX",
+      "ALTER TABLE TESTSCHEMA.TempCompositeKey SET UNUSED (secondPrimaryKey)",
+      "ALTER TABLE TESTSCHEMA.TempCompositeKey ADD CONSTRAINT TempCompositeKey_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.TempCompositeKey_PK ON TESTSCHEMA.TempCompositeKey (id))");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
+      "DECLARE \n  e EXCEPTION; \n  pragma exception_init(e,-1442); \nBEGIN \n  EXECUTE immediate 'ALTER TABLE TESTSCHEMA.Test MODIFY (id NOT NULL)'; \nEXCEPTION \nWHEN e THEN \n  NULL; \nEND;",
+      "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, floatField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.Test_PK ON TESTSCHEMA.Test (id, floatField) NOLOGGING PARALLEL)",
+      "ALTER INDEX TESTSCHEMA.Test_PK NOPARALLEL LOGGING",
+      "ALTER TABLE TESTSCHEMA.TempTest DROP PRIMARY KEY DROP INDEX",
+      "DECLARE \n  e EXCEPTION; \n  pragma exception_init(e,-1442); \nBEGIN \n  EXECUTE immediate 'ALTER TABLE TESTSCHEMA.TempTest MODIFY (id NOT NULL)'; \nEXCEPTION \nWHEN e THEN \n  NULL; \nEND;",
+      "ALTER TABLE TESTSCHEMA.TempTest ADD CONSTRAINT TempTest_PK PRIMARY KEY (id, floatField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.TempTest_PK ON TESTSCHEMA.TempTest (id, floatField))");
   }
 
 
