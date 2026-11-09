@@ -818,7 +818,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE",
+      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL",
       "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([id], [dateField])"
     );
   }

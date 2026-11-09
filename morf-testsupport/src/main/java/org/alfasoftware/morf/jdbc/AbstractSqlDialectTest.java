@@ -4258,11 +4258,11 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Test changing column to be the primary key.
+   * Test changing a nullable column to be part of the primary key, which also makes it not null.
    */
   @Test
   public void testAlterColumnMakePrimary() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
   /**

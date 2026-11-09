@@ -72,6 +72,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddBasicTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnDropDefaultValue;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnToExistingPrimaryKey;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnWithoutDropDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToAutonumberedColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
@@ -743,6 +744,25 @@ public class TestDatabaseUpgradeIntegration {
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
 
     verifyUpgrade(expected, ChangeColumnDataType.class);
+  }
+
+
+  /**
+   * Tests adding a column to an existing primary key through changeColumn, rather than changePrimaryKeyColumns.
+   */
+  @Test
+  public void testAddColumnToExistingPrimaryKey() {
+    Table tableWithCompositeKey = table("BasicTable")
+      .columns(
+        column("stringCol", DataType.STRING, 20).primaryKey(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10).primaryKey(),
+        column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
+      );
+
+    verifyUpgrade(replaceTablesInSchema(tableWithCompositeKey), AddColumnToExistingPrimaryKey.class);
   }
 
 

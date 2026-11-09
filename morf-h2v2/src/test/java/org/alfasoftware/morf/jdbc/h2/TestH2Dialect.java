@@ -720,7 +720,9 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
-    return Arrays.asList("ALTER TABLE "+TEST_SCHEMA+".Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, dateField)");
+    return Arrays.asList("ALTER TABLE "+TEST_SCHEMA+".Test DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".Test ALTER COLUMN dateField SET NOT NULL",
+      "ALTER TABLE "+TEST_SCHEMA+".Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, dateField)");
   }
 
 

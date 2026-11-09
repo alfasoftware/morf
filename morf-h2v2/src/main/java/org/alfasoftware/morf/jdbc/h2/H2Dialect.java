@@ -262,7 +262,9 @@ class H2Dialect extends SqlDialect {
   public Collection<String> alterTableChangeColumnStatements(Table table, Column oldColumn, Column newColumn) {
     List<String> result = new ArrayList<>();
 
-    if (oldColumn.isPrimaryKey() && !newColumn.isPrimaryKey()) {
+    // the existing PK has to go whenever the key changes, including when the column joins it
+    boolean recreatePrimaryKey = oldColumn.isPrimaryKey() != newColumn.isPrimaryKey();
+    if (recreatePrimaryKey && !primaryKeysForTable(oldTableForChangeColumn(table, oldColumn, newColumn)).isEmpty()) {
       result.add(dropPrimaryKeyConstraintStatement(table));
     }
 
@@ -295,7 +297,7 @@ class H2Dialect extends SqlDialect {
 
     // rebuild the PK if required
     List<Column> primaryKeys = primaryKeysForTable(table);
-    if (oldColumn.isPrimaryKey() != newColumn.isPrimaryKey() && !primaryKeys.isEmpty()) {
+    if (recreatePrimaryKey && !primaryKeys.isEmpty()) {
       result.add(addPrimaryKeyConstraintStatement(table, namesOfColumns(primaryKeys)));
     }
 

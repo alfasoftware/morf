@@ -1069,6 +1069,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
+      "ALTER TABLE TESTSCHEMA.Test MODIFY (dateField  NOT NULL)",
       "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, dateField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.Test_PK ON TESTSCHEMA.Test (id, dateField) NOLOGGING PARALLEL)",
       "ALTER INDEX TESTSCHEMA.Test_PK NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");

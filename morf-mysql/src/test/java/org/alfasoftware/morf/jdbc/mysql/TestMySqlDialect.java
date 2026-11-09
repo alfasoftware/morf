@@ -825,7 +825,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
       "ALTER TABLE `Test` DROP PRIMARY KEY",
-      "ALTER TABLE `Test` CHANGE `dateField` `dateField` DATE",
+      "ALTER TABLE `Test` CHANGE `dateField` `dateField` DATE NOT NULL",
       "ALTER TABLE `Test` ADD CONSTRAINT `Test_PK` PRIMARY KEY (`id`, `dateField`)"
     );
   }

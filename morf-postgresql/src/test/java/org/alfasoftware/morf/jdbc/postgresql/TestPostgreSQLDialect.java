@@ -842,6 +842,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList("ALTER TABLE testschema.Test DROP CONSTRAINT Test_PK",
+        "ALTER TABLE testschema.Test ALTER COLUMN dateField SET NOT NULL",
         "ALTER TABLE testschema.Test ADD CONSTRAINT Test_PK PRIMARY KEY(id, dateField)",
         "COMMENT ON COLUMN testschema.Test.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");
   }
