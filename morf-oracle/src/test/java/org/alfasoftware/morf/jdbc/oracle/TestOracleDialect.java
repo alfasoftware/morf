@@ -1505,6 +1505,19 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY DROP INDEX",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey SET UNUSED (secondPrimaryKey)",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.CompositePrimaryKey_PK ON TESTSCHEMA.CompositePrimaryKey (id) NOLOGGING PARALLEL)",
+      "ALTER INDEX TESTSCHEMA.CompositePrimaryKey_PK NOPARALLEL LOGGING");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
    */
   @Override

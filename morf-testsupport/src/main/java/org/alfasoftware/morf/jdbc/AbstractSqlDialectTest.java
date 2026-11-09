@@ -4322,6 +4322,18 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests removing a column which is part of a composite primary key, which leaves the key on the remaining column.
+   */
+  @Test
+  public void testRemoveCompositePrimaryKeyColumn() {
+    testAlterTableColumn(COMPOSITE_PRIMARY_KEY_TABLE,
+      AlterationType.DROP,
+      getColumn(COMPOSITE_PRIMARY_KEY_TABLE, SECOND_PRIMARY_KEY), null,
+      expectedRemoveCompositePrimaryKeyColumnStatements());
+  }
+
+
+  /**
    * Tests changing the primary key columns of a table, and of a temporary table.
    */
   @Test
@@ -5077,6 +5089,11 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testRemoveSimplePrimaryKeyColumn()}.
    */
   protected abstract List<String> expectedAlterRemoveColumnFromSimpleKeyStatements();
+
+  /**
+   * @return Expected SQL for {@link #testRemoveCompositePrimaryKeyColumn()}.
+   */
+  protected abstract List<String> expectedRemoveCompositePrimaryKeyColumnStatements();
 
   /**
    * @return Expected SQL for {@link #testChangePrimaryKeyColumns()}: the table first, then the temporary table.

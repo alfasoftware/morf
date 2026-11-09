@@ -1144,6 +1144,18 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE "+TEST_SCHEMA+".CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
    */
   @Override

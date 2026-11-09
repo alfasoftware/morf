@@ -1217,6 +1217,18 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
    */
   @Override
