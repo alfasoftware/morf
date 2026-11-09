@@ -780,10 +780,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterStringColumnStatement() {
     return Arrays.asList(
-      "DROP INDEX TESTSCHEMA.Test_NK",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (stringField NVARCHAR2(6))",
-      "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.Test (stringField) PARALLEL NOLOGGING",
-      "ALTER INDEX TESTSCHEMA.Test_NK NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'");
   }
 
@@ -875,10 +872,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement() {
     return Arrays.asList(
-      "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(20,3))",
-      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
-      "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
 
@@ -919,10 +913,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
     return Arrays.asList(
-      "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (intField  NOT NULL)",
-      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
-      "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'");
   }
 
@@ -963,10 +954,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterDecimalColumnStatement() {
     return Arrays.asList(
-      "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(14,3) NULL)",
-      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
-      "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
 
@@ -997,10 +985,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNullableStatement() {
     return Arrays.asList(
-      "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(20,3) NULL)",
-      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
-      "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
 
@@ -1045,10 +1030,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       // changeColumnStatements
-      "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (intField  NOT NULL)",
-      "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (INTFIELD) PARALLEL NOLOGGING",
-      "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'");
   }
 
@@ -1081,10 +1063,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnCompositeKeyStatements() {
     return Arrays.asList(
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey MODIFY (secondPrimaryKey NVARCHAR2(5))",
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id, secondPrimaryKey) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.CompositePrimaryKey_PK ON TESTSCHEMA.CompositePrimaryKey (id, secondPrimaryKey) NOLOGGING PARALLEL)",
-      "ALTER INDEX TESTSCHEMA.CompositePrimaryKey_PK NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[secondPrimaryKey]/TYPE:[STRING]'");
   }
 
@@ -1109,10 +1088,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnStatements() {
     return Arrays.asList(
-      "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.Test RENAME COLUMN id TO renamedId",
-      "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (renamedId) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.Test_PK ON TESTSCHEMA.Test (renamedId) NOLOGGING PARALLEL)",
-      "ALTER INDEX TESTSCHEMA.Test_PK NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.renamedId IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[renamedId]/TYPE:[BIG_INTEGER]'"
     );
   }

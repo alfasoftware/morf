@@ -29,10 +29,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
@@ -84,6 +85,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.FluentIterable;
@@ -116,6 +118,11 @@ class OracleDialect extends SqlDialect {
    * Fortunately on Oracle it is possible to specify that nulls should be ordered first.
    */
   public static final String DEFAULT_NULL_ORDER = NULLS_FIRST;
+
+  /**
+   * Data types which {@link #getColumnRepresentation(DataType, int, int)} maps onto Oracle's NUMBER.
+   */
+  private static final Set<DataType> NUMBER_TYPES = EnumSet.of(DataType.DECIMAL, DataType.BIG_INTEGER, DataType.INTEGER, DataType.BOOLEAN);
 
   public static final int MAX_LEGACY_NAME_LENGTH = 30;
 
@@ -1051,16 +1058,14 @@ class OracleDialect extends SqlDialect {
 
     String tableName = oldTable.getName();
 
-    boolean recreatePrimaryKey = oldColumn.isPrimaryKey() || newColumn.isPrimaryKey();
-    boolean alterNullable = oldColumn.isNullable() != newColumn.isNullable();
-    boolean alterType = oldColumn.getType() != newColumn.getType() || oldColumn.getScale() != newColumn.getScale() || oldColumn.getWidth() != newColumn.getWidth();
-    boolean alterDefaultValue = !Objects.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue());
+    boolean rebuildIndexes = !indexesSurviveColumnChange(oldColumn, newColumn);
+    boolean recreatePrimaryKey = oldColumn.isPrimaryKey() != newColumn.isPrimaryKey() || newColumn.isPrimaryKey() && rebuildIndexes;
 
     if (recreatePrimaryKey && !primaryKeysForTable(oldTable).isEmpty()) {
       result.add(dropPrimaryKeyConstraint(tableName));
     }
 
-    if (alterNullable || alterType || alterDefaultValue) {
+    if (rebuildIndexes) {
       for (Index index : oldTable.indexes()) {
         for (String column : index.columnNames()) {
           if (column.equalsIgnoreCase(oldColumn.getName())) {
@@ -1112,7 +1117,7 @@ class OracleDialect extends SqlDialect {
       }
     }
 
-    if (alterNullable || alterType || alterDefaultValue) {
+    if (rebuildIndexes) {
       for (Index index : table.indexes()) {
         for (String column : index.columnNames()) {
           if (column.equalsIgnoreCase(newColumn.getName())) {
@@ -1124,6 +1129,19 @@ class OracleDialect extends SqlDialect {
     result.add(columnComment(newColumn, tableName));
 
     return result;
+  }
+
+
+  /**
+   * Oracle keeps the indexes over a column (including the primary key index) valid through a rename, a change of
+   * default or nullability, and a change of width, precision or scale within the same storage type: these only
+   * update the data dictionary, at most after a validating scan. All numeric types are stored as NUMBER, so this
+   * covers DECIMAL to BIG_INTEGER too. Any other change of type is assumed to need the indexes rebuilt.
+   */
+  @VisibleForTesting
+  static boolean indexesSurviveColumnChange(Column oldColumn, Column newColumn) {
+    return oldColumn.getType() == newColumn.getType()
+        || NUMBER_TYPES.contains(oldColumn.getType()) && NUMBER_TYPES.contains(newColumn.getType());
   }
 
 
