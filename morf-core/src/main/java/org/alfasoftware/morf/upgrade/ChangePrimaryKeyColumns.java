@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -119,6 +120,9 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
         Column pk = columnsMap.get(newPrimaryColumn);
         if (pk.isNullable()) {
           throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is nullable, so it cannot be in the primary key");
+        }
+        if (pk.getType() == DataType.BLOB || pk.getType() == DataType.CLOB) {
+          throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is a " + pk.getType() + ", so it cannot be in the primary key");
         }
         newColumns.add(column(pk).primaryKey());
         nonPrimaries.remove(pk);

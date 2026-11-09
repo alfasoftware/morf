@@ -137,4 +137,27 @@ public class TestChangePrimaryKey {
       assertTrue(e.getMessage().contains("nullable"));
     }
   }
+
+
+  /**
+   * Test that a BLOB or CLOB column cannot be made part of the primary key, as databases can't index them as keys
+   */
+  @Test
+  public void testCannotChangePrimaryKeyToIncludeLobColumn() {
+    ChangePrimaryKeyColumns changePrimaryKeyColumns = new ChangePrimaryKeyColumns("Table", Arrays.asList("col1"), Arrays.asList("col1", "col2"));
+    Schema schema = schema(
+      table("Table").columns(
+        column("col1", DataType.STRING).primaryKey(),
+        column("col2", DataType.CLOB)
+      )
+    );
+
+    try {
+      changePrimaryKeyColumns.apply(schema);
+      fail("Expect exception");
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage().contains("col2"));
+      assertTrue(e.getMessage().contains("CLOB"));
+    }
+  }
 }

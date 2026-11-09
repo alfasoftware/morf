@@ -592,6 +592,37 @@ public class TestSchemaValidator {
       assertTrue(e.getMessage().contains("InvalidColumn"));
     }
   }
+
+
+  /**
+   * BLOB and CLOB columns can't be in the primary key, as databases can't index them as keys.
+   */
+  @Test
+  public void testInvalidPrimaryKeyLobColumns() {
+    Table invalidPkLobs =
+        table("InvalidColumn")
+          .columns(
+            column("pkblob", DataType.BLOB).primaryKey(),
+            column("pkclob", DataType.CLOB).primaryKey()
+          );
+    try {
+      new SchemaValidator().validate(schema(invalidPkLobs));
+      fail();
+    } catch (RuntimeException e) {
+      assertTrue(e.getMessage().contains("pkblob"));
+      assertTrue(e.getMessage().contains("pkclob"));
+      assertTrue(e.getMessage().contains("InvalidColumn"));
+    }
+
+    try {
+      new SchemaValidator().validate(invalidPkLobs);
+      fail();
+    } catch (RuntimeException e) {
+      assertTrue(e.getMessage().contains("pkblob"));
+      assertTrue(e.getMessage().contains("pkclob"));
+      assertTrue(e.getMessage().contains("InvalidColumn"));
+    }
+  }
 }
 
 

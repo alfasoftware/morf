@@ -217,6 +217,23 @@ public class TestChangeColumn {
 
 
   /**
+   * Tests that a BLOB or CLOB column cannot be added to the primary key, as databases can't index them as keys
+   */
+  @Test
+  public void testChangeToLobPrimaryKeyColumnFails() {
+    for (DataType lobType : new DataType[] { DataType.BLOB, DataType.CLOB }) {
+      try {
+        new ChangeColumn("Apple", column("lobcolumn", lobType), column("lobcolumn", lobType).primaryKey());
+        fail("A " + lobType + " primary key column should not be permitted");
+      } catch (IllegalArgumentException e) {
+        assertTrue("Column name 'lobcolumn' should be mentioned", e.getMessage().contains("lobcolumn"));
+        assertTrue("Data type should be mentioned", e.getMessage().contains(lobType.toString()));
+      }
+    }
+  }
+
+
+  /**
    * Tests that changing the type of a column fails
    */
   @Test

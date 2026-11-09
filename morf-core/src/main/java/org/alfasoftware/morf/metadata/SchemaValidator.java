@@ -334,6 +334,10 @@ public class SchemaValidator {
       if (column.isPrimaryKey() && column.isNullable()) {
         validationFailures.add("Column [" + column.getName() + "] on table [" + table.getName() + "] is both nullable and in the primary key. This is not permitted.");
       }
+
+      if (column.isPrimaryKey() && (column.getType() == DataType.BLOB || column.getType() == DataType.CLOB)) {
+        validationFailures.add("Column [" + column.getName() + "] on table [" + table.getName() + "] is both a " + column.getType() + " and in the primary key. This is not permitted.");
+      }
     }
   }
 

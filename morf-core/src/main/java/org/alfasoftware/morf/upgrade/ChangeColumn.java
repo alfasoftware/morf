@@ -88,6 +88,10 @@ public class ChangeColumn implements SchemaChange {
       throw new IllegalArgumentException(String.format("Cannot change column [%s] on table [%s] to be both nullable and in the primary key", toColumn.getName(), tableName));
     }
 
+    if (toColumn.isPrimaryKey() && (toColumn.getType() == DataType.BLOB || toColumn.getType() == DataType.CLOB)) {
+      throw new IllegalArgumentException(String.format("Cannot change column [%s] on table [%s] to be both a %s and in the primary key", toColumn.getName(), tableName, toColumn.getType()));
+    }
+
     verifyDataTypeChanges();
     verifyWidthAndScaleChanges();
   }
