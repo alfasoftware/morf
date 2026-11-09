@@ -312,6 +312,12 @@ class H2Dialect extends SqlDialect {
     String statement = "ALTER TABLE " + schemaNamePrefix() + table.getName() +
             " DROP COLUMN " + column.getName();
 
+    // H2 can't remove a column from a multi-column key, so the key is recreated on the remaining columns
+    List<Column> primaryKeys = primaryKeysForTable(table);
+    if (column.isPrimaryKey() && !primaryKeys.isEmpty()) {
+      return ImmutableList.of(dropPrimaryKeyConstraintStatement(table), statement, addPrimaryKeyConstraintStatement(table, namesOfColumns(primaryKeys)));
+    }
+
     return Collections.singletonList(statement);
   }
 
