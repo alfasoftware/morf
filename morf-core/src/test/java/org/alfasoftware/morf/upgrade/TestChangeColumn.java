@@ -203,6 +203,20 @@ public class TestChangeColumn {
 
 
   /**
+   * Tests that a column cannot be changed to be both nullable and in the primary key, as databases require primary key columns to be not null
+   */
+  @Test
+  public void testChangeToNullablePrimaryKeyColumnFails() {
+    try {
+      new ChangeColumn("Apple", column("nullcheck", DataType.DECIMAL, 9, 0).nullable(), column("nullcheck", DataType.DECIMAL, 9, 0).nullable().primaryKey());
+      fail("A nullable primary key column should not be permitted");
+    } catch (IllegalArgumentException e) {
+      assertTrue("Column name 'nullcheck' should be mentioned", e.getMessage().contains("nullcheck"));
+    }
+  }
+
+
+  /**
    * Tests that changing the type of a column fails
    */
   @Test

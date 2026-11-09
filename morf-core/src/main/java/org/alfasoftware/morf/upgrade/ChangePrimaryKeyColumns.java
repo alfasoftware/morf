@@ -117,6 +117,9 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
     for (String newPrimaryColumn : newPrimaryKeyColumnsUpperCase) {
       if (allColumns.contains(newPrimaryColumn)) {
         Column pk = columnsMap.get(newPrimaryColumn);
+        if (pk.isNullable()) {
+          throw new IllegalArgumentException("The column [" + pk.getName() + "] on [" + table.getName() + "] is nullable, so it cannot be in the primary key");
+        }
         newColumns.add(column(pk).primaryKey());
         nonPrimaries.remove(pk);
       } else {

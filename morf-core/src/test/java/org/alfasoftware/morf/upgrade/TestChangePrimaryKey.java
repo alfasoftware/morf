@@ -114,4 +114,27 @@ public class TestChangePrimaryKey {
       assertTrue(e.getMessage().contains("col1"));
     }
   }
+
+
+  /**
+   * Test that a nullable column cannot be made part of the primary key, as databases require primary key columns to be not null
+   */
+  @Test
+  public void testCannotChangePrimaryKeyToIncludeNullableColumn() {
+    ChangePrimaryKeyColumns changePrimaryKeyColumns = new ChangePrimaryKeyColumns("Table", Arrays.asList("col1"), Arrays.asList("col1", "col2"));
+    Schema schema = schema(
+      table("Table").columns(
+        column("col1", DataType.STRING).primaryKey(),
+        column("col2", DataType.STRING).nullable()
+      )
+    );
+
+    try {
+      changePrimaryKeyColumns.apply(schema);
+      fail("Expect exception");
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage().contains("col2"));
+      assertTrue(e.getMessage().contains("nullable"));
+    }
+  }
 }

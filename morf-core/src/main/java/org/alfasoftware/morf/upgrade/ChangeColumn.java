@@ -84,6 +84,10 @@ public class ChangeColumn implements SchemaChange {
       throw new IllegalStateException(String.format("Cannot change column [%s] to be null", fromColumn.getName()));
     }
 
+    if (toColumn.isPrimaryKey() && toColumn.isNullable()) {
+      throw new IllegalArgumentException(String.format("Cannot change column [%s] on table [%s] to be both nullable and in the primary key", toColumn.getName(), tableName));
+    }
+
     verifyDataTypeChanges();
     verifyWidthAndScaleChanges();
   }
