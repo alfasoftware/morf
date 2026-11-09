@@ -2521,8 +2521,8 @@ public abstract class AbstractSqlDialectTest {
         field("field6").eq(literal(new LocalDate(2010, 1, 2))),
         field("field7").eq("Value"),
         field("field8").eq(literal("Value")),
-        field("field9").eq(blobLiteral(OLD_BLOB_VALUE)),
-        field("field10").eq(blobLiteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
+        blobEqual(field("field9"), blobLiteral(OLD_BLOB_VALUE)),
+        blobEqual(field("field10"), blobLiteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
       ));
     assertEquals(
       "Update with literal values",
@@ -5119,7 +5119,7 @@ public abstract class AbstractSqlDialectTest {
     return String.format(
         "UPDATE %s SET stringField = %s%s, blobFieldOne = %s, blobFieldTwo = %s " +
         "WHERE ((field1 = %s) AND (field2 = %s) AND (field3 = %s) AND (field4 = %s) AND (field5 = %s) AND (field6 = %s) AND (field7 = %s%s) AND (field8 = %s%s) " +
-        "AND (field9 = %s) AND (field10 = %s))",
+        "AND (%s) AND (%s))",
         tableName(TEST_TABLE),
         stringLiteralPrefix(),
         value,
@@ -5135,8 +5135,8 @@ public abstract class AbstractSqlDialectTest {
         value,
         stringLiteralPrefix(),
         value,
-        expectedBlobLiteral(OLD_BLOB_VALUE_HEX),
-        expectedBlobLiteral(OLD_BLOB_VALUE_HEX)
+        expectedBlobEqual("field9", expectedBlobLiteral(OLD_BLOB_VALUE_HEX)),
+        expectedBlobEqual("field10", expectedBlobLiteral(OLD_BLOB_VALUE_HEX))
       );
   }
 
