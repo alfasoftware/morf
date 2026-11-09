@@ -32,6 +32,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
+import static org.alfasoftware.morf.sql.SqlUtils.clobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
@@ -45,6 +46,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
+import static org.alfasoftware.morf.sql.element.Criterion.blobEqual;
+import static org.alfasoftware.morf.sql.element.Criterion.clobEqual;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import static org.alfasoftware.morf.sql.element.Criterion.exists;
 import static org.alfasoftware.morf.sql.element.Criterion.greaterThan;
@@ -2518,14 +2521,48 @@ public abstract class AbstractSqlDialectTest {
         field("field6").eq(literal(new LocalDate(2010, 1, 2))),
         field("field7").eq("Value"),
         field("field8").eq(literal("Value")),
-        field("field9").eq(blobLiteral(OLD_BLOB_VALUE)),
-        field("field10").eq(blobLiteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
+        blobEqual(field("field9"), blobLiteral(OLD_BLOB_VALUE)),
+        blobEqual(field("field10"), blobLiteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
       ));
     assertEquals(
       "Update with literal values",
       expectedUpdateWithLiteralValues(),
       testDialect.convertStatementToSQL(stmt)
     );
+  }
+
+
+  /**
+   * Tests {@link org.alfasoftware.morf.sql.element.Criterion#blobEqual(AliasedField, AliasedField)}, with a literal and with another BLOB.
+   */
+  @Test
+  public void testBlobEqual() {
+    SelectStatement stmt = select(field("id")).from(tableRef(TEST_TABLE))
+      .where(or(
+        blobEqual(field(BLOB_FIELD), blobLiteral(OLD_BLOB_VALUE)),
+        not(blobEqual(field(BLOB_FIELD), field("otherBlobField")))
+      ));
+    String expectedSql = "SELECT id FROM " + tableName(TEST_TABLE)
+        + " WHERE ((" + expectedBlobEqual(BLOB_FIELD, expectedBlobLiteral(OLD_BLOB_VALUE_HEX))
+        + ") OR (NOT (" + expectedBlobEqual(BLOB_FIELD, "otherBlobField") + ")))";
+    assertEquals("Select with blobEqual", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests {@link org.alfasoftware.morf.sql.element.Criterion#clobEqual(AliasedField, AliasedField)}, with a literal and with another CLOB.
+   */
+  @Test
+  public void testClobEqual() {
+    SelectStatement stmt = select(field("id")).from(tableRef(TEST_TABLE))
+      .where(or(
+        clobEqual(field(CLOB_FIELD), clobLiteral("Value")),
+        not(clobEqual(field(CLOB_FIELD), field("otherClobField")))
+      ));
+    String expectedSql = "SELECT id FROM " + tableName(TEST_TABLE)
+        + " WHERE ((" + expectedClobEqual(CLOB_FIELD, stringLiteralPrefix() + varCharCast("'Value'"))
+        + ") OR (NOT (" + expectedClobEqual(CLOB_FIELD, "otherClobField") + ")))";
+    assertEquals("Select with clobEqual", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
 
@@ -5082,7 +5119,7 @@ public abstract class AbstractSqlDialectTest {
     return String.format(
         "UPDATE %s SET stringField = %s%s, blobFieldOne = %s, blobFieldTwo = %s " +
         "WHERE ((field1 = %s) AND (field2 = %s) AND (field3 = %s) AND (field4 = %s) AND (field5 = %s) AND (field6 = %s) AND (field7 = %s%s) AND (field8 = %s%s) " +
-        "AND (field9 = %s) AND (field10 = %s))",
+        "AND (%s) AND (%s))",
         tableName(TEST_TABLE),
         stringLiteralPrefix(),
         value,
@@ -5098,8 +5135,8 @@ public abstract class AbstractSqlDialectTest {
         value,
         stringLiteralPrefix(),
         value,
-        expectedBlobLiteral(OLD_BLOB_VALUE_HEX),
-        expectedBlobLiteral(OLD_BLOB_VALUE_HEX)
+        expectedBlobEqual("field9", expectedBlobLiteral(OLD_BLOB_VALUE_HEX)),
+        expectedBlobEqual("field10", expectedBlobLiteral(OLD_BLOB_VALUE_HEX))
       );
   }
 
@@ -6249,6 +6286,26 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedBooleanLiteral(boolean value) {
     return value ? "1" : "0";
+  }
+
+
+  /**
+   * @param left the left operand.
+   * @param right the right operand.
+   * @return The expected SQL for {@link org.alfasoftware.morf.sql.element.Criterion#blobEqual(AliasedField, AliasedField)}.
+   */
+  protected String expectedBlobEqual(String left, String right) {
+    return left + " = " + right;
+  }
+
+
+  /**
+   * @param left the left operand.
+   * @param right the right operand.
+   * @return The expected SQL for {@link org.alfasoftware.morf.sql.element.Criterion#clobEqual(AliasedField, AliasedField)}.
+   */
+  protected String expectedClobEqual(String left, String right) {
+    return left + " = " + right;
   }
 
 

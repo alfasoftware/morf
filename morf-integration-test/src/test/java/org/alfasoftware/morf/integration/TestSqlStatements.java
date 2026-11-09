@@ -26,6 +26,7 @@ import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
+import static org.alfasoftware.morf.sql.SqlUtils.clobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
@@ -44,6 +45,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.SqlUtils.when;
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
+import static org.alfasoftware.morf.sql.element.Criterion.blobEqual;
+import static org.alfasoftware.morf.sql.element.Criterion.clobEqual;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import static org.alfasoftware.morf.sql.element.Criterion.in;
 import static org.alfasoftware.morf.sql.element.Criterion.like;
@@ -211,6 +214,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
   private static final String BLOB1_VALUE = "A Blob named One";
   private static final String BLOB2_VALUE = "A Blob named Two";
+  private static final String CLOB1_VALUE = "A Clob named One";
+  private static final String CLOB2_VALUE = "A long Clob named Two. ".repeat(25); // Longer than the chunks Oracle splits CLOB literals into
 
   private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
   private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
@@ -275,6 +280,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       .columns(
         column("column1", DataType.BLOB).nullable(),
         column("column2", DataType.BLOB).nullable()
+      ),
+    table("ClobTable")
+      .columns(
+        column("column1", DataType.CLOB).nullable(),
+        column("column2", DataType.CLOB).nullable()
       ),
     table("AccumulateBooleanTable")
       .columns(
@@ -482,6 +492,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       record()
         .setByteArray("column1", BLOB1_VALUE.getBytes())
         .setByteArray("column2", BLOB2_VALUE.getBytes())
+    )
+    .table("ClobTable",
+      record()
+        .setString("column1", CLOB1_VALUE)
+        .setString("column2", CLOB2_VALUE)
     )
     .table("AccumulateBooleanTable",
       record()
@@ -1915,16 +1930,16 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         SelectStatement selectStatementAfterInsert = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
-                        field("column1").eq(blobLiteral(BLOB1_VALUE.getBytes())),
-                        field("column1").eq(blobLiteral(BLOB1_VALUE))
+                        blobEqual(field("column1"), blobLiteral(BLOB1_VALUE.getBytes())),
+                        blobEqual(field("column1"), blobLiteral(BLOB1_VALUE))
                 ));
         UpdateStatement updateStatement = update(tableRef("BlobTable"))
                 .set(blobLiteral(BLOB1_VALUE + " Updated").as("column1"), blobLiteral((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
         SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
-                        field("column1").eq(blobLiteral((BLOB1_VALUE + " Updated").getBytes())),
-                        field("column1").eq(blobLiteral(BLOB1_VALUE + " Updated"))
+                        blobEqual(field("column1"), blobLiteral((BLOB1_VALUE + " Updated").getBytes())),
+                        blobEqual(field("column1"), blobLiteral(BLOB1_VALUE + " Updated"))
                 ));
 
         // Insert
@@ -1967,6 +1982,86 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         });
         assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
     }
+
+
+  /**
+   * Test the behaviour of SELECTs, INSERTs and UPDATEs of CLOB fields.
+   *
+   * @throws SQLException if something goes wrong.
+   */
+  @Test
+  public void testClobFields() throws SQLException {
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    InsertStatement insertStatement = insert()
+      .into(tableRef("ClobTable"))
+      .fields(field("column1"), field("column2"))
+      .values(clobLiteral(CLOB1_VALUE).as("column1"), clobLiteral(CLOB2_VALUE).as("column2"));
+    SelectStatement selectStatementAfterInsert = select(field("column1"), field("column2"))
+      .from(tableRef("ClobTable"))
+      .where(clobEqual(field("column1"), clobLiteral(CLOB1_VALUE)));
+    UpdateStatement updateStatement = update(tableRef("ClobTable"))
+      .set(clobLiteral(CLOB1_VALUE + " Updated").as("column1"), clobLiteral(CLOB2_VALUE + " Updated").as("column2"));
+    SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
+      .from(tableRef("ClobTable"))
+      .where(clobEqual(field("column1"), clobLiteral(CLOB1_VALUE + " Updated")));
+
+    executor.execute(convertStatementToSQL(insertStatement, schema, null), connection);
+    int numberOfRecords = executor.executeQuery(convertStatementToSQL(selectStatementAfterInsert), connection, resultSet -> {
+      int result = 0;
+      while (resultSet.next()) {
+        result++;
+        assertEquals("column1 clob value not correctly set/returned after insert", CLOB1_VALUE, resultSet.getString(1));
+        assertEquals("column2 clob value not correctly set/returned after insert", CLOB2_VALUE, resultSet.getString(2));
+      }
+      return result;
+    });
+    assertEquals("Should be exactly two records", 2, numberOfRecords);
+
+    executor.execute(ImmutableList.of(convertStatementToSQL(updateStatement)), connection);
+    numberOfRecords = executor.executeQuery(convertStatementToSQL(selectStatementAfterUpdate), connection, resultSet -> {
+      int result = 0;
+      while (resultSet.next()) {
+        result++;
+        assertEquals("column1 clob value not correctly set/returned after update", CLOB1_VALUE + " Updated", resultSet.getString(1));
+        assertEquals("column2 clob value not correctly set/returned after update", CLOB2_VALUE + " Updated", resultSet.getString(2));
+      }
+      return result;
+    });
+    assertEquals("Should be exactly two records", 2, numberOfRecords);
+  }
+
+
+  /**
+   * Test {@link Criterion#blobEqual} with a literal and with BLOB columns.
+   */
+  @Test
+  public void testBlobEqual() {
+    assertEquals("Literal", 1, countRecords("BlobTable", blobEqual(field("column1"), blobLiteral(BLOB1_VALUE))));
+    assertEquals("Same column", 1, countRecords("BlobTable", blobEqual(field("column1"), field("column1"))));
+    assertEquals("Different columns", 1, countRecords("BlobTable", not(blobEqual(field("column1"), field("column2")))));
+  }
+
+
+  /**
+   * Test {@link Criterion#clobEqual} with literals and with CLOB columns.
+   */
+  @Test
+  public void testClobEqual() {
+    assertEquals("Literal", 1, countRecords("ClobTable", clobEqual(field("column1"), clobLiteral(CLOB1_VALUE))));
+    assertEquals("Long literal", 1, countRecords("ClobTable", clobEqual(field("column2"), clobLiteral(CLOB2_VALUE))));
+    assertEquals("Same column", 1, countRecords("ClobTable", clobEqual(field("column1"), field("column1"))));
+    assertEquals("Different columns", 1, countRecords("ClobTable", not(clobEqual(field("column1"), field("column2")))));
+  }
+
+
+  private int countRecords(String tableName, Criterion criterion) {
+    String sql = convertStatementToSQL(select(count()).from(tableRef(tableName)).where(criterion));
+    return sqlScriptExecutorProvider.get().executeQuery(sql, resultSet -> {
+      resultSet.next();
+      return resultSet.getInt(1);
+    });
+  }
 
 
     /**
