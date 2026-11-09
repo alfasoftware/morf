@@ -217,6 +217,28 @@ public class TestChangeColumn {
 
 
   /**
+   * Tests that a column can't join the primary key if the key would then have the same columns as an index,
+   * as Oracle refuses to create the key over an already indexed column list
+   */
+  @Test
+  public void testChangeToPrimaryKeyEqualToIndexFails() {
+    Schema schema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("variety", DataType.STRING, 10)
+      ).indexes(
+        index("Apple_1").columns("code", "variety")
+      ));
+
+    try {
+      new ChangeColumn("Apple", column("variety", DataType.STRING, 10), column("variety", DataType.STRING, 10).primaryKey()).apply(schema);
+      fail("The new key would duplicate index Apple_1");
+    } catch (IllegalArgumentException e) {
+      assertTrue("Index name 'Apple_1' should be mentioned", e.getMessage().contains("Apple_1"));
+    }
+  }
+
+
+  /**
    * Tests that a BLOB or CLOB column cannot be added to the primary key, as databases can't index them as keys
    */
   @Test

@@ -23,6 +23,7 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
@@ -75,7 +76,14 @@ public class ChangeIndex implements SchemaChange {
    */
   @Override
   public Schema apply(Schema schema) {
-    return applyChange(schema, fromIndex, toIndex);
+    Schema result = applyChange(schema, fromIndex, toIndex);
+
+    List<String> primaryKeyColumnNames = SchemaUtils.upperCaseNamesOfColumns(SchemaUtils.primaryKeysForTable(result.getTable(tableName)));
+    if (!primaryKeyColumnNames.isEmpty() && SchemaUtils.toUpperCase(toIndex.columnNames()).equals(primaryKeyColumnNames)) {
+      throw new IllegalArgumentException(String.format("Cannot change index [%s] on table [%s] to have the same columns as the primary key", toIndex.getName(), tableName));
+    }
+
+    return result;
   }
 
 
