@@ -102,16 +102,16 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN testschema.Test.bigIntegerField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN testschema.Test.clobField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
           "CREATE UNIQUE INDEX Test_NK ON testschema.Test (stringField)",
-          "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
+          "COMMENT ON INDEX testschema.Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
           "CREATE UNIQUE INDEX Test_1 ON testschema.Test (intField, floatField)",
-          "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
+          "COMMENT ON INDEX testschema.Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
           "CREATE TABLE testschema.Alternate (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", CONSTRAINT Alternate_PK PRIMARY KEY(id))",
           "COMMENT ON TABLE testschema.Alternate IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Alternate]'",
           "COMMENT ON COLUMN testschema.Alternate.id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN testschema.Alternate.version IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
           "COMMENT ON COLUMN testschema.Alternate.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
           "CREATE INDEX Alternate_1 ON testschema.Alternate (stringField)",
-          "COMMENT ON INDEX Alternate_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Alternate_1]'",
+          "COMMENT ON INDEX testschema.Alternate_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Alternate_1]'",
           "CREATE TABLE testschema.NonNull (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField BOOLEAN NOT NULL, dateField DATE NOT NULL, blobField BYTEA NOT NULL, CONSTRAINT NonNull_PK PRIMARY KEY(id))",
           "COMMENT ON TABLE testschema.NonNull IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[NonNull]'",
           "COMMENT ON COLUMN testschema.NonNull.id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
@@ -198,9 +198,9 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
             "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".booleanField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
             "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
             "CREATE UNIQUE INDEX Test_NK ON testschema." + TABLE_WITH_VERY_LONG_NAME + " (stringField)",
-            "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
+            "COMMENT ON INDEX testschema.Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
             "CREATE INDEX Test_1 ON testschema." + TABLE_WITH_VERY_LONG_NAME + " (intField, floatField)",
-            "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'"
+            "COMMENT ON INDEX testschema.Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'"
         );
   }
 
@@ -779,9 +779,9 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedChangeIndexFollowedByChangeOfAssociatedColumnStatement() {
     return Arrays.asList(
-      "DROP INDEX Test_1",
+      "DROP INDEX testschema.Test_1",
       "CREATE INDEX Test_1 ON testschema.Test (intField)",
-      "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
+      "COMMENT ON INDEX testschema.Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
       "ALTER TABLE testschema.Test ALTER COLUMN intField SET NOT NULL",
       "COMMENT ON COLUMN testschema.Test.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'");
   }
@@ -793,7 +793,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsOnSingleColumn() {
     return Arrays.asList("CREATE INDEX indexName ON testschema.Test (id)",
-                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+                         "COMMENT ON INDEX testschema.indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
   }
 
 
@@ -803,7 +803,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsOnMultipleColumns() {
     return Arrays.asList("CREATE INDEX indexName ON testschema.Test (id, version)",
-                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+                         "COMMENT ON INDEX testschema.indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
   }
 
 
@@ -813,7 +813,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsUnique() {
     return Arrays.asList("CREATE UNIQUE INDEX indexName ON testschema.Test (id)",
-                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+                         "COMMENT ON INDEX testschema.indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
   }
 
 
@@ -823,7 +823,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsUniqueNullable() {
     return Arrays.asList("CREATE UNIQUE INDEX indexName ON testschema.Test (stringField, intField, floatField, dateField)",
-                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+                         "COMMENT ON INDEX testschema.indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
   }
 
 
@@ -832,7 +832,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedIndexDropStatements() {
-    return Arrays.asList("DROP INDEX indexName");
+    return Arrays.asList("DROP INDEX testschema.indexName");
   }
 
 
@@ -955,7 +955,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateViewStatements() {
     return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName("Test") + " WHERE (stringField = 'blah'))",
-                         "COMMENT ON VIEW TestView IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TestView]'");
+                         "COMMENT ON VIEW testschema.TestView IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TestView]'");
   }
 
 
@@ -1004,7 +1004,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateViewOverUnionSelectStatements() {
     return Arrays.asList(
       "CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))",
-      "COMMENT ON VIEW TestView IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TestView]'");
+      "COMMENT ON VIEW testschema.TestView IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TestView]'");
   }
 
 
@@ -1223,7 +1223,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return ImmutableList.of(
       "ALTER TABLE testschema.Test RENAME TO Renamed",
       "ALTER INDEX testschema.Test_pk RENAME TO Renamed_pk",
-      "COMMENT ON INDEX Renamed_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Renamed_pk]'",
+      "COMMENT ON INDEX testschema.Renamed_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Renamed_pk]'",
       "COMMENT ON TABLE testschema.Renamed IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Renamed]'");
   }
 
@@ -1236,7 +1236,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return ImmutableList.of(
       "ALTER TABLE testschema.123456789012345678901234567890X RENAME TO Blah",
       "ALTER INDEX testschema.123456789012345678901234567890X_pk RENAME TO Blah_pk",
-      "COMMENT ON INDEX Blah_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah_pk]'",
+      "COMMENT ON INDEX testschema.Blah_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah_pk]'",
       "COMMENT ON TABLE testschema.Blah IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah]'"
         );
   }
@@ -1248,7 +1248,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("ALTER INDEX testschema.Test_1 RENAME TO Test_2",
-                            "COMMENT ON INDEX Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'");
+                            "COMMENT ON INDEX testschema.Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'");
   }
 
 
@@ -1299,12 +1299,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
       "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM testschema.OtherTable",
-      "ALTER TABLE SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
+      "ALTER TABLE testschema.SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
       "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
       "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+      "COMMENT ON INDEX testschema.SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 
@@ -1313,7 +1313,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
         "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.OtherTable",
-        "ALTER TABLE tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
+        "ALTER TABLE testschema.tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
         "COMMENT ON TABLE testschema.tmp_SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
@@ -1321,10 +1321,10 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
         "DROP TABLE testschema.SomeTable CASCADE",
         "ALTER TABLE testschema.tmp_SomeTable RENAME TO SomeTable",
         "ALTER INDEX testschema.tmp_SomeTable_pk RENAME TO SomeTable_pk",
-        "COMMENT ON INDEX SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
+        "COMMENT ON INDEX testschema.SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
         "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
         "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-        "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+        "COMMENT ON INDEX testschema.SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 
@@ -1335,9 +1335,9 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
         "DROP SEQUENCE IF EXISTS testschema.tmp_SomeTable_otherField_seq",
         "CREATE SEQUENCE testschema.tmp_SomeTable_otherField_seq START 1",
         "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.OtherTable",
-        "ALTER TABLE tmp_SomeTable ALTER otherField SET DEFAULT nextval('testschema.tmp_SomeTable_otherField_seq')",
+        "ALTER TABLE testschema.tmp_SomeTable ALTER otherField SET DEFAULT nextval('testschema.tmp_SomeTable_otherField_seq')",
         "ALTER SEQUENCE testschema.tmp_SomeTable_otherField_seq OWNED BY testschema.tmp_SomeTable.otherField",
-        "ALTER TABLE tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
+        "ALTER TABLE testschema.tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
         "COMMENT ON TABLE testschema.tmp_SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]/AUTONUMSTART:[1]'",
@@ -1345,11 +1345,11 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
         "DROP TABLE testschema.SomeTable CASCADE",
         "ALTER TABLE testschema.tmp_SomeTable RENAME TO SomeTable",
         "ALTER INDEX testschema.tmp_SomeTable_pk RENAME TO SomeTable_pk",
-        "COMMENT ON INDEX SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
-        "ALTER SEQUENCE tmp_SomeTable_seq RENAME TO SomeTable_seq",
+        "COMMENT ON INDEX testschema.SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
+        "ALTER SEQUENCE testschema.tmp_SomeTable_seq RENAME TO SomeTable_seq",
         "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
         "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-        "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+        "COMMENT ON INDEX testschema.SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 

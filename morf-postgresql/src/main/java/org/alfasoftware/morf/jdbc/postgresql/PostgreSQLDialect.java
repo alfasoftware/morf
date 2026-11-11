@@ -29,14 +29,13 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-
-
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
+import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
@@ -47,7 +46,6 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
@@ -381,7 +379,7 @@ class PostgreSQLDialect extends SqlDialect {
       preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
 
       if (asSelect) {
-        postStatements.add("ALTER TABLE " + table.getName() + " ALTER " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
+        postStatements.add("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " ALTER " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
       } else {
         createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
       }
@@ -395,7 +393,7 @@ class PostgreSQLDialect extends SqlDialect {
     List<String> fieldStatements = new ArrayList<>();
     List<String> primaryKeys = new ArrayList<>();
 
-    StringJoiner joiner = new StringJoiner(",", "ALTER TABLE " + table.getName(), "");
+    StringJoiner joiner = new StringJoiner(",", "ALTER TABLE " + schemaNamePrefix(table) + table.getName(), "");
 
     for (Column column : table.columns()) {
       if (column.isPrimaryKey()) {
@@ -448,7 +446,7 @@ class PostgreSQLDialect extends SqlDialect {
 
     Iterable<String> renameSeq = SchemaUtils.autoNumbersForTable(from).isEmpty()
         ? ImmutableList.of()
-        : renameSequenceStatements(from.getName() + "_seq", to.getName() + "_seq");
+        : renameSequenceStatements(from, from.getName() + "_seq", to.getName() + "_seq");
 
     return ImmutableList.<String>builder()
         .addAll(renameTable)
@@ -463,13 +461,13 @@ class PostgreSQLDialect extends SqlDialect {
   public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
     return ImmutableList.<String>builder()
         .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
-        .add(addIndexComment(toIndexName))
+        .add(addIndexComment(table, toIndexName))
         .build();
   }
 
 
-  private Collection<String> renameSequenceStatements(String fromSeqName, String toSeqName) {
-    return ImmutableList.of(String.format("ALTER SEQUENCE %s RENAME TO %s", fromSeqName, toSeqName));
+  private Collection<String> renameSequenceStatements(Table table, String fromSeqName, String toSeqName) {
+    return ImmutableList.of(String.format("ALTER SEQUENCE %s%s RENAME TO %s", schemaNamePrefix(table), fromSeqName, toSeqName));
   }
 
 
@@ -499,7 +497,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private String addViewComment(String viewName) {
-    return "COMMENT ON VIEW " + viewName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + viewName + "]'";
+    return "COMMENT ON VIEW " + schemaNamePrefix() + viewName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + viewName + "]'";
   }
 
 
@@ -925,13 +923,19 @@ class PostgreSQLDialect extends SqlDialect {
 
     return ImmutableList.<String>builder()
       .add(statement.toString())
-      .add(addIndexComment(index.getName()))
+      .add(addIndexComment(table, index.getName()))
       .build();
   }
 
 
-  private String addIndexComment(String indexName) {
-    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  @Override
+  public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
+    return ImmutableList.of("DROP INDEX " + schemaNamePrefix(table) + indexToBeRemoved.getName());
+  }
+
+
+  private String addIndexComment(Table table, String indexName) {
+    return "COMMENT ON INDEX " + schemaNamePrefix(table) + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
   }
 
 
