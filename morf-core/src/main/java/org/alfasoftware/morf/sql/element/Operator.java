@@ -90,7 +90,17 @@ public enum Operator {
   /**
    * In result set
    */
-  IN("IN");
+  IN("IN"),
+
+  /**
+   * Equals, for BLOBs: see {@link Criterion#blobEqual(AliasedField, AliasedField)}
+   */
+  BLOB_EQ("="),
+
+  /**
+   * Equals, for CLOBs: see {@link Criterion#clobEqual(AliasedField, AliasedField)}
+   */
+  CLOB_EQ("=");
 
 
   private final String stringRepresentation;
