@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -295,5 +296,27 @@ public class TestChangeIndex {
     ChangeIndex changeIndex = new ChangeIndex("Apple", index("Apple_1").unique().columns("pips"),
       index("Apple_1").unique().columns("pips"));
     changeIndex.isApplied(testSchema, MockConnectionResources.build());
+  }
+
+
+  /**
+   * Tests that an index can't be changed to have the primary key's columns, as Oracle refuses such an index.
+   */
+  @Test
+  public void testChangeIndexToPrimaryKeyColumns() {
+    Schema testSchema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("colour", DataType.STRING, 10).nullable()
+      ).indexes(
+        index("Apple_1").columns("colour")
+      ));
+    ChangeIndex changeIndex = new ChangeIndex("Apple", index("Apple_1").columns("colour"), index("Apple_1").columns("code"));
+
+    try {
+      changeIndex.apply(testSchema);
+      fail("An index with the primary key's columns should not be permitted");
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("Apple_1"));
+    }
   }
 }

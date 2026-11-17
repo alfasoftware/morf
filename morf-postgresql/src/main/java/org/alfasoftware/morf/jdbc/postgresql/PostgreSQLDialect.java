@@ -902,7 +902,14 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
-    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " DROP COLUMN " + column.getName());
+    String dropColumn = "ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " DROP COLUMN " + column.getName();
+
+    // dropping a column silently drops a multi-column key containing it, so the key is recreated on the remaining columns
+    if (column.isPrimaryKey() && !primaryKeysForTable(table).isEmpty()) {
+      return ImmutableList.of(dropPrimaryKeyConstraint(table), dropColumn, addPrimaryKeyConstraint(table));
+    }
+
+    return ImmutableList.of(dropColumn);
   }
 
 

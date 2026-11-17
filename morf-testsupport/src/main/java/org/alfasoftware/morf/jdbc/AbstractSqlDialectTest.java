@@ -169,6 +169,7 @@ import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
+import org.alfasoftware.morf.upgrade.ChangePrimaryKeyColumns;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.apache.commons.lang3.StringUtils;
@@ -4258,11 +4259,11 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Test changing column to be the primary key.
+   * Test changing a nullable column to be part of the primary key, which also makes it not null.
    */
   @Test
   public void testAlterColumnMakePrimary() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
   /**
@@ -4317,6 +4318,51 @@ public abstract class AbstractSqlDialectTest {
       AlterationType.DROP,
       getColumn(TEST_TABLE, "id"), null,
       expectedAlterRemoveColumnFromSimpleKeyStatements());
+  }
+
+
+  /**
+   * Tests removing a column which is part of a composite primary key, which leaves the key on the remaining column,
+   * of a table and of a temporary table.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testRemoveCompositePrimaryKeyColumn() {
+    Table tempCompositeKey = table(testDialect.decorateTemporaryTableName("TempCompositeKey")).temporary()
+        .columns(
+          idColumn(),
+          column(SECOND_PRIMARY_KEY, DataType.STRING, 3).primaryKey());
+
+    compareStatements(expectedRemoveCompositePrimaryKeyColumnStatements(),
+      removeSecondPrimaryKey(metadata.getTable(COMPOSITE_PRIMARY_KEY_TABLE)),
+      removeSecondPrimaryKey(tempCompositeKey));
+  }
+
+
+  private Collection<String> removeSecondPrimaryKey(Table table) {
+    Column column = table.columns().stream().filter(c -> c.getName().equals(SECOND_PRIMARY_KEY)).findFirst().get();
+    Table modifiedTable = new RemoveColumn(table.getName(), column).apply(schema(table)).getTable(table.getName());
+    return testDialect.alterTableDropColumnStatements(modifiedTable, column);
+  }
+
+
+  /**
+   * Tests changing the primary key columns of a table, and of a temporary table.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testChangePrimaryKeyColumns() {
+    compareStatements(expectedChangePrimaryKeyColumnsStatements(),
+      changePrimaryKeyColumns(TEST_TABLE),
+      changePrimaryKeyColumns(testTempTable.getName()));
+  }
+
+
+  private Collection<String> changePrimaryKeyColumns(String tableName) {
+    List<String> oldPrimaryKeyColumns = ImmutableList.of("id");
+    List<String> newPrimaryKeyColumns = ImmutableList.of("id", FLOAT_FIELD);
+    Table table = new ChangePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns).apply(metadata).getTable(tableName);
+    return testDialect.changePrimaryKeyColumns(table, oldPrimaryKeyColumns, newPrimaryKeyColumns);
   }
 
 
@@ -5056,6 +5102,16 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testRemoveSimplePrimaryKeyColumn()}.
    */
   protected abstract List<String> expectedAlterRemoveColumnFromSimpleKeyStatements();
+
+  /**
+   * @return Expected SQL for {@link #testRemoveCompositePrimaryKeyColumn()}.
+   */
+  protected abstract List<String> expectedRemoveCompositePrimaryKeyColumnStatements();
+
+  /**
+   * @return Expected SQL for {@link #testChangePrimaryKeyColumns()}: the table first, then the temporary table.
+   */
+  protected abstract List<String> expectedChangePrimaryKeyColumnsStatements();
 
   /**
    * @return Expected SQL for {@link #testAlterPrimaryKeyColumn()}

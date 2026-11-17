@@ -21,8 +21,10 @@ import java.util.List;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
@@ -71,12 +73,14 @@ public class RemoveColumn implements SchemaChange {
   public Schema apply(Schema schema) {
     Table original = schema.getTable(tableName);
     boolean foundColumn = false;
+    boolean removedFromPrimaryKey = false;
 
     List<String> columns = new ArrayList<>();
     for (Column column : original.columns()) {
       // So long as this is not the column we're supposed to be removing
       if (column.getName().equalsIgnoreCase(columnDefinition.getName())) {
         foundColumn = true;
+        removedFromPrimaryKey = column.isPrimaryKey();
         continue;
       }
 
@@ -88,7 +92,19 @@ public class RemoveColumn implements SchemaChange {
       throw new IllegalArgumentException("Cannot remove column [" + columnDefinition.getName() + "] as it does not exist on table [" + tableName + "]");
     }
 
-    return new TableOverrideSchema(schema, new AlteredTable(original, columns));
+    Schema result = new TableOverrideSchema(schema, new AlteredTable(original, columns));
+
+    if (removedFromPrimaryKey) {
+      Table table = result.getTable(tableName);
+      List<String> primaryKeyColumnNames = SchemaUtils.upperCaseNamesOfColumns(SchemaUtils.primaryKeysForTable(table));
+      for (Index index : table.indexes()) {
+        if (!primaryKeyColumnNames.isEmpty() && SchemaUtils.toUpperCase(index.columnNames()).equals(primaryKeyColumnNames)) {
+          throw new IllegalArgumentException("Cannot remove column [" + columnDefinition.getName() + "] from table [" + tableName + "] as the remaining primary key would have the same columns as index [" + index.getName() + "]");
+        }
+      }
+    }
+
+    return result;
   }
 
 

@@ -842,6 +842,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList("ALTER TABLE testschema.Test DROP CONSTRAINT Test_PK",
+        "ALTER TABLE testschema.Test ALTER COLUMN dateField SET NOT NULL",
         "ALTER TABLE testschema.Test ADD CONSTRAINT Test_PK PRIMARY KEY(id, dateField)",
         "COMMENT ON COLUMN testschema.Test.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");
   }
@@ -1212,6 +1213,34 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromSimpleKeyStatements() {
     return Collections.singletonList("ALTER TABLE testschema.Test DROP COLUMN id");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE testschema.CompositePrimaryKey DROP CONSTRAINT CompositePrimaryKey_PK",
+      "ALTER TABLE testschema.CompositePrimaryKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE testschema.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY(id)",
+      "ALTER TABLE TempCompositeKey DROP CONSTRAINT TempCompositeKey_PK",
+      "ALTER TABLE TempCompositeKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE TempCompositeKey ADD CONSTRAINT TempCompositeKey_PK PRIMARY KEY(id)");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE testschema.Test DROP CONSTRAINT Test_PK",
+      "ALTER TABLE testschema.Test ADD CONSTRAINT Test_PK PRIMARY KEY(id, floatField)",
+      "ALTER TABLE TempTest DROP CONSTRAINT TempTest_PK",
+      "ALTER TABLE TempTest ADD CONSTRAINT TempTest_PK PRIMARY KEY(id, floatField)");
   }
 
 

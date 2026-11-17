@@ -171,4 +171,27 @@ public class TestAddIndex {
       assertTrue(re.getMessage(), re.getMessage().contains("Apple"));
     }
   }
+
+
+  /**
+   * Test that an index with the primary key's columns in the same order can't be added, unique or not, as Oracle refuses it.
+   */
+  @Test
+  public void testAddIndexWithPrimaryKeyColumns() {
+    Schema testSchema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("variety", DataType.STRING, 10).primaryKey(),
+        column("colour", DataType.STRING, 10).nullable()
+      ));
+
+    try {
+      new AddIndex("Apple", index("Apple_1").columns("CODE", "variety")).apply(testSchema);
+      fail("An index with the primary key's columns should not be permitted");
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("Apple_1"));
+    }
+
+    // the same columns in a different order are a different index
+    new AddIndex("Apple", index("Apple_2").columns("variety", "code")).apply(testSchema);
+  }
 }

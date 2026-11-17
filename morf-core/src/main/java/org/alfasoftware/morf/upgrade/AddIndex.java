@@ -23,6 +23,7 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
@@ -81,6 +82,11 @@ public class AddIndex implements SchemaChange {
     Table original = schema.getTable(tableName);
     if (original == null) {
       throw new IllegalArgumentException(String.format("Cannot add index [%s] to table [%s] as the table cannot be found", newIndex.getName(), tableName));
+    }
+
+    List<String> primaryKeyColumnNames = SchemaUtils.upperCaseNamesOfColumns(SchemaUtils.primaryKeysForTable(original));
+    if (!primaryKeyColumnNames.isEmpty() && SchemaUtils.toUpperCase(newIndex.columnNames()).equals(primaryKeyColumnNames)) {
+      throw new IllegalArgumentException(String.format("Cannot add index [%s] to table [%s] as it has the same columns as the primary key", newIndex.getName(), tableName));
     }
 
     List<String> indexes = new ArrayList<>();

@@ -17,11 +17,13 @@ package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -117,6 +119,28 @@ public class TestRemoveColumn {
       fail("Should fail since column is not there");
     } catch (Exception e) {
       // Expected
+    }
+  }
+
+
+  /**
+   * Tests that a key column can't be removed if the remaining key would have the same columns as an index,
+   * as Oracle refuses to recreate the key over an already indexed column list.
+   */
+  @Test
+  public void testRemovePrimaryKeyColumnLeavingKeyEqualToIndex() {
+    Schema testSchema = schema(table("Apple").columns(
+        column("code", DataType.STRING, 10).primaryKey(),
+        column("variety", DataType.STRING, 10).primaryKey()
+      ).indexes(
+        index("Apple_1").columns("code")
+      ));
+
+    try {
+      new RemoveColumn("Apple", column("variety", DataType.STRING, 10).primaryKey()).apply(testSchema);
+      fail("The remaining key would duplicate index Apple_1");
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("Apple_1"));
     }
   }
 }

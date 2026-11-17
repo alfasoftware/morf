@@ -825,7 +825,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
       "ALTER TABLE `Test` DROP PRIMARY KEY",
-      "ALTER TABLE `Test` CHANGE `dateField` `dateField` DATE",
+      "ALTER TABLE `Test` CHANGE `dateField` `dateField` DATE NOT NULL",
       "ALTER TABLE `Test` ADD CONSTRAINT `Test_PK` PRIMARY KEY (`id`, `dateField`)"
     );
   }
@@ -1154,6 +1154,30 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromSimpleKeyStatements() {
     return Collections.singletonList("ALTER TABLE `Test` DROP `id`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE `CompositePrimaryKey` DROP `secondPrimaryKey`",
+      "ALTER TABLE `TempCompositeKey` DROP `secondPrimaryKey`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE `Test` DROP PRIMARY KEY",
+      "ALTER TABLE `Test` ADD CONSTRAINT `Test_PK` PRIMARY KEY (`id`, `floatField`)",
+      "ALTER TABLE `TempTest` DROP PRIMARY KEY",
+      "ALTER TABLE `TempTest` ADD CONSTRAINT `TempTest_PK` PRIMARY KEY (`id`, `floatField`)");
   }
 
 

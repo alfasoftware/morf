@@ -818,7 +818,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE",
+      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL",
       "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([id], [dateField])"
     );
   }
@@ -1213,6 +1213,34 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromSimpleKeyStatements() {
     return ImmutableList.of("ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]", "ALTER TABLE TESTSCHEMA.Test DROP COLUMN id");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRemoveCompositePrimaryKeyColumnStatements()
+   */
+  @Override
+  protected List<String> expectedRemoveCompositePrimaryKeyColumnStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])",
+      "ALTER TABLE TESTSCHEMA.#TempCompositeKey DROP CONSTRAINT [TempCompositeKey_PK]",
+      "ALTER TABLE TESTSCHEMA.#TempCompositeKey DROP COLUMN secondPrimaryKey",
+      "ALTER TABLE TESTSCHEMA.#TempCompositeKey ADD CONSTRAINT [TempCompositeKey_PK] PRIMARY KEY ([id])");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedChangePrimaryKeyColumnsStatements()
+   */
+  @Override
+  protected List<String> expectedChangePrimaryKeyColumnsStatements() {
+    return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
+      "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([id], [floatField])",
+      "ALTER TABLE TESTSCHEMA.#TempTest DROP CONSTRAINT [TempTest_PK]",
+      "ALTER TABLE TESTSCHEMA.#TempTest ADD CONSTRAINT [TempTest_PK] PRIMARY KEY ([id], [floatField])");
   }
 
 

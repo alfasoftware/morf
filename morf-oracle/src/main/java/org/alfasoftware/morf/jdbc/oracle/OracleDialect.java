@@ -999,6 +999,9 @@ class OracleDialect extends SqlDialect {
     //Create new primary key constraint
     if (!newPrimaryKeyColumns.isEmpty()) {
       result.add(generatePrimaryKeyStatement(newPrimaryKeyColumns, table.getName(), table.isTemporary()));
+      if (!table.isTemporary()) {
+        result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+      }
     }
 
     return result;
@@ -1173,6 +1176,12 @@ class OracleDialect extends SqlDialect {
 
     String tableName = table.getName();
 
+    // Oracle can't remove a column from a multi-column key (ORA-12991), so the key is recreated on the remaining columns
+    boolean recreatePrimaryKey = column.isPrimaryKey() && !primaryKeysForTable(table).isEmpty();
+    if (recreatePrimaryKey) {
+      result.add(dropPrimaryKeyConstraint(tableName));
+    }
+
     StringBuilder statement = new StringBuilder()
     .append("ALTER TABLE ")
     .append(schemaNamePrefix())
@@ -1181,6 +1190,13 @@ class OracleDialect extends SqlDialect {
     .append(" (").append(column.getName()).append(")");
 
     result.add(statement.toString());
+
+    if (recreatePrimaryKey) {
+      result.add(generatePrimaryKeyStatement(namesOfColumns(primaryKeysForTable(table)), tableName, table.isTemporary()));
+      if (!table.isTemporary()) {
+        result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+      }
+    }
 
     return result;
   }

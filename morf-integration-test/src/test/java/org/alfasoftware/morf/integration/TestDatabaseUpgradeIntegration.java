@@ -59,6 +59,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -72,6 +73,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddBasicTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnDropDefaultValue;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnToExistingPrimaryKey;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnWithoutDropDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToAutonumberedColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
@@ -91,6 +93,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReduceStringColumnWidth;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveAutoNumbered;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveColumnFromCompositePrimaryKey;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveCompositePrimaryKeyColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveColumnWithDefault;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemovePrimaryKeyColumns;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveSequence;
@@ -639,6 +642,23 @@ public class TestDatabaseUpgradeIntegration {
 
 
   /**
+   * Tests removing a column which is part of a composite primary key, which leaves the key on the remaining column.
+   */
+  @Test
+  public void testRemoveCompositePrimaryKeyColumn() {
+    Schema expectedSchema = replaceTablesInSchema(
+      table("CompositeKeyTable")
+      .columns(
+        column("keyCol1", DataType.STRING, 20).primaryKey(),
+        column("valCol", DataType.STRING, 20)
+      )
+    );
+
+    verifyUpgrade(expectedSchema, RemoveCompositePrimaryKeyColumn.class);
+  }
+
+
+  /**
    * Test that replacing a primary key with another works.
    *
    * @throws SQLException if something goes wrong.
@@ -743,6 +763,25 @@ public class TestDatabaseUpgradeIntegration {
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
 
     verifyUpgrade(expected, ChangeColumnDataType.class);
+  }
+
+
+  /**
+   * Tests adding a column to an existing primary key through changeColumn, rather than changePrimaryKeyColumns.
+   */
+  @Test
+  public void testAddColumnToExistingPrimaryKey() {
+    Table tableWithCompositeKey = table("BasicTable")
+      .columns(
+        column("stringCol", DataType.STRING, 20).primaryKey(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10).primaryKey(),
+        column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
+      );
+
+    verifyUpgrade(replaceTablesInSchema(tableWithCompositeKey), AddColumnToExistingPrimaryKey.class);
   }
 
 
@@ -1483,6 +1522,7 @@ public class TestDatabaseUpgradeIntegration {
   private void verifyUpgrade(Schema expectedSchema, List<Class<? extends UpgradeStep>> upgradeSteps) {
     Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
     compareSchema(expectedSchema);
+    verifyOracleTablesAndIndexesAreLoggingAndNoParallel(expectedSchema);
   }
 
 
@@ -1510,6 +1550,41 @@ public class TestDatabaseUpgradeIntegration {
 
     } finally {
       producer.close();
+    }
+  }
+
+
+  /**
+   * The Oracle dialect builds some tables and indexes NOLOGGING PARALLEL for speed, then resets them to LOGGING
+   * NOPARALLEL. The schema readers ignore both attributes, so {@link #compareSchema(Schema)} can't see a missed reset.
+   * Assumes the test user's tablespace defaults to LOGGING.
+   */
+  private void verifyOracleTablesAndIndexesAreLoggingAndNoParallel(Schema expectedSchema) {
+    if (!"ORACLE".equals(connectionResources.getDatabaseType())) {
+      return;
+    }
+
+    Set<String> tableNames = expectedSchema.tables().stream().map(Table::getName).map(String::toUpperCase).collect(toSet());
+
+    // Morf doesn't set these attributes on temporary tables or on the indexes Oracle creates for LOB columns
+    String sql = "SELECT 'table ' || table_name, table_name, logging, TRIM(degree) FROM user_tables WHERE temporary = 'N'"
+        + " UNION ALL"
+        + " SELECT 'index ' || index_name, table_name, logging, TRIM(degree) FROM user_indexes WHERE temporary = 'N' AND index_type <> 'LOB'";
+
+    try (Connection connection = dataSource.getConnection()) {
+      List<String> notReset = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).executeQuery(sql, connection, resultSet -> {
+        ImmutableList.Builder<String> result = ImmutableList.builder();
+        while (resultSet.next()) {
+          if (tableNames.contains(resultSet.getString(2)) && !("YES".equals(resultSet.getString(3)) && "1".equals(resultSet.getString(4)))) {
+            result.add(resultSet.getString(1) + " (LOGGING " + resultSet.getString(3) + ", DEGREE " + resultSet.getString(4) + ")");
+          }
+        }
+        return result.build();
+      });
+
+      assertEquals("Tables and indexes left NOLOGGING or PARALLEL", ImmutableList.of(), notReset);
+    } catch (SQLException e) {
+      throw new RuntimeSqlException(e);
     }
   }
 

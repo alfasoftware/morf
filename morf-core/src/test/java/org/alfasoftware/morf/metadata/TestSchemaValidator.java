@@ -512,6 +512,34 @@ public class TestSchemaValidator {
   }
 
   /**
+   * Tests for indexes which duplicate the primary key's columns whatever their uniqueness or letter case,
+   * as Oracle refuses any such index.
+   */
+  @Test
+  public void testIndexesThatDuplicatePrimaryIndexWhateverUniquenessOrCase() {
+    Schema schema = schema(
+      table("SomeValidTableName")
+        .columns(
+          column("column1", DataType.STRING, 15).primaryKey(),
+          column("column2", DataType.STRING, 15).primaryKey()
+        ).indexes(
+          index("index1").columns("column1", "column2"),
+          index("index2").unique().columns("COLUMN1", "Column2")
+        )
+    );
+
+    try {
+      new SchemaValidator().validate(schema);
+      fail("Expected a RuntimeException for indexes duplicating the primary key: [index1] [index2]");
+    } catch (RuntimeException e) {
+      assertTrue("Expected index1 in error message", e.getMessage().contains("index1"));
+      assertTrue("Expected index2 in error message", e.getMessage().contains("index2"));
+      assertTrue("Expected PRIMARY in error message", e.getMessage().contains("PRIMARY"));
+    }
+  }
+
+
+  /**
    * Tests for an index which duplicates a composite primary domain index.
    */
   @Test
@@ -589,6 +617,37 @@ public class TestSchemaValidator {
       fail();
     } catch (RuntimeException e) {
       assertTrue(e.getMessage().contains("pkandnullable"));
+      assertTrue(e.getMessage().contains("InvalidColumn"));
+    }
+  }
+
+
+  /**
+   * BLOB and CLOB columns can't be in the primary key, as databases can't index them as keys.
+   */
+  @Test
+  public void testInvalidPrimaryKeyLobColumns() {
+    Table invalidPkLobs =
+        table("InvalidColumn")
+          .columns(
+            column("pkblob", DataType.BLOB).primaryKey(),
+            column("pkclob", DataType.CLOB).primaryKey()
+          );
+    try {
+      new SchemaValidator().validate(schema(invalidPkLobs));
+      fail();
+    } catch (RuntimeException e) {
+      assertTrue(e.getMessage().contains("pkblob"));
+      assertTrue(e.getMessage().contains("pkclob"));
+      assertTrue(e.getMessage().contains("InvalidColumn"));
+    }
+
+    try {
+      new SchemaValidator().validate(invalidPkLobs);
+      fail();
+    } catch (RuntimeException e) {
+      assertTrue(e.getMessage().contains("pkblob"));
+      assertTrue(e.getMessage().contains("pkclob"));
       assertTrue(e.getMessage().contains("InvalidColumn"));
     }
   }
