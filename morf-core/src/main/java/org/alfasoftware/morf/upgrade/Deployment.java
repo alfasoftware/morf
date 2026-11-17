@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -203,8 +204,15 @@ public class Deployment {
   private void writeUpgradeSteps(Collection<Class<? extends UpgradeStep>> upgradeSteps, UpgradePath upgradePath) {
     for(Class<? extends UpgradeStep> upgradeStep : upgradeSteps) {
       UUID uuid = UpgradePathFinder.readUUID(upgradeStep);
-      InsertStatement insertStatement = AuditRecordHelper.createAuditInsertStatement(uuid, upgradeStep.getName());
-      upgradePath.writeSql(connectionResources.sqlDialect().convertStatementToSQL(insertStatement));
+      try {
+        Constructor<? extends UpgradeStep> constructor = upgradeStep.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        UpgradeStep step = constructor.newInstance();
+        InsertStatement insertStatement = AuditRecordHelper.createAuditInsertStatement(uuid, step.getDescription());
+        upgradePath.writeSql(connectionResources.sqlDialect().convertStatementToSQL(insertStatement));
+      } catch (Exception e) {
+        throw new IllegalStateException("Cannot instantiate upgrade step [" + upgradeStep.getName() + "] to get its description", e);
+      }
     }
   }
 
