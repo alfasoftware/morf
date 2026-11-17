@@ -834,7 +834,9 @@ class PostgreSQLDialect extends SqlDialect {
 
     Table oldTable = oldTableForChangeColumn(table, oldColumn, newColumn);
 
-    boolean recreatePrimaryKey = oldColumn.isPrimaryKey() || newColumn.isPrimaryKey();
+    // the key survives renames and type changes (PostgreSQL rebuilds its index itself when it has to),
+    // so it is only recreated when the column joins or leaves it
+    boolean recreatePrimaryKey = oldColumn.isPrimaryKey() != newColumn.isPrimaryKey();
 
     if (recreatePrimaryKey && !primaryKeysForTable(oldTable).isEmpty()) {
       statements.add(dropPrimaryKeyConstraint(table));
