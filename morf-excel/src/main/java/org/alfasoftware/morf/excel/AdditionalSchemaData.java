@@ -31,7 +31,7 @@ public interface AdditionalSchemaData {
    * @param columnName The column name.
    * @return The column documentation.
    */
-  public String columnDocumentation(Table table, String columnName);
+  String columnDocumentation(Table table, String columnName);
 
   /**
    * Fetches the default value for a column.
@@ -40,5 +40,5 @@ public interface AdditionalSchemaData {
    * @param columnName The column name.
    * @return The column's default value.
    */
-  public String columnDefaultValue(Table table, String columnName);
+  String columnDefaultValue(Table table, String columnName);
 }
