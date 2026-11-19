@@ -32,6 +32,8 @@ package org.alfasoftware.morf.upgrade;
  * mutually dependent upgrades are run in their dependency order.</dd>
  * </dl>
  *
+ * <p>Optional execution restrictions can be specified using {@link OnlyWith} and
+ * {@link RevertsUpgradeStep}.</p>
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
