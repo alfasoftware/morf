@@ -93,7 +93,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * Create a new complete deployment.
+   * Create a new complete deployment with no upgrade steps — used for
+   * empty-path sentinel scenarios.
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param connectionResources the connection resources being used for this upgrade path
@@ -106,7 +107,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * Create a new upgrade for the given list of steps. Graph based upgrade will not be available.
+   * Create a new upgrade for the given list of steps. Graph-based upgrade is
+   * not available — used for simpler test/build paths.
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param steps the upgrade steps to run
@@ -297,7 +299,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath} with provided connection resources.
+     * Creates an empty-path sentinel {@link UpgradePath} — no upgrade steps,
+     * no deferred index jobs. Used when no work is required.
      *
      * @param connectionResources The ConnectionResources.
      * @return The resulting {@link UpgradePath}.
@@ -306,7 +309,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath} with provided connection resources.
+     * Creates a simpler-form {@link UpgradePath} for test/build paths without
+     * graph-based execution or deferred indexes.
      *
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
@@ -317,7 +321,7 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath} with provided connection resources.
+     * Creates a fully-specified {@link UpgradePath}.
      *
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
@@ -368,8 +372,7 @@ public class UpgradePath implements SqlStatementWriter {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-              null);
+              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
     }
 
 

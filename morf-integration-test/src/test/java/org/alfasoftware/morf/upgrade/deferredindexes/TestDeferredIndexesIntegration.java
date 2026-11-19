@@ -1,0 +1,1964 @@
+/* Copyright 2026 Alfa Financial Software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.alfasoftware.morf.upgrade.deferredindexes;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexesTable;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import org.alfasoftware.morf.guicesupport.InjectMembersRule;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.testing.DatabaseSchemaManager;
+import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
+import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
+import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredIndexThenChange;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredIndexThenRemove;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredIndexThenRename;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredMultiColumnIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddDeferredUniqueIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddImmediateIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddTableWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddTableWithInlineDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v1_0_0.AddTwoDeferredIndexes;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.AddSecondDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.ChangeDeferredToNonDeferred;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.ChangeImmediateNameIndexToDeferredIdName;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveColumnWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveDeferredProductNameIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameDeferredProductNameIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RemoveProductTable;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.upgrade.v2_0_0.RenameTableWithDeferredIndex;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+
+import com.google.inject.Inject;
+
+import net.jcip.annotations.NotThreadSafe;
+
+/**
+ * Integration tests for the DeferredIndexes architecture. Exercises the
+ * full upgrade framework path with the DeferredIndexes table, the model
+ * enricher, and the {@link DeferredIndexService} build flow.
+ *
+ * @author Copyright (c) Alfa Financial Software Limited. 2026
+ */
+@NotThreadSafe
+public class TestDeferredIndexesIntegration {
+
+  @Rule
+  public MethodRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
+
+  @Inject private ConnectionResources connectionResources;
+  @Inject private DatabaseSchemaManager schemaManager;
+  @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
+  @Inject private ViewDeploymentValidator viewDeploymentValidator;
+
+  private final UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+
+  private static final Schema INITIAL_SCHEMA = schema(
+      deployedViewsTable(),
+      upgradeAuditTable(),
+      deferredIndexesTable(),
+      table("Product").columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("name", DataType.STRING, 100)
+      )
+  );
+
+
+  /** Create a fresh schema before each test. */
+  @Before
+  public void setUp() {
+    config.setDeferredIndexCreationEnabled(true);
+    schemaManager.dropAllTables();
+    schemaManager.mutateToSupportSchema(INITIAL_SCHEMA, TruncationBehavior.ALWAYS);
+  }
+
+
+  /** Invalidate the schema manager cache after each test. */
+  @After
+  public void tearDown() {
+    schemaManager.invalidateCache();
+  }
+
+
+  /**
+   * Verifies the upgrade-time setup of a single deferred index: the upgrade
+   * step creates a PENDING row in DeferredIndexes, the physical index is
+   * NOT built, and the row's persisted column metadata matches the
+   * declaration.
+   */
+  @Test
+  public void testDeferredIndexProducesPendingRegistrationRow() {
+    // given
+    Schema targetSchema = schemaWithIndex();
+
+    // when
+    performUpgrade(targetSchema, AddDeferredIndex.class);
+
+    // then -- physical index NOT built (deferred)
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+
+    // then -- the registration row is persisted as non-terminal
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should persist at least one deferred registration row", rows.isEmpty());
+    assertTrue("Job should reference the index name",
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+
+    // then -- DeferredIndexes row is PENDING
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Two deferred indexes added in a single upgrade step should both be
+   * persisted as non-COMPLETED registration rows, neither should be physically
+   * built, and both rows should be PENDING.
+   */
+  @Test
+  public void testMultipleDeferredIndexesInOneStep() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name"),
+            index("Product_IdName_1").columns("id", "name")
+        )
+    );
+
+    // when
+    performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
+
+    // then -- neither index physically built
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
+
+    // then -- both rows persisted as non-COMPLETED
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertTrue("Should contain Product_Name_1",
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+    assertTrue("Should contain Product_IdName_1",
+        rows.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
+
+    // then -- both PENDING in DeferredIndexes
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+  }
+
+
+  /**
+   * When deferredIndexCreationEnabled is false, deferred indexes should
+   * be built immediately and no registration rows should be written.
+   */
+  @Test
+  public void testDisabledFeatureBuildsDeferredImmediately() {
+    // when
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class,
+        cfg -> cfg.setDeferredIndexCreationEnabled(false));
+
+    // then -- index built immediately
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // and -- no deferred registrations persisted (adopter contract when feature is disabled)
+    assertTrue("No deferred registrations expected when feature is disabled",
+        newDao().findNonTerminal().isEmpty());
+  }
+
+
+  // =========================================================================
+  // Same-step operations
+  // =========================================================================
+
+  /**
+   * Same-step: add deferred then change to non-deferred. Changed index
+   * should be built immediately.
+   */
+  @Test
+  public void testAddDeferredThenChangeInSameStep() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_2").columns("name"))
+    );
+
+    // when
+    performUpgrade(targetSchema,
+        AddDeferredIndexThenChange.class);
+
+    // then -- changed index built immediately
+    assertPhysicalIndexExists("Product", "Product_Name_2");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  // =========================================================================
+  // Cross-step operations
+  // =========================================================================
+
+  /**
+   * Step A defers an index on column "name". Step B renames "name" to "label".
+   * The DeferredIndexes table's indexColumns is updated via the change service,
+   * and the rebuilt schema preserves isDeferred() so the persisted registration
+   * row references the new column name.
+   */
+  @Test
+  public void testCrossStepColumnRename() {
+    // given -- target schema with renamed column and updated index
+    Schema renamedColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+
+    // when -- defer an index, then rename the column it references
+    performUpgradeSteps(renamedColSchema,
+        AddDeferredIndex.class,
+        RenameColumnWithDeferredIndex.class);
+
+    // then -- DeferredIndexes row reflects the renamed column
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeferredIndexField("Product_Name_1", "indexColumns"));
+
+    // and -- the persisted row survives rename (not deleted)
+    assertFalse("Row should still exist after rename",
+        newDao().findNonTerminal().isEmpty());
+  }
+
+
+  /**
+   * Step A adds a non-deferred index on column "name". Step B renames "name"
+   * to "label". Non-deferred indexes are not registered in
+   * {@code DeferredIndexes} — the rename is applied physically via
+   * ALTER TABLE and no registration row exists to update.
+   */
+  @Test
+  public void testCrossStepColumnRenameOnNonDeferredIndexDoesNotRegister() {
+    // given
+    Schema renamedColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+
+    // when -- add an immediate (non-deferred) index, then rename the column
+    performUpgradeSteps(renamedColSchema,
+        AddImmediateIndex.class,
+        RenameColumnWithDeferredIndex.class);
+
+    // then -- physical index exists (under the renamed column) and no registration row
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertNull("non-deferred indexes are not registered in DeferredIndexes",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Step A defers an index. Step B removes the index and column.
+   * Nothing should remain.
+   */
+  @Test
+  public void testCrossStepColumnRemoval() {
+    // given
+    Schema noNameColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey()
+        )
+    );
+
+    // when
+    performUpgradeSteps(noNameColSchema,
+        AddDeferredIndex.class,
+        RemoveColumnWithDeferredIndex.class);
+
+    // then -- physical index absent AND DeferredIndexes row cleaned up
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertNull("DeferredIndexes row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Step A defers an index on table Product. Step B renames table to Item.
+   * The DeferredIndexes row's tableName should be updated to Item, the
+   * deferred index SQL should reference the new table name, and the
+   * physical index should not exist on either table.
+   */
+  @Test
+  public void testCrossStepTableRename() {
+    // given
+    Schema renamedTableSchema = schemaWith(
+        table("Item").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+
+    // when
+    performUpgradeSteps(renamedTableSchema,
+        AddDeferredIndex.class,
+        RenameTableWithDeferredIndex.class);
+
+    // then -- registration row references new table
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a registration row", rows.isEmpty());
+    assertTrue("Job's table should be Item",
+        rows.stream().anyMatch(j -> "Item".equalsIgnoreCase(j.getTableName())));
+
+    // then -- DeferredIndexes tableName updated
+    assertEquals("Item", queryDeferredIndexField("Product_Name_1", "tableName"));
+
+    // then -- physical state: Product table renamed to Item, no physical index built yet
+    assertPhysicalTableExists("Item");
+    assertPhysicalTableDoesNotExist("Product");
+    assertPhysicalIndexDoesNotExist("Item", "Product_Name_1");
+  }
+
+
+  /**
+   * Deferred indexes on multiple tables should each be persisted as their
+   * own non-COMPLETED registration row.
+   */
+  @Test
+  public void testDeferredIndexesOnMultipleTables() {
+    // given
+    Schema multiTableSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name")),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label"))
+    );
+
+    // when
+    performUpgradeSteps(multiTableSchema,
+        AddDeferredIndex.class,
+        AddTableWithDeferredIndex.class);
+
+    // then
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertTrue("Should contain Product_Name_1",
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+    assertTrue("Should contain Category_Label_1",
+        rows.stream().anyMatch(j -> "Category_Label_1".equalsIgnoreCase(j.getIndexName())));
+  }
+
+
+  // =========================================================================
+  // Config overrides and edge cases
+  // =========================================================================
+
+  /**
+   * A non-deferred addIndex should be built immediately and exist physically.
+   * Non-deferred indexes are not registered in {@code DeferredIndexes}.
+   */
+  @Test
+  public void testNonDeferredIndexBuiltImmediately() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+
+    // when
+    performUpgrade(targetSchema,
+        AddImmediateIndex.class);
+
+    // then -- physical index exists and NO registration row
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertNull("non-deferred indexes are not registered in DeferredIndexes",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * When forceImmediateIndexes is configured for an index name, a deferred
+   * addIndex should be built immediately during upgrade. The physical index
+   * should exist and no registration row should be written. Since the index ends
+   * up non-deferred after the force-immediate resolution, it is not registered.
+   */
+  @Test
+  public void testForceImmediateBypassesDeferral() {
+    // when
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setForceImmediateIndexes(Set.of("Product_Name_1"));
+    });
+
+    // then -- built immediately + no registration row (force-immediate ends up non-deferred → not registered)
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertNull("force-immediate ends up non-deferred → not registered",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
+  }
+
+
+  /**
+   * Same-step: add deferred then remove in the same step. No physical
+   * index and no DeferredIndexes row should exist after upgrade.
+   */
+  @Test
+  public void testAddDeferredThenRemoveInSameStep() {
+    // when
+    performUpgrade(INITIAL_SCHEMA,
+        AddDeferredIndexThenRemove.class);
+
+    // then -- neither physical index nor DeferredIndexes row
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertNull("Should have no DeferredIndexes row",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Same-step: add deferred then rename in the same step. The renamed
+   * deferred index should be persisted as a non-COMPLETED registration row
+   * under its new name.
+   */
+  @Test
+  public void testAddDeferredThenRenameInSameStep() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_Renamed").columns("name"))
+    );
+
+    // when
+    performUpgrade(targetSchema,
+        AddDeferredIndexThenRename.class);
+
+    // then -- renamed deferred index registered under its new name
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertTrue("Should contain renamed index",
+        rows.stream().anyMatch(j -> "Product_Name_Renamed".equalsIgnoreCase(j.getIndexName())));
+    assertFalse("Should not contain original name",
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+  }
+
+
+  // =========================================================================
+  // Unique and multi-column deferred indexes
+  // =========================================================================
+
+  /** Unique deferred index should preserve its unique flag in the persisted registration row. */
+  @Test
+  public void testUniqueDeferredIndex() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+
+    // when
+    performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
+
+    // then
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a deferred row", rows.isEmpty());
+    assertTrue("Row's indexUnique flag should be true for a unique deferred index",
+        rows.stream().anyMatch(DeferredIndex::isIndexUnique));
+  }
+
+
+  /**
+   * A deferred multi-column index should preserve column ordering in the
+   * generated SQL, not be physically built, and have the columns stored
+   * correctly in the DeferredIndexes table.
+   */
+  @Test
+  public void testMultiColumnDeferredIndex() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+
+    // when
+    performUpgrade(targetSchema,
+        AddDeferredMultiColumnIndex.class);
+
+    // then -- not physically built
+    assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
+
+    // then -- SQL generated with both columns
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertFalse("Should have a registration row", rows.isEmpty());
+
+    // then -- DeferredIndexes has correct columns
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("id,name", queryDeferredIndexField("Product_IdName_1", "indexColumns"));
+  }
+
+
+  // =========================================================================
+  // DeferredIndexes table state verification
+  // =========================================================================
+
+  /**
+   * A second upgrade should leave previously-unbuilt deferred indexes
+   * persisted as non-COMPLETED registration rows alongside any new ones.
+   */
+  @Test
+  public void testSequentialUpgradeIncludesPreviousDeferred() {
+    // given — first upgrade defers an index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // when — second upgrade with a new step (schema unchanged = same target)
+    performUpgradeSteps(
+        schemaWith(
+            table("Product").columns(
+                column("id", DataType.BIG_INTEGER).primaryKey(),
+                column("name", DataType.STRING, 100)
+            ).indexes(
+                index("Product_Name_1").columns("name"),
+                index("Product_IdName_1").columns("id", "name")
+            )
+        ),
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class);
+
+    // then — should include BOTH deferred indexes
+    List<DeferredIndex> rows = newDao().findNonTerminal();
+    assertTrue("Should contain first deferred index",
+        rows.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+    assertTrue("Should contain second deferred index",
+        rows.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
+  }
+
+
+  /**
+   * Declaring a deferred index inline on an addTable call must NOT emit
+   * CREATE INDEX at upgrade time — the index is registered as PENDING and
+   * physical creation only happens when the adopter runs the build task.
+   * Verifies the inline-deferred path travels through the same registration
+   * pipeline as a stand-alone .deferred() addIndex.
+   */
+  @Test
+  public void testAddTableWithInlineDeferredIndexDoesNotBuildImmediately() {
+    // given -- target schema where Category has the deferred index already
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label").deferred())
+    );
+
+    // when -- upgrade adds the table with the deferred index inline
+    performUpgrade(targetSchema,
+        AddTableWithInlineDeferredIndex.class);
+
+    // then -- physical index NOT built; registration row PENDING; build task pending
+    assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
+    assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
+    assertFalse("inline-deferred index should produce a non-COMPLETED registration row",
+        newDao().findNonTerminal().isEmpty());
+
+    // when -- adopter executes the deferred SQL
+    runBuildTasks();
+
+    // then -- physical built, row COMPLETED
+    assertPhysicalIndexExists("Category", "Category_Label_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Category_Label_1", "status"));
+  }
+
+
+  /**
+   * Creating a new table with a deferred index should register the index in
+   * the DeferredIndexes table as PENDING — the inline index travels through
+   * the registration path even when the table itself is brand-new.
+   */
+  @Test
+  public void testAddTableRegistersIndexInDeferredTable() {
+    // given
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label"))
+    );
+
+    // when
+    performUpgrade(targetSchema, AddTableWithDeferredIndex.class);
+
+    // then -- Category_Label_1 should be registered (deferred)
+    assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
+  }
+
+
+  // =========================================================================
+  // Idempotency and edge cases
+  // =========================================================================
+
+  /**
+   * Running the same upgrade twice should be idempotent — the second run
+   * should detect no new steps to apply and produce no errors. The
+   * DeferredIndexes state should be unchanged.
+   */
+  @Test
+  public void testReUpgradeIsIdempotent() {
+    // given -- first upgrade defers an index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("First upgrade should produce exactly one registration row",
+        1, newDao().findNonTerminal().size());
+
+    // when -- second upgrade with same schema and steps
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // then -- no errors, state unchanged, no duplicate row from re-running
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("Re-run must not duplicate the registration row",
+        1, newDao().findNonTerminal().size());
+  }
+
+
+  /**
+   * RemoveTable should delete all DeferredIndexes rows for that table.
+   * Step A adds a deferred index on Product. Step B removes the Product
+   * table entirely. After upgrade, no DeferredIndexes row should remain
+   * for the removed table.
+   */
+  @Test
+  public void testRemoveTableCleansUpDeferredIndexes() {
+    // given -- target schema without Product table
+    Schema noProductSchema = schemaWith();
+
+    // when
+    performUpgradeSteps(noProductSchema,
+        AddDeferredIndex.class,
+        RemoveProductTable.class);
+
+    // then -- no DeferredIndexes row for the removed table's index
+    assertNull("DeferredIndexes row should be deleted after removeTable",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Adopter flow — happy path: drive the build tasks via
+   * {@link DeferredIndexService#getBuildTasks()} and run each. After the
+   * loop the physical index exists and the {@code DeferredIndexes} row is
+   * {@code COMPLETED}.
+   */
+  @Test
+  public void testAppSideAdopterFlowBuildsAndMarksCompleted() {
+    // given -- upgrade creates a PENDING deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertFalse("Should have a build task pending", newDao().findNonTerminal().isEmpty());
+
+    // when -- the app-side loop
+    runBuildTasks();
+
+    // then -- physical index built AND row flipped to COMPLETED
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Row-existence model: after a deferred index is built (status=COMPLETED),
+   * a subsequent column-rename upgrade still propagates correctly to the
+   * registration row's indexColumns and to the physical index. The COMPLETED
+   * row stays as COMPLETED because the index is still currently declared
+   * deferred — its declarative form is just rewritten.
+   */
+  @Test
+  public void testCompletedDeferredIndexSurvivesColumnRename() {
+    // given — upgrade 1 creates and adopter builds the deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when — upgrade 2 renames the underlying column (physical column rename
+    // propagates to the index's column reference; registration-row indexColumns
+    // is updated by the visitor)
+    Schema renamedColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+    performUpgradeSteps(renamedColSchema,
+        AddDeferredIndex.class,
+        RenameColumnWithDeferredIndex.class);
+
+    // then — row's indexColumns updated; row stays COMPLETED (still declared deferred)
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeferredIndexField("Product_Name_1", "indexColumns"));
+  }
+
+
+  /**
+   * Self-heal policy: if a registration row says non-terminal (e.g. PENDING) but
+   * the physical index already exists, the enricher does NOT throw — it
+   * rebuilds the index as deferred in the enriched schema and the build
+   * task reconciles via {@code dialect.isIndexValid} on its next pass
+   * (marking it COMPLETED if VALID). This is the routine-restart case.
+   */
+  @Test
+  public void testNonCompletedRowWithMatchingPhysicalAutoRecovers() {
+    // given — first upgrade creates a PENDING deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    // simulate the routine-restart case: physical index already exists but
+    // the row never got flipped to COMPLETED (process crashed mid-build)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_Name_1 ON Product(name)"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when — next upgrade succeeds without throwing (no drift)
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // and — running the build tasks reconciles the row to COMPLETED
+    runBuildTasks();
+
+    // then — row flipped to COMPLETED via isIndexValid auto-detect
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Drift policy: a registration row referencing a table not in the physical
+   * schema is fatal. Could happen if the table was DROPped without removing
+   * the row, or after restoring a partial backup.
+   */
+  @Test
+  public void testEnricherHardFailsOnRowForMissingTable() {
+    // given — manually insert a row referencing a non-existent table
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO DeferredIndexes (id, tableName, indexName, indexUnique, "
+            + "indexColumns, status, attemptsCount, createdTime)"
+            + "VALUES (42, 'GhostTable', 'GhostIdx', 0, 'col', 'PENDING', 0, 0)"));
+
+    // when / then — enricher detects the orphan and names both the table and the index
+    assertThrowsDriftWithMessageContaining(
+        () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
+        "GhostTable", "GhostIdx");
+  }
+
+
+  /**
+   * Row-existence model: changing a built deferred index to non-deferred
+   * should DELETE the registration row (no longer declared deferred). The
+   * physical index is dropped and recreated as non-deferred via the
+   * standard ChangeIndex flow.
+   */
+  @Test
+  public void testCompletedDeferredChangedToNonDeferredDeletesRow() {
+    // given — upgrade 1 creates and adopter builds the deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when — upgrade 2 changes the index from deferred to non-deferred
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))  // non-deferred now
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        ChangeDeferredToNonDeferred.class);
+
+    // then — registration row deleted, physical index still exists (rebuilt as non-deferred)
+    assertNull("Registration row for Product_Name_1 should be deleted (no longer declared deferred)",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Drift policy: if a registration row says COMPLETED but the physical index
+   * is missing (manual DROP, restored backup, etc.), the next upgrade's
+   * enricher must throw IllegalStateException. Morf does not auto-heal.
+   */
+  @Test
+  public void testEnricherHardFailsOnCompletedRowWithoutPhysicalIndex() {
+    // given — manually insert a fabricated COMPLETED row referencing a
+    // physical index that doesn't exist
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO DeferredIndexes (id, tableName, indexName, indexUnique, "
+            + "indexColumns, status, attemptsCount, createdTime)"
+            + "VALUES (1, 'Product', 'Phantom_Idx', 0, 'name', 'COMPLETED', 0, 0)"));
+    assertPhysicalIndexDoesNotExist("Product", "Phantom_Idx");
+
+    // when / then — any subsequent upgrade trips the enricher's drift check
+    assertThrowsDriftWithMessageContaining(
+        () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
+        "Phantom_Idx", "COMPLETED");
+  }
+
+
+  /**
+   * Build task — realistic failure path. CREATE INDEX fails because the
+   * underlying data violates the unique constraint. The build task catches
+   * the SQLException, marks the row FAILED, and persists the error message.
+   * No exception propagates to the adopter.
+   */
+  @Test
+  public void testBuildTaskMarksFailedOnUniqueConstraintViolation() {
+    // given — schema declaring a unique deferred index on Product.name
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgrade(target, AddDeferredUniqueIndex.class);
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_UQ", "status"));
+
+    // and — pre-populate the table with duplicates so CREATE UNIQUE INDEX must fail
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO Product (id, name) VALUES (1, 'dup')",
+        "INSERT INTO Product (id, name) VALUES (2, 'dup')"));
+
+    // when — build tasks run; the failure is caught and persisted internally
+    runBuildTasks();
+
+    // then — row is FAILED with an error message; physical index NOT built
+    assertEquals("FAILED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    String err = queryDeferredIndexField("Product_Name_UQ", "errorMessage");
+    assertNotNull("Error message should be persisted on failure", err);
+    assertFalse("Error message should not be empty", err.isEmpty());
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
+  }
+
+
+  /**
+   * Crash-near-completion auto-heal: a row stuck in IN_PROGRESS whose
+   * physical index is already VALID is auto-promoted to COMPLETED on the
+   * next build pass via {@code dialect.isIndexValid}.
+   */
+  @Test
+  public void testInProgressRowWithValidPhysicalAutoCompletes() {
+    // given — upgrade creates a PENDING row; we then simulate a crash-near-completion
+    // by manually creating the physical index and flipping the row to IN_PROGRESS.
+    // The direct UPDATE bypasses the DAO intentionally — no public API drives a row
+    // to IN_PROGRESS without also bumping attemptsCount, and we want to assert the
+    // self-heal path independent of any attempts bookkeeping.
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_Name_1 ON Product(name)",
+        "UPDATE DeferredIndexes SET status = 'IN_PROGRESS' WHERE indexName = 'Product_Name_1'"));
+    assertEquals("IN_PROGRESS", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when — build tasks run
+    runBuildTasks();
+
+    // then — row auto-promoted to COMPLETED
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * A build that created the physical index but died before recording the outcome
+   * leaves a non-terminal row sitting over a real index. A later upgrade that removes
+   * the index must still emit the physical DROP: skipping it strands an index that no
+   * registration row tracks and no schema declares, which the next enrichment pass
+   * reports as an unexplained difference.
+   */
+  @Test
+  public void testRemoveOfCrashedBuildDeferredIndexDropsPhysical() {
+    // given — physical index built, row never promoted past IN_PROGRESS
+    givenPhysicalIndexBuiltButRowStrandedAt("IN_PROGRESS");
+
+    // when — a later upgrade removes the index
+    performUpgradeSteps(schemaWithoutIndex(),
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then — registration row gone AND physical dropped (no orphan)
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * FAILED reaches the same state by a different route — on PostgreSQL a failed
+   * {@code CREATE INDEX CONCURRENTLY} leaves the index behind. The removal must
+   * drop it for the same reason as the IN_PROGRESS case.
+   */
+  @Test
+  public void testRemoveOfFailedDeferredIndexWithPhysicalPresentDropsPhysical() {
+    // given
+    givenPhysicalIndexBuiltButRowStrandedAt("FAILED");
+
+    // when
+    performUpgradeSteps(schemaWithoutIndex(),
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Rename variant of the crashed-build case. Without the physical RENAME the row
+   * records a name the database does not have, and the next build pass creates a
+   * second index under the new name alongside the stranded original.
+   */
+  @Test
+  public void testRenameOfCrashedBuildDeferredIndexRenamesPhysical() {
+    // given
+    givenPhysicalIndexBuiltButRowStrandedAt("IN_PROGRESS");
+
+    // when — a later upgrade renames Product_Name_1 -> Product_Name_Renamed
+    Schema renamed = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_Renamed").columns("name"))
+    );
+    performUpgradeSteps(renamed,
+        AddDeferredIndex.class,
+        RenameDeferredProductNameIndex.class);
+
+    // then — physical renamed to match the row, with nothing left under the old name
+    assertPhysicalIndexExists("Product", "Product_Name_Renamed");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * ChangeIndex over a crashed build. This path fails harder than remove and rename:
+   * the replacement index is created unconditionally, so suppressing the DROP leaves
+   * the script issuing CREATE INDEX against a name that already exists.
+   */
+  @Test
+  public void testChangeIndexOverCrashedBuildDropsBeforeRecreating() {
+    // given
+    givenPhysicalIndexBuiltButRowStrandedAt("IN_PROGRESS");
+
+    // when — a later upgrade changes the index from deferred to non-deferred
+    performUpgradeSteps(schemaWithIndex(),
+        AddDeferredIndex.class,
+        ChangeDeferredToNonDeferred.class);
+
+    // then — no longer deferred, so no registration row, and the physical index stands
+    assertNull("Registration row should be deleted once the index is no longer deferred",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Strands a registration row at a non-terminal status while its physical index
+   * genuinely exists — the state a build leaves behind when the JVM dies between
+   * {@code CREATE INDEX} completing and the status write.
+   *
+   * <p>The direct UPDATE bypasses the DAO deliberately: no public API drives a row
+   * to a non-terminal status without also mutating attempts bookkeeping, and these
+   * tests are about the physical/row divergence rather than the attempts count.</p>
+   *
+   * @param status the status to strand the row at.
+   */
+  private void givenPhysicalIndexBuiltButRowStrandedAt(String status) {
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_Name_1 ON Product(name)",
+        "UPDATE DeferredIndexes SET status = '" + status + "' WHERE indexName = 'Product_Name_1'"));
+    assertEquals(status, queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * attemptsCount + errorMessage lifecycle: a row that fails-then-succeeds
+   * shows non-zero attempts mid-flight and gets reset to 0 once COMPLETED;
+   * errorMessage is populated on FAILED and cleared on COMPLETED.
+   */
+  @Test
+  public void testAttemptsCountAndErrorMessageResetOnCompletion() {
+    // given — unique deferred index whose first build attempt will fail (duplicates)
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgrade(target, AddDeferredUniqueIndex.class);
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO Product (id, name) VALUES (1, 'dup')",
+        "INSERT INTO Product (id, name) VALUES (2, 'dup')"));
+
+    // when — first pass: build fails, attemptsCount=1, errorMessage set
+    runBuildTasks();
+    assertEquals("FAILED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertEquals("1", queryDeferredIndexField("Product_Name_UQ", "attemptsCount"));
+    assertNotNull(queryDeferredIndexField("Product_Name_UQ", "errorMessage"));
+
+    // and — second pass after fixing the data: build succeeds
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "DELETE FROM Product WHERE id = 2"));
+    runBuildTasks();
+
+    // then — attemptsCount reset to 0, errorMessage cleared
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_Name_UQ", "attemptsCount"));
+    assertNull("errorMessage should be cleared on success",
+        queryDeferredIndexField("Product_Name_UQ", "errorMessage"));
+  }
+
+
+  /**
+   * Idempotency: calling {@code runBuildTasks()} twice in a row leaves the
+   * row state correct — the second pass sees {@code status=COMPLETED} (or
+   * {@code isIndexValid()=true}) and no-ops.
+   */
+  @Test
+  public void testBuildTasksIdempotentAcrossInvocations() {
+    // given
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+
+    // when — call again; no rows are non-COMPLETED so no work
+    runBuildTasks();
+
+    // then — state unchanged
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  // =========================================================================
+  // Multi-task scenarios — comprehensive coverage of the new build flow
+  // =========================================================================
+
+  /**
+   * MT1 — three deferred indexes on one table built in a single pass.
+   * Verifies fanout: every task runs, every physical index ends up present,
+   * every row reaches {@code COMPLETED}.
+   */
+  @Test
+  public void testMT1ThreeDeferredIndexesOnOneTableAllBuildInOnePass() {
+    // given — schema declares all three indexes
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_UQ", "status"));
+
+    // when
+    runBuildTasks();
+
+    // then — every index physical + COMPLETED
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertPhysicalIndexExists("Product", "Product_Name_UQ");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+  }
+
+
+  /**
+   * MT2 — deferred indexes spread across two tables. No cross-table
+   * interference: both tables' indexes complete cleanly via the service.
+   */
+  @Test
+  public void testMT2DeferredIndexesAcrossTwoTablesAllBuild() {
+    // given
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name").deferred()),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label").deferred())
+    );
+    performUpgradeSteps(target, AddDeferredIndex.class, AddTableWithDeferredIndex.class);
+
+    // when
+    runBuildTasks();
+
+    // then — both physical present, both rows COMPLETED
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Category", "Category_Label_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Category_Label_1", "status"));
+  }
+
+
+  /**
+   * MT3 — mixed success and failure in one pass. Three deferred indexes;
+   * one is unique on a column with pre-existing duplicates and must fail
+   * its CREATE. The build task isolates the failure: the other two complete
+   * cleanly, the failing one is FAILED with errorMessage, and {@code
+   * getProgress()} reports the split.
+   */
+  @Test
+  public void testMT3MixedSuccessAndFailureInOnePass() {
+    // given
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+
+    // and — pre-populate duplicates so CREATE UNIQUE INDEX must fail
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO Product (id, name) VALUES (1, 'dup')",
+        "INSERT INTO Product (id, name) VALUES (2, 'dup')"));
+
+    // when
+    runBuildTasks();
+
+    // then — non-unique indexes complete; unique one is FAILED with a message
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("FAILED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertNotNull("Failing row's errorMessage should be persisted",
+        queryDeferredIndexField("Product_Name_UQ", "errorMessage"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
+
+    // and — getProgress reports 2 COMPLETED + 1 FAILED
+    Map<DeferredIndexStatus, Integer> progress = newService().getProgress();
+    assertEquals(Integer.valueOf(2), progress.get(DeferredIndexStatus.COMPLETED));
+    assertEquals(Integer.valueOf(1), progress.get(DeferredIndexStatus.FAILED));
+    assertEquals(Integer.valueOf(0), progress.get(DeferredIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(0), progress.get(DeferredIndexStatus.IN_PROGRESS));
+  }
+
+
+  /**
+   * MT4 — cross-upgrade lifecycle. Upgrade 1 declares two deferred indexes;
+   * after build, both COMPLETED. Upgrade 2 declares a third deferred index;
+   * after build, the new one is COMPLETED while the prior two stay
+   * COMPLETED with attemptsCount=0 (untouched on the second pass).
+   */
+  @Test
+  public void testMT4CrossUpgradeLifecycle() {
+    // given — upgrade 1: two deferred indexes, build, both COMPLETED
+    Schema after1 = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred())
+    );
+    performUpgradeSteps(after1, AddDeferredIndex.class, AddSecondDeferredIndex.class);
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+
+    // when — upgrade 2: a third deferred index; build
+    Schema after2 = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(after2,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+    runBuildTasks();
+
+    // then — new index COMPLETED; prior two unchanged
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
+    assertEquals("0", queryDeferredIndexField("Product_IdName_1", "attemptsCount"));
+  }
+
+
+  /**
+   * MT5 — {@code getProgress()} accuracy across the lifecycle. Three
+   * deferred indexes report 3 PENDING before any build, then 3 COMPLETED
+   * after one build pass.
+   */
+  @Test
+  public void testMT5GetProgressAccuracyAcrossLifecycle() {
+    // given
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+    DeferredIndexService service = newService();
+
+    // pre-build
+    Map<DeferredIndexStatus, Integer> before = service.getProgress();
+    assertEquals(Integer.valueOf(3), before.get(DeferredIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(0), before.get(DeferredIndexStatus.COMPLETED));
+
+    // when
+    runBuildTasks();
+
+    // post-build
+    Map<DeferredIndexStatus, Integer> after = service.getProgress();
+    assertEquals(Integer.valueOf(0), after.get(DeferredIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(3), after.get(DeferredIndexStatus.COMPLETED));
+    assertEquals(Integer.valueOf(0), after.get(DeferredIndexStatus.FAILED));
+    assertEquals(Integer.valueOf(0), after.get(DeferredIndexStatus.IN_PROGRESS));
+  }
+
+
+  /**
+   * MT6 — repeated invocation idempotency for multi-task case. Declare two
+   * deferred indexes; first call builds both. Subsequent calls return an
+   * empty task list (every row is COMPLETED) so {@code forEach} is a true
+   * no-op.
+   */
+  @Test
+  public void testMT6RepeatedInvocationIdempotency() {
+    // given — two deferred indexes, both PENDING
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred())
+    );
+    performUpgradeSteps(target, AddDeferredIndex.class, AddSecondDeferredIndex.class);
+    DeferredIndexService service = newService();
+    assertEquals(2, service.getBuildTasks().size());
+
+    // when — first call builds both
+    service.getBuildTasks().forEach(Runnable::run);
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+
+    // then — subsequent calls return empty task lists
+    assertTrue("Second call should return no tasks (all COMPLETED)",
+        service.getBuildTasks().isEmpty());
+    assertTrue("Third call should return no tasks (all COMPLETED)",
+        service.getBuildTasks().isEmpty());
+
+    // and — physical state unchanged
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+  }
+
+
+  /** Helper: construct the DAO backed by the test's executor + connection. */
+  private DeferredIndexesDAO newDao() {
+    return new DeferredIndexesDAO(sqlScriptExecutorProvider, connectionResources,
+        new DeferredIndexesStatements());
+  }
+
+
+  /** Helper: construct a service paired with a freshly-built builder + DAO. */
+  private DeferredIndexService newService() {
+    DeferredIndexesDAO dao = newDao();
+    return new DeferredIndexServiceImpl(new DeferredIndexBuilder(connectionResources, dao), dao);
+  }
+
+
+  /**
+   * Helper: drive every non-COMPLETED registration row through the new
+   * {@link DeferredIndexService} build flow — the equivalent adopter
+   * operation.
+   */
+  private void runBuildTasks() {
+    newService().getBuildTasks().forEach(Runnable::run);
+  }
+
+
+  // =========================================================================
+  // PRF-rename x deferred-index intersection
+  // =========================================================================
+
+  /**
+   * When a {@code .deferred()} addIndex has a matching PRF (same columns +
+   * unique flag) declared in
+   * {@link UpgradeConfigAndContext#getIgnoredIndexesForTable}, the PRF is
+   * renamed into the declared index at upgrade time. Because the index is
+   * physically present the moment the script runs, the registration row is
+   * written straight to COMPLETED -- it never enters the build queue, and no
+   * duplicate physical is ever materialised.
+   */
+  @Test
+  public void testAddDeferredIndexWithMatchingPRFRenamesInsteadOfCreating() {
+    // given -- physical PRF index whose shape matches the soon-to-be-declared deferred index
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+
+    // when -- upgrade with an ignoredIndexes config that lets the visitor consider the PRF
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+
+    // then -- PRF is gone (renamed), target physical exists, row already COMPLETED
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
+
+    // and -- nothing queued: the adopter has no work to do for this index
+    assertTrue("PRF-materialised index must not enter the build queue",
+        newDao().findNonTerminal().isEmpty());
+
+    // when -- adopter runs build tasks anyway
+    runBuildTasks();
+
+    // then -- unchanged; no duplicate CREATE
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
+  }
+
+
+  /**
+   * Path C for {@code visit(ChangeIndex)}: when the to-index of a
+   * {@code changeIndex} is declared {@code .deferred()} and shares shape
+   * with a configured PRF, the PRF is renamed to the to-index name at
+   * upgrade time (in addition to the from-index physical DROP). The row is
+   * registered PENDING and self-heals to COMPLETED on the next build pass.
+   */
+  @Test
+  public void testChangeImmediateToDeferredWithMatchingPRFRenamesInsteadOfCreating() {
+    // given -- initial physical Product_Name_1 (from an earlier immediate-add step)
+    Schema afterAdd = schemaWithIndex();
+    performUpgrade(afterAdd, AddImmediateIndex.class);
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // and -- a physical PRF matching the future to-index shape (id + name, non-unique)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (id, name)"));
+
+    // when -- second upgrade changes Product_Name_1 (immediate on name) to Product_IdName_1
+    // (deferred on id, name), with the PRF registered as ignored so the visitor sees it
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+    performUpgradeStepsWithCustomConfig(target, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("id", "name"))));
+    },
+    AddImmediateIndex.class,
+    ChangeImmediateNameIndexToDeferredIdName.class);
+
+    // then -- Product_Name_1 dropped, PRF renamed to the target name, row COMPLETED
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+
+    // and -- nothing queued
+    assertTrue("PRF-materialised index must not enter the build queue",
+        newDao().findNonTerminal().isEmpty());
+
+    // when -- adopter runs build tasks anyway
+    runBuildTasks();
+
+    // then -- unchanged; no duplicate CREATE
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_IdName_1", "attemptsCount"));
+  }
+
+
+  /**
+   * Cross-upgrade: a deferred index materialised via PRF rename in one upgrade
+   * can be removed cleanly in a subsequent upgrade. Exercises the second-boot
+   * enricher on a PRF-rename-origin COMPLETED row + a following remove step.
+   */
+  @Test
+  public void testDeferredIndexBuiltViaPRFRenameCanBeRemovedInLaterUpgrade() {
+    // given -- upgrade 1 materialises Product_Name_1 via PRF rename + build task self-heal
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when -- upgrade 2 removes the same deferred index (no PRF match here — the PRF
+    // was consumed in the first upgrade, and Product_Name_1 is a normal physical now)
+    Schema targetAfterRemove = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        )
+    );
+    performUpgradeSteps(targetAfterRemove,
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then -- physical dropped and registration row deleted
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertNull("DeferredIndexes row should be deleted after removeIndex",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Config interaction: {@code forceImmediateIndexes} strips the
+   * {@code .deferred()} flag before the visitor sees the toIndex. If a PRF
+   * matches, the rename optimisation still fires (it's a physical-materialisation
+   * concern, orthogonal to the deferred flag). The resulting index is
+   * non-deferred and not registered in DeferredIndexes.
+   */
+  @Test
+  public void testForceImmediateWithMatchingPRFRenamesInsteadOfCreating() {
+    // given -- physical PRF matching the declared-deferred addIndex shape
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+
+    // when -- upgrade with force-immediate + ignoredIndexes; PRF matches the target shape
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setForceImmediateIndexes(Set.of("Product_Name_1"));
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+
+    // then -- PRF renamed to Product_Name_1; no CREATE, no registration row
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertNull("force-immediate ends up non-deferred → not registered",
+        queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * A deferred index materialised by a PRF rename is physically present even
+   * though its row has never been through the build task. A later upgrade that
+   * removes it must still emit the physical DROP -- the adopter is explicitly
+   * allowed to run a new upgrade before draining the build queue.
+   */
+  @Test
+  public void testRemoveOfPRFMaterialisedDeferredIndexDropsPhysicalWhenQueueNotDrained() {
+    // given -- upgrade 1 materialises Product_Name_1 via PRF rename; build tasks NOT run
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- upgrade 2 removes it, with the row still un-built
+    performUpgradeSteps(schemaWithoutIndex(),
+        AddDeferredIndex.class,
+        RemoveDeferredProductNameIndex.class);
+
+    // then -- registration row gone AND physical dropped (no orphan)
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Same setup as the remove case, but the later upgrade renames the index.
+   * The physical must be renamed alongside the registration row, otherwise the
+   * row records a name the database doesn't have.
+   */
+  @Test
+  public void testRenameOfPRFMaterialisedDeferredIndexRenamesPhysicalWhenQueueNotDrained() {
+    // given
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- upgrade 2 renames Product_Name_1 -> Product_Name_Renamed
+    Schema renamed = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_Renamed").columns("name"))
+    );
+    performUpgradeSteps(renamed,
+        AddDeferredIndex.class,
+        RenameDeferredProductNameIndex.class);
+
+    // then -- row renamed AND physical renamed to match
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_Renamed", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_Renamed");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Same setup again, but the later upgrade changes the index to non-deferred
+   * under the same name. The from-index physical must be dropped before the
+   * replacement is created.
+   */
+  @Test
+  public void testChangeOfPRFMaterialisedDeferredIndexDropsFromPhysicalWhenQueueNotDrained() {
+    // given
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- upgrade 2 changes it from deferred to non-deferred (same name)
+    performUpgradeSteps(schemaWithIndex(),
+        AddDeferredIndex.class,
+        ChangeDeferredToNonDeferred.class);
+
+    // then -- row deleted (no longer declared deferred), single physical present
+    assertNull("Registration row should be deleted once non-deferred",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Shared setup for the three tests above: pre-create a PRF whose shape matches
+   * the deferred index, run the upgrade that declares it (so the visitor renames
+   * the PRF), and deliberately leave the build queue undrained.
+   */
+  private void givenDeferredIndexMaterialisedByPRFRename() {
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    // The PRF rename materialised the index during the upgrade, so the row is
+    // registered COMPLETED -- it never enters the build queue.
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /** Helper: Product with no indexes. */
+  private static Schema schemaWithoutIndex() {
+    return schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        )
+    );
+  }
+
+
+  /**
+   * RemoveColumn against a PRF-materialised deferred index. This path never
+   * consults {@code willBePhysicallyPresent} -- it deletes the registration row via
+   * unregisterByColumn and lets the column drop cascade to the physical index --
+   * so it is verified here rather than assumed.
+   */
+  @Test
+  public void testRemoveColumnAfterPRFMaterialisedDeferredIndexLeavesNoResidue() {
+    // given -- Product_Name_1 materialised by PRF rename, build queue not drained
+    givenDeferredIndexMaterialisedByPRFRename();
+
+    // when -- a later upgrade removes the index and the column it covered
+    Schema noNameColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey()
+        )
+    );
+    performUpgradeSteps(noNameColSchema,
+        AddDeferredIndex.class,
+        RemoveColumnWithDeferredIndex.class);
+
+    // then -- registration row gone and physical index gone with the column
+    assertNull("Registration row should be deleted",
+        queryDeferredIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * The PRF matcher compares the unique flag as well as the columns. A
+   * non-unique PRF must not be consumed by a declared UNIQUE deferred index --
+   * renaming it would silently produce an index without the uniqueness
+   * constraint the schema asks for.
+   */
+  @Test
+  public void testUniqueDeferredIndexDoesNotConsumeNonUniquePRF() {
+    // given -- a NON-unique PRF on (name)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name)"));
+
+    // when -- a UNIQUE deferred index on the same column is declared
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+    performUpgradeWithCustomConfig(target, AddDeferredUniqueIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name"))));
+    });
+
+    // then -- PRF untouched, nothing materialised, row queued as normal
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_UQ", "status"));
+
+    // and -- the adopter's build task creates it properly
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_UQ");
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+  }
+
+
+  /** A multi-column PRF matching a multi-column deferred index is consumed. */
+  @Test
+  public void testMultiColumnDeferredIndexConsumesMatchingMultiColumnPRF() {
+    // given -- PRF on (id, name)
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (id, name)"));
+
+    // when -- a deferred index on the same two columns, same order
+    performUpgradeWithCustomConfig(schemaWithIdNameIndex(), AddSecondDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("id", "name"))));
+    });
+
+    // then -- PRF renamed into the declared index, registered COMPLETED
+    assertPhysicalIndexDoesNotExistRaw("Product_PRF1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+  }
+
+
+  /**
+   * Column order is part of an index's identity, so a PRF on (name, id) must
+   * not be consumed by a declared index on (id, name).
+   */
+  @Test
+  public void testDeferredIndexDoesNotConsumePRFWithDifferentColumnOrder() {
+    // given -- PRF with the columns the other way round
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_PRF1 ON Product (name, id)"));
+
+    // when -- a deferred index on (id, name)
+    performUpgradeWithCustomConfig(schemaWithIdNameIndex(), AddSecondDeferredIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setIgnoredIndexes(Map.of("Product",
+          List.of(index("Product_PRF1").columns("name", "id"))));
+    });
+
+    // then -- PRF untouched, index queued for the build task as normal
+    assertPhysicalIndexExistsRaw("Product_PRF1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+  }
+
+
+  /** Helper: Product with a two-column index on (id, name). */
+  private static Schema schemaWithIdNameIndex() {
+    return schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+  }
+
+
+  // =========================================================================
+  // Config overrides (additional)
+  // =========================================================================
+
+  /**
+   * Force-deferred: an addIndex() without .deferred() should be deferred
+   * when forceDeferredIndexes config includes the index name. The physical
+   * index should NOT be built, and a non-COMPLETED registration row should be
+   * persisted.
+   */
+  @Test
+  public void testForceDeferredOverridesImmediate() {
+    // when -- AddImmediateIndex uses addIndex() without .deferred()
+    performUpgradeWithCustomConfig(schemaWithIndex(), AddImmediateIndex.class, cfg -> {
+      cfg.setDeferredIndexCreationEnabled(true);
+      cfg.setForceDeferredIndexes(Set.of("Product_Name_1"));
+    });
+
+    // then -- deferred despite no .deferred() on the index
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertFalse("Should have deferred statements", newDao().findNonTerminal().isEmpty());
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Unsupported dialect fallback: when the dialect does not support deferred
+   * index creation, a .deferred() index should be built immediately.
+   */
+  @Test
+  public void testUnsupportedDialectFallsBackToImmediate() {
+    // given -- spy dialect returning supportsDeferredIndexCreation()=false
+    SqlDialect realDialect = connectionResources.sqlDialect();
+    SqlDialect spyDialect = spy(realDialect);
+    when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
+    ConnectionResources spyConn = spy(connectionResources);
+    when(spyConn.sqlDialect()).thenReturn(spyDialect);
+
+    // when
+    Upgrade.performUpgrade(schemaWithIndex(),
+        Collections.singletonList(AddDeferredIndex.class),
+        spyConn, config, viewDeploymentValidator);
+
+    // then -- built immediately despite .deferred()
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
+  private void performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> step) {
+    Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
+        connectionResources, config, viewDeploymentValidator);
+  }
+
+  @SafeVarargs
+  private void performUpgradeSteps(Schema targetSchema, Class<? extends UpgradeStep>... steps) {
+    Upgrade.performUpgrade(targetSchema, Arrays.asList(steps),
+        connectionResources, config, viewDeploymentValidator);
+  }
+
+  /**
+   * Runs the given step against a fresh {@link UpgradeConfigAndContext} customised by
+   * {@code customizer}. Use this when a test needs different config than {@link #setUp()}'s
+   * shared {@link #config} field — e.g. force-immediate, force-deferred, or
+   * deferred-index-creation disabled.
+   */
+  private void performUpgradeWithCustomConfig(Schema targetSchema, Class<? extends UpgradeStep> step,
+                                              Consumer<UpgradeConfigAndContext> customizer) {
+    UpgradeConfigAndContext customConfig = new UpgradeConfigAndContext();
+    customizer.accept(customConfig);
+    Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
+        connectionResources, customConfig, viewDeploymentValidator);
+  }
+
+  /**
+   * Multi-step variant of {@link #performUpgradeWithCustomConfig}. Applies the same
+   * customised config to a list of upgrade steps run as one upgrade.
+   */
+  @SafeVarargs
+  private void performUpgradeStepsWithCustomConfig(Schema targetSchema,
+                                                   Consumer<UpgradeConfigAndContext> customizer,
+                                                   Class<? extends UpgradeStep>... steps) {
+    UpgradeConfigAndContext customConfig = new UpgradeConfigAndContext();
+    customizer.accept(customConfig);
+    Upgrade.performUpgrade(targetSchema, Arrays.asList(steps),
+        connectionResources, customConfig, viewDeploymentValidator);
+  }
+
+  /** Helper: schema with Product table having one index on name. */
+  private static Schema schemaWithIndex() {
+    return schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+  }
+
+  /** Helper: builds a schema with Morf infrastructure tables + the given user tables. */
+  private static Schema schemaWith(Table... tables) {
+    List<Table> all = new ArrayList<>();
+    all.add(deployedViewsTable());
+    all.add(upgradeAuditTable());
+    all.add(deferredIndexesTable());
+    Collections.addAll(all, tables);
+    return schema(all);
+  }
+
+  /**
+   * Asserts that {@code action} throws a {@link RuntimeException} whose cause chain contains
+   * an {@link IllegalStateException} whose message contains every supplied substring. Several
+   * drift checks are wrapped by the upgrade framework's exception handling, so the
+   * {@code IllegalStateException} typically isn't the top-level throwable — we walk the chain.
+   */
+  private static void assertThrowsDriftWithMessageContaining(Runnable action, String... expectedSubstrings) {
+    try {
+      action.run();
+      fail("Expected IllegalStateException for drift mentioning " + Arrays.toString(expectedSubstrings));
+    } catch (RuntimeException e) {
+      Throwable cause = e;
+      while (cause != null) {
+        if (cause instanceof IllegalStateException && cause.getMessage() != null) {
+          boolean allMatch = true;
+          for (String needle : expectedSubstrings) {
+            if (!cause.getMessage().contains(needle)) { allMatch = false; break; }
+          }
+          if (allMatch) return;
+        }
+        cause = cause.getCause();
+      }
+      fail("Expected drift IllegalStateException mentioning " + Arrays.toString(expectedSubstrings) + ", got: " + e);
+    }
+  }
+
+  private void assertPhysicalIndexExists(String tableName, String indexName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Physical index " + indexName + " should exist on " + tableName,
+          sr.getTable(tableName).indexes().stream()
+              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
+    }
+  }
+
+  private void assertPhysicalIndexDoesNotExist(String tableName, String indexName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertFalse("Index " + indexName + " should not exist on " + tableName,
+          sr.getTable(tableName).indexes().stream()
+              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
+    }
+  }
+
+  private void assertPhysicalTableExists(String tableName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Physical table " + tableName + " should exist", sr.tableExists(tableName));
+    }
+  }
+
+  private void assertPhysicalTableDoesNotExist(String tableName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertFalse("Physical table " + tableName + " should NOT exist", sr.tableExists(tableName));
+    }
+  }
+
+  private String queryDeferredIndexField(String indexName, String fieldName) {
+    String sql = "SELECT " + fieldName + " FROM DeferredIndexes WHERE UPPER(indexName) = '"
+        + indexName.toUpperCase() + "'";
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  }
+
+  /**
+   * Raw physical-index check that bypasses the schema reader's
+   * {@code shouldIgnoreIndex} filter (which hides PRF-named indexes).
+   * Needed to observe PRF creation/rename in the PRF-rename intersection tests.
+   */
+  private boolean physicalIndexExistsRaw(String indexName) {
+    String sql = "SELECT 1 FROM INFORMATION_SCHEMA.INDEXES WHERE UPPER(INDEX_NAME) = '"
+        + indexName.toUpperCase() + "'";
+    Boolean present = sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? Boolean.TRUE : Boolean.FALSE);
+    return Boolean.TRUE.equals(present);
+  }
+
+  private void assertPhysicalIndexExistsRaw(String indexName) {
+    assertTrue("Physical index " + indexName + " should exist (raw check)", physicalIndexExistsRaw(indexName));
+  }
+
+  private void assertPhysicalIndexDoesNotExistRaw(String indexName) {
+    assertFalse("Physical index " + indexName + " should NOT exist (raw check)", physicalIndexExistsRaw(indexName));
+  }
+
+}

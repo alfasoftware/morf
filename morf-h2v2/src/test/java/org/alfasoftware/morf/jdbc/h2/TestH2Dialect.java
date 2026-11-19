@@ -1440,4 +1440,10 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
     return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC LIMIT 10";
   }
 
+
+  @Override
+  protected boolean expectedSupportsDeferredIndexCreation() {
+    return true;
+  }
+
 }

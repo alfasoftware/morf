@@ -18,6 +18,7 @@ package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
@@ -73,6 +74,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
@@ -80,6 +82,10 @@ import org.alfasoftware.morf.upgrade.MockConnectionResources.StubSchemaResource;
 import org.alfasoftware.morf.upgrade.SchemaAutoHealer.SchemaHealingResults;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexStatus;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexesModelEnricher;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.CreateDeployedViews;
@@ -195,7 +201,7 @@ public class TestUpgrade {
     when(schemaResource.tables()).thenReturn(tables);
 
     UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources),
-      viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+      viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
         .withUpgradeConfiguration(upgradeConfigAndContext)
         .create(mockConnectionResources)
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
@@ -242,7 +248,7 @@ public class TestUpgrade {
 
     when(dialect.getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(ImmutableList.of("HEALING1", "HEALING2"));
 
-    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
         .withUpgradeConfiguration(upgradeConfigAndContext)
         .create(mockConnectionResources)
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList(), mockConnectionResources.getDataSource());
@@ -297,7 +303,7 @@ public class TestUpgrade {
     when(schemaAutoHealer.analyseSchema(any())).thenReturn(schemaHealingResults);
     upgradeConfigAndContext.setSchemaAutoHealer(schemaAutoHealer);
 
-    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
         .withUpgradeConfiguration(upgradeConfigAndContext)
         .create(mockConnectionResources)
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList(), mockConnectionResources.getDataSource());
@@ -324,7 +330,7 @@ public class TestUpgrade {
     SqlScriptExecutor.ResultSetProcessor<Long> upgradeRowProcessor = mock(SqlScriptExecutor.ResultSetProcessor.class);
 
     // When
-    new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .getUpgradeAuditRowCount(upgradeRowProcessor);
 
@@ -357,7 +363,7 @@ public class TestUpgrade {
                                               create();
     when(connection.sqlDialect()).thenReturn(dialect);
 
-    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .findPath(
       schema(upgradeAudit(), deployedViews(), upgradedCar()),
@@ -454,7 +460,7 @@ public class TestUpgrade {
     when(mockConnectionResources.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
     when(mockConnectionResources.sqlDialect().getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(Lists.newArrayList());
 
-    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(mockConnectionResources)
             .findPath(targetSchema,
       upgradeSteps, new HashSet<>(), mockConnectionResources.getDataSource());
@@ -491,7 +497,7 @@ public class TestUpgrade {
     when(connection.sqlDialect().getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(Lists.newArrayList());
 
     // When
-    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
@@ -537,7 +543,7 @@ public class TestUpgrade {
     when(connection.sqlDialect().getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(Lists.newArrayList());
 
     // When
-    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
@@ -607,7 +613,7 @@ public class TestUpgrade {
                                               create();
 
     // When
-    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
@@ -676,7 +682,7 @@ public class TestUpgrade {
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
     // When
-    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
@@ -737,7 +743,7 @@ public class TestUpgrade {
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
     // When
-    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory, mockEnricher())
             .create(connection)
             .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
@@ -781,7 +787,7 @@ public class TestUpgrade {
     when(connection.sqlDialect().getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(Lists.newArrayList());
 
     // When
-    UpgradePath result = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
+    UpgradePath result = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext, mockEnricher()).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -861,7 +867,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
+    UpgradePath result = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext, mockEnricher()).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -902,7 +908,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
 
-    new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
+    new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext, mockEnricher()).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
     ArgumentCaptor<Table> tableArgumentCaptor = ArgumentCaptor.forClass(Table.class);
     verify(connection.sqlDialect(), times(3)).rebuildTriggers(tableArgumentCaptor.capture());
@@ -1002,7 +1008,7 @@ public class TestUpgrade {
     UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(status1, status2, status3);
 
-    UpgradePath path = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
+    UpgradePath path = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory, upgradeConfigAndContext, mockEnricher()).findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
     assertFalse("Steps to apply", path.hasStepsToApply());
     assertTrue("In progress", path.upgradeInProgress());
   }
@@ -1028,5 +1034,108 @@ public class TestUpgrade {
    */
   public static Table deployedViews() {
     return table(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME).columns(column("name", DataType.STRING, 30), column("hash", DataType.STRING, 64));
+  }
+
+
+  /**
+   * The inline upgrader and the graph-based upgrade builder are two independent
+   * walks over the same upgrade steps, and only one of the scripts they produce is
+   * ultimately executed. They must therefore start from the same view of which
+   * deferred indexes are still awaiting a build.
+   *
+   * <p>{@link DeferredIndexSession} is mutable: visiting {@code removeIndex} evicts
+   * the index from it. If both walks share one instance, the second sees the state
+   * the first left behind, concludes the index is physically present, and emits a
+   * DROP for an index that was never built — while emitting no DELETE, so the
+   * registration row survives the removal.</p>
+   */
+  @Test
+  public void testGraphBasedBuilderGetsASessionUnaffectedByTheInlineUpgrader() {
+    // Given -- a deferred index registered by a previous upgrade and never built
+    Table upgradeAudit  = upgradeAudit();
+    Table deployedViews = deployedViews();
+    Table fooWithIndex = table("Foo")
+        .columns(column("id", DataType.BIG_INTEGER).primaryKey(), column("bar", DataType.STRING, 10))
+        .indexes(index("Foo_Idx").columns("bar").deferred());
+    Table fooWithoutIndex = table("Foo")
+        .columns(column("id", DataType.BIG_INTEGER).primaryKey(), column("bar", DataType.STRING, 10));
+
+    // The enricher has virtualised the PENDING row into the source schema.
+    Schema sourceSchema = schema(upgradeAudit, deployedViews, fooWithIndex);
+    Schema targetSchema = schema(upgradeAudit, deployedViews, fooWithoutIndex);
+
+    Collection<Class<? extends UpgradeStep>> upgradeSteps =
+        Collections.<Class<? extends UpgradeStep>>singleton(RemoveTheDeferredIndex.class);
+
+    ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
+    when(connection.openSchemaResource(eq(connection.getDataSource())))
+        .thenReturn(new StubSchemaResource(sourceSchema));
+    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
+    when(connection.sqlDialect().getSchemaConsistencyStatements(any(SchemaResource.class)))
+        .thenReturn(Lists.newArrayList());
+    when(connection.sqlDialect().tableDeploymentStatements(any(Table.class))).thenReturn(Lists.newArrayList());
+    when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList());
+    when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList());
+    when(connection.sqlDialect().indexDropStatements(any(Table.class), any(Index.class))).thenReturn(Lists.newArrayList());
+    when(connection.sqlDialect().convertStatementToSQL(any(DeleteStatement.class))).thenReturn("D");
+    when(connection.sqlDialect().convertStatementToSQL(any(Statement.class), any(Schema.class), any(Table.class)))
+        .thenReturn(Lists.newArrayList("AUDIT"));
+    when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
+
+    // When
+    new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService,
+        new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator,
+        databaseUpgradePathValidationService, graphBasedUpgradeScriptGeneratorFactory,
+        upgradeConfigAndContext, enricherPriming("Foo", "Foo_Idx"))
+        .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
+
+    // Then -- the session handed to the graph builder must still know the index is unbuilt
+    ArgumentCaptor<DeferredIndexSession> captor = ArgumentCaptor.forClass(DeferredIndexSession.class);
+    verify(graphBasedUpgradeScriptGeneratorFactory)
+        .create(any(), any(), any(), any(), any(), any(), captor.capture());
+
+    assertFalse("The graph-based builder was given a DeferredIndexSession that the inline "
+        + "upgrader had already mutated: it now reports Foo_Idx as physically present, so the "
+        + "graph script would emit DROP INDEX for an index that was never created and would "
+        + "omit the DELETE that removes its registration row.",
+        captor.getValue().willBePhysicallyPresent("Foo", "Foo_Idx"));
+  }
+
+
+  /** Enricher stub that primes the session with one unbuilt deferred index. */
+  private static DeferredIndexesModelEnricher enricherPriming(String tableName, String indexName) {
+    DeferredIndexesModelEnricher enricher = mock(DeferredIndexesModelEnricher.class);
+    when(enricher.enrich(any(Schema.class), any(DeferredIndexSession.class))).thenAnswer(inv -> {
+      DeferredIndex row = new DeferredIndex();
+      row.setTableName(tableName);
+      row.setIndexName(indexName);
+      row.setIndexUnique(false);
+      row.setIndexColumns(ImmutableList.of("bar"));
+      row.setStatus(DeferredIndexStatus.PENDING);
+      ((DeferredIndexSession) inv.getArgument(1)).prime(row, false);
+      return inv.getArgument(0);
+    });
+    return enricher;
+  }
+
+
+  /** Removes the deferred index primed by {@link #enricherPriming}. */
+  @Sequence(1)
+  @Version("1.0.0")
+  @org.alfasoftware.morf.upgrade.UUID("f1e2d3c4-b5a6-4978-8a9b-0c1d2e3f4a5b")
+  public static class RemoveTheDeferredIndex implements UpgradeStep {
+    @Override public String getJiraId() { return "MORF-TEST"; }
+    @Override public String getDescription() { return "Remove a deferred index"; }
+    @Override public void execute(SchemaEditor schema, DataEditor data) {
+      schema.removeIndex("Foo", index("Foo_Idx").columns("bar").deferred());
+    }
+  }
+
+
+  private static DeferredIndexesModelEnricher mockEnricher() {
+    DeferredIndexesModelEnricher enricher = mock(DeferredIndexesModelEnricher.class);
+    when(enricher.enrich(any(Schema.class), any(DeferredIndexSession.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+    return enricher;
   }
 }
