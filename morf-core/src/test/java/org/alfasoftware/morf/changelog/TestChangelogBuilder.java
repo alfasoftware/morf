@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.changelog;
 
 import static org.alfasoftware.morf.changelog.ChangelogBuilder.changelogBuilder;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.PrintWriter;
@@ -88,5 +89,45 @@ public class TestChangelogBuilder {
     assertTrue(changeLog.contains("Set name to 'Dave'"));
     assertTrue(changeLog.contains("Set address to 'Address'"));
     assertTrue(changeLog.contains("Set postCode to 'postCode'"));
+  }
+  /**
+   * Test database entity based changelog generation.
+   *
+   * @throws Exception on error
+   */
+  @Test
+  public void testEntityChangeLog() throws Exception {
+    StringWriter writer = new StringWriter();
+    StringWriter entityWriter = new StringWriter();
+
+    changelogBuilder()
+        .withOutputTo(new PrintWriter(writer), new PrintWriter(entityWriter))
+        .withUpgradeSteps(ImmutableList.of(ChangeCar.class, ChangeDriver.class))
+        .withVersionStart("v1.0.0")
+        .withIncludeDataChanges(true)
+        .produceChangelog();
+
+    String actual = entityWriter.toString();
+
+    String expected = String.join(System.lineSeparator(),
+        "Car",
+        "===",
+        "* xxx-123: ChangeCar ",
+        "  o Remove column engineCapacity from Car",
+        "  o Add a nullable column to Car called engineVolume [DECIMAL(20,0)], set to 0",
+        "",
+        "Driver",
+        "======",
+        "* : ChangeDriver",
+        "  o Add a nullable column to Driver called postCode [STRING(8)], set to ''",
+        "  o Add record into Driver:",
+        "    - Set name to 'Dave'",
+        "    - Set address to 'Address'",
+        "    - Set postCode to 'postCode'",
+        "",
+        ""
+    );
+
+    assertEquals(expected, actual);
   }
 }
