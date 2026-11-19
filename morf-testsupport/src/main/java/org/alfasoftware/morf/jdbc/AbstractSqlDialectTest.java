@@ -214,8 +214,6 @@ public abstract class AbstractSqlDialectTest {
   private static final String TABLE_TWO = "TableTwo";
   private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
   private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
-  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT is not supported by Morf for MySQL";
-  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT is not supported by Morf for SQL Server";
 
   private static final String TEMP_TEST_TABLE = "TempTest";
   private static final String TEMP_TEST_NK = "TempTest_NK";
@@ -2356,8 +2354,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement()
       .from(new TableReference(TEST_TABLE))
       .limit(10);
@@ -2371,8 +2367,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithOrderByAndLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference("id"))
       .from(new TableReference(TEST_TABLE))
       .orderBy(new FieldReference("id"))
@@ -2387,8 +2381,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithLimitInSubquery() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement inner = new SelectStatement()
       .from(new TableReference(TEST_TABLE))
       .limit(1000)
@@ -2406,8 +2398,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithWhereAndLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
       .where(eq(new FieldReference(INT_FIELD), literal(100)))
@@ -2422,8 +2412,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithDistinctAndLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = selectDistinct(new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
       .limit(20);
@@ -2437,8 +2425,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithGroupByAndLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count().as("cnt"))
       .from(new TableReference(TEST_TABLE))
       .groupBy(new FieldReference(STRING_FIELD))
@@ -2453,8 +2439,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithJoinAndLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(
         new FieldReference(new TableReference(TEST_TABLE), "id"),
         new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD))
@@ -2473,8 +2457,6 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithOrderByWhereAndLimit() {
-    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
       .where(isNotNull(new FieldReference(STRING_FIELD)))
@@ -4704,14 +4686,8 @@ public abstract class AbstractSqlDialectTest {
       )
       .build();
 
-    if (expectedMergeWithUpdateWhereClause() == null) {
-      exception.expect(IllegalStateException.class);
-      exception.expectMessage("org.alfasoftware.morf.sql.MergeMatchClause is not supported");
-      testDialect.convertStatementToSQL(statement);
-    } else {
-      String result = testDialect.convertStatementToSQL(statement);
-      assertEquals("Merge with MergeMatchClause.update() clause", expectedMergeWithUpdateWhereClause(), result);
-    }
+    String result = testDialect.convertStatementToSQL(statement);
+    assertEquals("Merge with MergeMatchClause.update() clause", expectedMergeWithUpdateWhereClause(), result);
   }
 
 
@@ -6228,8 +6204,7 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * Expected SQL for merge with WHERE clause - to be overridden by
-   * dialect-specific tests or {@code null} if {@link MergeMatchClause} is
-   * unsupported.
+   * dialect-specific tests.
    */
   protected abstract String expectedMergeWithUpdateWhereClause();
 
